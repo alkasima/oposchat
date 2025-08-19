@@ -1,9 +1,13 @@
+# Use Cloud Logging only to satisfy org policy for user-managed service accounts
+options:
+  logging: CLOUD_LOGGING_ONLY
+
 steps:
-  # Step 1: Install Composer dependencies
+  # Step 1: Install Composer dependencies locally in Cloud Build
   - name: 'gcr.io/cloud-builders/composer'
     args: ['install', '--no-dev', '--prefer-dist']
 
-  # Step 2: SSH into VM and deploy
+  # Step 2: SSH into VM and deploy Laravel
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
@@ -14,8 +18,11 @@ steps:
           git pull origin main &&
           composer install --no-dev --prefer-dist &&
           php artisan migrate --force &&
+          php artisan config:cache &&
+          php artisan route:cache &&
+          php artisan view:cache &&
           sudo chown -R www-data:www-data /var/www/oposchat
         "
 
-# Optional: set timeout if migrations or composer take long
+# Optional: increase timeout if migrations or composer take long
 timeout: '1200s'
