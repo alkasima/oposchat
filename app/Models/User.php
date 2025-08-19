@@ -184,6 +184,21 @@ class User extends Authenticatable
     }
 
     /**
+     * Compatibility shim: map Cashier's expected `stripe_id` attribute
+     * to our `stripe_customer_id` column so package code that reads/writes
+     * $user->stripe_id will operate on the correct DB column.
+     */
+    public function getStripeIdAttribute(): ?string
+    {
+        return $this->attributes['stripe_customer_id'] ?? null;
+    }
+
+    public function setStripeIdAttribute($value): void
+    {
+        $this->attributes['stripe_customer_id'] = $value;
+    }
+
+    /**
      * Determine if the user has premium access
      */
     public function hasPremiumAccess(): bool
