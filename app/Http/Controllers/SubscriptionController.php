@@ -1,0 +1,470 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\StripeService;
+use App\Services\SubscriptionService;
+use App\Services\UsageService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Stripe\Exception\ApiErrorException;
+use Stripe\Exception\CardException;
+use Stripe\Exception\RateLimitException;
+use Stripe\Exception\InvalidRequestException;
+use Stripe\Exception\AuthenticationException;
+use Exception;
+
+class SubscriptionController extends Controller
+{
+    public function __construct(
+        private StripeService $stripeService,
+        private SubscriptionService $subscriptionService,
+        private UsageService $usageService
+    ) {}
+
+    /**
+     * Get subscription plans configuration
+     */
+    public function plans(): JsonResponse
+    {
+        try {
+            $plans = config('subscription.plans');
+            $freePlan = config('subscription.free_plan');
+            $featureComparison = config('subscription.feature_comparison');
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'plans' => $plans,
+                    'free_plan' => $freePlan,
+                    'feature_comparison' => $featureComparison
+                ]
+            ]);
+        } catch (Exception $e) {
+            Log::error('Failed to retrieve subscription plans', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve subscription plans'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get user subscription status and usage info (for frontend composable)
+     */
+    public function status(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            $hasPremium = $user->hasPremiumAccess();
+            
+            $usageInfo = [];
+            if (!$hasPremium) {
+                $usageInfo = $this->usageService->getUsageStats($user);
+            }
+
+            return response()->json([
+                'has_premium' => $hasPremium,
+                'subscription_status' => $user->activeSubscription()?->status ?? 'none',
+                'on_trial' => $user->onTrial(),
+                'on_grace_period' => $user->onGracePeriod(),
+                'usage' => $usageInfo,
+            ]);
+        } catch (Exception $e) {
+            Log::error('Failed to retrieve subscription status', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve subscription status'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get current user's subscription status and details
+     */
+    public function index(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            $subscription = $user->activeSubscription();
+
+            if (!$subscription) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'subscription' => null,
+                        'status' => 'none',
+                        'plan' => null
+                    ]
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'subscription' => [
+                        'id' => $subscription->id,
+                        'status' => $subscription->status,
+                        'current_period_start' => $subscription->current_period_start,
+                        'current_period_end' => $subscription->current_period_end,
+                        'trial_start' => $subscription->trial_start,
+                        'trial_end' => $subscription->trial_end,
+                        'cancel_at_period_end' => $subscription->cancel_at_period_end,
+                        'canceled_at' => $subscription->canceled_at,
+                        'stripe_price_id' => $subscription->stripe_price_id,
+                        'is_active' => $subscription->isActive(),
+                        'on_trial' => $subscription->onTrial(),
+                        'has_expired' => $subscription->hasExpired()
+                    ],
+                    'status' => $subscription->status,
+                    'plan' => $subscription->stripe_price_id
+                ]
+            ]);
+        } catch (Exception $e) {
+            Log::error('Failed to retrieve subscription', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve subscription information'
+            ], 500);
+        }
+    }
+
+    /**
+     * Create a Stripe checkout session for subscription
+     */
+    public function createCheckoutSession(Request $request): JsonResponse
+    {
+        $request->validate([
+            'price_id' => 'required|string',
+            'success_url' => 'required|url',
+            'cancel_url' => 'required|url'
+        ]);
+
+        try {
+            $user = Auth::user();
+            
+            // Check if user already has an active subscription
+            if ($user->hasActiveSubscription()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User already has an active subscription'
+                ], 400);
+            }
+
+            // Ensure user has a Stripe customer ID
+            if (!$user->hasStripeId()) {
+                $customer = $user->createOrGetStripeCustomer();
+            }
+
+            $session = $this->stripeService->createCheckoutSession([
+                'customer_id' => $user->stripe_id,
+                'line_items' => [
+                    [
+                        'price' => $request->price_id,
+                        'quantity' => 1,
+                    ]
+                ],
+                'mode' => 'subscription',
+                'success_url' => $request->success_url,
+                'cancel_url' => $request->cancel_url,
+                'metadata' => [
+                    'user_id' => $user->id,
+                ]
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'checkout_url' => $session->url,
+                    'session_id' => $session->id
+                ]
+            ]);
+        } catch (CardException $e) {
+            // Stripe card errors
+            Log::warning('Stripe card error during checkout', [
+                'user_id' => Auth::id(),
+                'price_id' => $request->price_id,
+                'error' => $e->getMessage(),
+                'decline_code' => $e->getDeclineCode(),
+                'error_code' => $e->getError()->code ?? null
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $this->getStripeErrorMessage($e),
+                'error_code' => $e->getError()->code ?? 'card_error',
+                'decline_code' => $e->getDeclineCode()
+            ], 400);
+        } catch (RateLimitException $e) {
+            Log::warning('Stripe rate limit exceeded', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Too many requests. Please wait a moment and try again.',
+                'error_code' => 'rate_limit_exceeded'
+            ], 429);
+        } catch (InvalidRequestException $e) {
+            Log::error('Invalid Stripe request', [
+                'user_id' => Auth::id(),
+                'price_id' => $request->price_id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid payment request. Please try again.',
+                'error_code' => 'invalid_request'
+            ], 400);
+        } catch (AuthenticationException $e) {
+            Log::critical('Stripe authentication failed', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment system error. Please contact support.',
+                'error_code' => 'payment_system_error'
+            ], 500);
+        } catch (ApiErrorException $e) {
+            Log::error('Stripe API error during checkout', [
+                'user_id' => Auth::id(),
+                'price_id' => $request->price_id,
+                'error' => $e->getMessage(),
+                'error_code' => $e->getError()->code ?? null
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $this->getStripeErrorMessage($e),
+                'error_code' => $e->getError()->code ?? 'stripe_error'
+            ], 500);
+        } catch (Exception $e) {
+            Log::error('Failed to create checkout session', [
+                'user_id' => Auth::id(),
+                'price_id' => $request->price_id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create checkout session. Please try again.',
+                'error_code' => 'checkout_creation_failed'
+            ], 500);
+        }
+    }
+
+    /**
+     * Create a customer portal session for subscription management
+     */
+    public function manageSubscription(Request $request): JsonResponse
+    {
+        $request->validate([
+            'return_url' => 'required|url'
+        ]);
+
+        try {
+            $user = Auth::user();
+
+            if (!$user->hasStripeId()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No Stripe customer found for user'
+                ], 400);
+            }
+
+            $session = $this->stripeService->createPortalSession(
+                $user->stripe_id,
+                $request->return_url
+            );
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'portal_url' => $session->url
+                ]
+            ]);
+        } catch (ApiErrorException $e) {
+            Log::error('Stripe API error during portal session creation', [
+                'user_id' => Auth::id(),
+                'stripe_customer_id' => $user->stripe_id ?? null,
+                'error' => $e->getMessage(),
+                'error_code' => $e->getError()->code ?? null
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $this->getStripeErrorMessage($e),
+                'error_code' => $e->getError()->code ?? 'stripe_error'
+            ], 500);
+        } catch (Exception $e) {
+            Log::error('Failed to create customer portal session', [
+                'user_id' => Auth::id(),
+                'stripe_customer_id' => $user->stripe_id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to access subscription management. Please try again.',
+                'error_code' => 'portal_creation_failed'
+            ], 500);
+        }
+    }
+
+    /**
+     * Cancel user's subscription
+     */
+    public function cancelSubscription(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            $subscription = $user->activeSubscription();
+
+            if (!$subscription) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No active subscription found'
+                ], 400);
+            }
+
+            $this->subscriptionService->cancelSubscription($subscription);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Subscription canceled successfully',
+                'data' => [
+                    'subscription' => [
+                        'id' => $subscription->id,
+                        'status' => $subscription->fresh()->status,
+                        'cancel_at_period_end' => $subscription->fresh()->cancel_at_period_end,
+                        'current_period_end' => $subscription->current_period_end
+                    ]
+                ]
+            ]);
+        } catch (ApiErrorException $e) {
+            Log::error('Stripe API error during subscription cancellation', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'error_code' => $e->getError()->code ?? null
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $this->getStripeErrorMessage($e),
+                'error_code' => $e->getError()->code ?? 'stripe_error'
+            ], 500);
+        } catch (Exception $e) {
+            Log::error('Failed to cancel subscription', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cancel subscription. Please try again.',
+                'error_code' => 'cancellation_failed'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get user-friendly error message from Stripe exception
+     */
+    private function getStripeErrorMessage($exception): string
+    {
+        $error = $exception->getError();
+        $code = $error->code ?? null;
+        $declineCode = $exception instanceof CardException ? $exception->getDeclineCode() : null;
+
+        // Card-specific errors
+        $cardErrors = [
+            'card_declined' => 'Your card was declined. Please try a different payment method.',
+            'insufficient_funds' => 'Your card has insufficient funds. Please try a different payment method.',
+            'expired_card' => 'Your card has expired. Please update your payment method.',
+            'incorrect_cvc' => 'Your card\'s security code is incorrect. Please check and try again.',
+            'processing_error' => 'An error occurred while processing your card. Please try again.',
+            'incorrect_number' => 'Your card number is incorrect. Please check and try again.',
+        ];
+
+        // Decline code specific messages
+        $declineCodeErrors = [
+            'insufficient_funds' => 'Your card has insufficient funds. Please try a different payment method.',
+            'generic_decline' => 'Your payment was declined. Please try a different payment method.',
+            'lost_card' => 'Your card was declined. Please contact your bank or try a different payment method.',
+            'stolen_card' => 'Your card was declined. Please contact your bank or try a different payment method.',
+            'expired_card' => 'Your card has expired. Please update your payment method.',
+            'incorrect_cvc' => 'Your card\'s security code is incorrect. Please check and try again.',
+        ];
+
+        // API errors
+        $apiErrors = [
+            'rate_limit' => 'Too many requests. Please wait a moment and try again.',
+            'api_key_expired' => 'Payment system error. Please contact support.',
+            'api_connection_error' => 'Unable to connect to payment processor. Please try again.',
+            'authentication_required' => 'Payment authentication required. Please try again.',
+            'subscription_not_found' => 'Subscription not found. Please contact support.',
+            'invoice_not_found' => 'Invoice not found. Please contact support.',
+            'customer_not_found' => 'Customer account not found. Please contact support.',
+            'invalid_request_error' => 'Invalid payment request. Please try again.',
+            'idempotency_error' => 'Duplicate request detected. Please refresh and try again.',
+        ];
+
+        // Check decline code first
+        if ($declineCode && isset($declineCodeErrors[$declineCode])) {
+            return $declineCodeErrors[$declineCode];
+        }
+
+        // Check error code
+        if ($code && isset($cardErrors[$code])) {
+            return $cardErrors[$code];
+        }
+
+        if ($code && isset($apiErrors[$code])) {
+            return $apiErrors[$code];
+        }
+
+        // Generic message based on error type
+        if ($exception instanceof CardException) {
+            return 'Your payment was declined. Please try a different payment method.';
+        }
+
+        if ($exception instanceof RateLimitException) {
+            return 'Too many requests. Please wait a moment and try again.';
+        }
+
+        if ($exception instanceof InvalidRequestException) {
+            return 'Invalid payment request. Please try again.';
+        }
+
+        if ($exception instanceof AuthenticationException) {
+            return 'Payment system error. Please contact support.';
+        }
+
+        // Fallback to original message if it's user-friendly, otherwise generic message
+        $originalMessage = $exception->getMessage();
+        if (strlen($originalMessage) < 100 && !str_contains($originalMessage, 'API')) {
+            return $originalMessage;
+        }
+
+        return 'An error occurred while processing your request. Please try again.';
+    }
+}

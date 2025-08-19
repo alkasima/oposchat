@@ -1,0 +1,28 @@
+<svg width="32" height="32" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Chat bubble base -->
+  <path d="M15 35 C15 25, 25 15, 35 15 L75 15 C85 15, 95 25, 95 35 L95 65 C95 75, 85 85, 75 85 L35 85 C25 85, 15 75, 15 65 L15 50 L5 60 L15 45 Z" fill="#1e40af"/>
+  
+  <!-- Brain shape -->
+  <path d="M35 40 C35 35, 40 30, 45 30 C50 30, 55 35, 55 40 C60 35, 65 30, 70 30 C75 30, 80 35, 80 40 C80 45, 75 50, 70 50 C75 55, 80 60, 80 65 C80 70, 75 75, 70 75 C65 75, 60 70, 60 65 C55 70, 50 75, 45 75 C40 75, 35 70, 35 65 C35 60, 40 55, 45 55 C40 50, 35 45, 35 40 Z" fill="#f59e0b"/>
+  
+  <!-- Neural network connections -->
+  <circle cx="42" cy="45" r="2" fill="#1e40af"/>
+  <circle cx="52" cy="42" r="2" fill="#1e40af"/>
+  <circle cx="62" cy="48" r="2" fill="#1e40af"/>
+  <circle cx="48" cy="55" r="2" fill="#1e40af"/>
+  <circle cx="68" cy="58" r="2" fill="#1e40af"/>
+  
+  <!-- Connection lines -->
+  <line x1="42" y1="45" x2="52" y2="42" stroke="#1e40af" stroke-width="1.5"/>
+  <line x1="52" y1="42" x2="62" y2="48" stroke="#1e40af" stroke-width="1.5"/>
+  <line x1="42" y1="45" x2="48" y2="55" stroke="#1e40af" stroke-width="1.5"/>
+  <line x1="62" y1="48" x2="68" y2="58" stroke="#1e40af" stroke-width="1.5"/>
+  <line x1="48" y1="55" x2="68" y2="58" stroke="#1e40af" stroke-width="1.5"/>
+  
+  <!-- Graduation cap -->
+  <path d="M25 15 L85 15 C90 15, 95 10, 95 5 C95 2, 92 0, 89 0 L31 0 C28 0, 25 2, 25 5 C25 10, 30 15, 25 15 Z" fill="#f59e0b"/>
+  
+  <!-- Cap tassel -->
+  <circle cx="85" cy="8" r="3" fill="#f59e0b"/>
+  <line x1="85" y1="11" x2="85" y2="20" stroke="#f59e0b" stroke-width="2"/>
+</svg>
