@@ -1,10 +1,9 @@
-# Use Cloud Logging only to satisfy org policy for user-managed service accounts
 options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
   # Step 1: Install Composer dependencies locally in Cloud Build
-  - name: 'gcr.io/cloud-builders/composer'
+  - name: 'gcr.io/cloud-builders/composer:2.6.5'
     args: ['install', '--no-dev', '--prefer-dist']
 
   # Step 2: SSH into VM and deploy Laravel
@@ -24,5 +23,4 @@ steps:
           sudo chown -R www-data:www-data /var/www/oposchat
         "
 
-# Optional: increase timeout if migrations or composer take long
 timeout: '1200s'
