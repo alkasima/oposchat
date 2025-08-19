@@ -1,21 +1,39 @@
+# Use Cloud Logging only to satisfy org policy for user-managed service accounts
 options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
-  # SSH into VM and deploy Laravel
+  # Step 1: SSH into VM and deploy Laravel
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
         gcloud compute ssh alkasima@oposchat --zone us-central1-a --command="
+          # Create deployment directory if missing
+          sudo mkdir -p /var/www/oposchat &&
           cd /var/www/oposchat &&
-          git pull origin main &&
+          
+          # If repo exists, pull latest; otherwise clone
+          if [ -d .git ]; then
+            git reset --hard
+            git clean -fd
+            git pull origin main
+          else
+            git clone https://github.com/alkasima/oposchat.git .
+          fi &&
+          
+          # Install PHP dependencies with Composer
           composer install --no-dev --prefer-dist &&
+          
+          # Run Laravel migrations and cache commands
           php artisan config:cache &&
           php artisan route:cache &&
           php artisan view:cache &&
+          
+          # Fix permissions
           sudo chown -R www-data:www-data /var/www/oposchat
         "
 
+# Optional: increase timeout if migrations or composer take long
 timeout: '1200s'
