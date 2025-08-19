@@ -2,11 +2,7 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
-  # Step 1: Install Composer dependencies locally in Cloud Build
-  - name: 'gcr.io/cloud-builders/composer:2.6.5'
-    args: ['install', '--no-dev', '--prefer-dist']
-
-  # Step 2: SSH into VM and deploy Laravel
+  # SSH into VM and deploy Laravel
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
@@ -16,7 +12,6 @@ steps:
           cd /var/www/oposchat &&
           git pull origin main &&
           composer install --no-dev --prefer-dist &&
-          php artisan migrate --force &&
           php artisan config:cache &&
           php artisan route:cache &&
           php artisan view:cache &&
