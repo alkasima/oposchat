@@ -33,6 +33,14 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        // Debug logging
+        $user = Auth::user();
+        \Log::info('User logged in', [
+            'user_id' => $user->id,
+            'remember_token' => $user->remember_token ? 'SET' : 'NOT SET',
+            'remember_requested' => $request->boolean('remember'),
+        ]);
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

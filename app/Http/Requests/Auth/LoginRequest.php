@@ -29,6 +29,7 @@ class LoginRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
+            'remember' => ['boolean'],
         ];
     }
 
@@ -41,7 +42,16 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $remember = $this->boolean('remember');
+        
+        // Debug logging
+        \Log::info('Login attempt', [
+            'email' => $this->input('email'),
+            'remember' => $remember,
+            'remember_raw' => $this->input('remember'),
+        ]);
+
+        if (! Auth::attempt($this->only('email', 'password'), $remember)) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([

@@ -1,4 +1,5 @@
-import axios from 'axios';
+// Use centralized axios configuration
+import axios from '../utils/axios';
 
 // Function to get CSRF token
 const getCsrfToken = () => {

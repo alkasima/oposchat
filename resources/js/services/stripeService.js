@@ -1,17 +1,5 @@
-import axios from 'axios';
-
-// Configure axios defaults
-axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
-axios.defaults.headers.common['Accept'] = 'application/json';
-axios.defaults.withCredentials = true; // Send cookies with requests
-
-// Add CSRF token to requests
-const token = document.head.querySelector('meta[name="csrf-token"]');
-if (token) {
-    axios.defaults.headers.common['X-CSRF-TOKEN'] = token.content;
-} else {
-    console.warn('CSRF token not found in meta tags');
-}
+// Use centralized axios configuration
+import axios from '../utils/axios';
 
 /**
  * Frontend service for Stripe subscription management

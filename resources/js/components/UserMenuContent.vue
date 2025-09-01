@@ -4,13 +4,78 @@ import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSep
 import type { User } from '@/types';
 import { Link, router } from '@inertiajs/vue3';
 import { LogOut, Settings } from 'lucide-vue-next';
+import { refreshCSRFToken, getCSRFToken } from '@/utils/csrf.js';
 
 interface Props {
     user: User;
 }
 
-const handleLogout = () => {
-    router.flushAll();
+const handleLogout = async () => {
+    try {
+        // First attempt with current token
+        router.post(route('logout'), {}, {
+            onError: async (errors) => {
+                // Check if it's a CSRF error
+                const isCSRFError = errors && (
+                    errors.status === 419 ||
+                    Object.values(errors).some(error => 
+                        typeof error === 'string' && (
+                            error.includes('CSRF') || 
+                            error.includes('419') || 
+                            error.includes('expired') ||
+                            error.includes('token')
+                        )
+                    )
+                );
+                
+                if (isCSRFError) {
+                    try {
+                        // Refresh CSRF token and try again
+                        await refreshCSRFToken();
+                        
+                        // Retry logout with fresh token
+                        router.post(route('logout'), {}, {
+                            onFinish: () => router.flushAll()
+                        });
+                    } catch (refreshError) {
+                        console.error('Failed to refresh CSRF token:', refreshError);
+                        // Fallback: use form submission
+                        submitLogoutForm();
+                    }
+                } else {
+                    console.error('Logout error:', errors);
+                    // Fallback: use form submission
+                    submitLogoutForm();
+                }
+            },
+            onFinish: () => router.flushAll()
+        });
+    } catch (error) {
+        console.error('Logout failed:', error);
+        // Fallback: use form submission
+        submitLogoutForm();
+    }
+};
+
+const submitLogoutForm = () => {
+    // Create a form and submit it directly as fallback
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = route('logout');
+    
+    // Add CSRF token
+    const csrfToken = getCSRFToken();
+    if (csrfToken) {
+        const tokenInput = document.createElement('input');
+        tokenInput.type = 'hidden';
+        tokenInput.name = '_token';
+        tokenInput.value = csrfToken;
+        form.appendChild(tokenInput);
+    }
+    
+    // Add to body and submit
+    document.body.appendChild(form);
+    form.submit();
 };
 
 defineProps<Props>();
@@ -32,10 +97,10 @@ defineProps<Props>();
         </DropdownMenuItem>
     </DropdownMenuGroup>
     <DropdownMenuSeparator />
-    <DropdownMenuItem :as-child="true">
-        <Link class="block w-full" method="post" :href="route('logout')" @click="handleLogout" as="button">
+    <DropdownMenuItem>
+        <button class="flex w-full items-center" @click="handleLogout">
             <LogOut class="mr-2 h-4 w-4" />
             Log out
-        </Link>
+        </button>
     </DropdownMenuItem>
 </template>

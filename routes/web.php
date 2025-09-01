@@ -8,6 +8,13 @@ Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
 
+// CSRF token refresh endpoint
+Route::get('/csrf-token', function () {
+    return response()->json([
+        'csrf_token' => csrf_token()
+    ]);
+})->middleware('web');
+
 Route::get('dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
