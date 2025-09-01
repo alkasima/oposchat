@@ -12,7 +12,8 @@ import {
     Edit3,
     Trash2,
     Search,
-    Crown
+    Crown,
+    X
 } from 'lucide-vue-next';
 import SettingsModal from '@/components/SettingsModal.vue';
 import UsageIndicator from '@/components/UsageIndicator.vue';
@@ -28,9 +29,14 @@ interface Chat {
     isActive?: boolean;
 }
 
+const props = defineProps<{
+    isMobile?: boolean;
+}>();
+
 const emit = defineEmits<{
     chatSelected: [chatId: string | null];
     newChatCreated: [chat: any];
+    closeMobile?: [];
 }>();
 
 const page = usePage();
@@ -241,6 +247,17 @@ onMounted(async () => {
 </div>
                     <span class="font-semibold text-lg">OPOSCHAT</span>
                 </Link>
+                
+                <!-- Mobile Close Button -->
+                <Button 
+                    v-if="isMobile"
+                    @click="emit('closeMobile')"
+                    variant="ghost" 
+                    size="sm" 
+                    class="p-2 text-gray-400 hover:text-white lg:hidden"
+                >
+                    <X class="w-5 h-5" />
+                </Button>
             </div>
             
             <!-- New Chat Button -->
@@ -278,7 +295,7 @@ onMounted(async () => {
         </div>
 
         <!-- Chat History -->
-        <div class="flex-1 overflow-y-auto p-2">
+        <div class="flex-1 overflow-y-auto p-2 scrollbar-thin">
             <!-- Loading State -->
             <div v-if="isLoading" class="text-center py-8">
                 <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500 mx-auto"></div>

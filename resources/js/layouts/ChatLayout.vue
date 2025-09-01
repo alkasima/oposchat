@@ -78,6 +78,9 @@ const {
 
 // Handle chat selection from sidebar
 const handleChatSelected = async (chatId: string | null) => {
+    // Close mobile sidebar when a chat is selected
+    showMobileSidebar.value = false;
+    
     if (!chatId) {
         currentChat.value = null;
         messages.value = [];
@@ -98,6 +101,9 @@ const handleChatSelected = async (chatId: string | null) => {
 
 // Handle new chat creation from sidebar
 const handleNewChatCreated = (newChat: any) => {
+    // Close mobile sidebar when a new chat is created
+    showMobileSidebar.value = false;
+    
     // Set the new chat as current
     currentChat.value = {
         id: newChat.id.toString(),
@@ -114,9 +120,6 @@ const handleNewChatCreated = (newChat: any) => {
     
     // Reset typing state
     isTyping.value = false;
-    
-    // Close mobile sidebar if open
-    showMobileSidebar.value = false;
 };
 
 // Send message to current chat using streaming
@@ -397,12 +400,31 @@ const handleUpgradeClick = () => {
         </div>
         
         <!-- Mobile Sidebar Overlay -->
-        <div v-if="showMobileSidebar" class="fixed inset-0 z-50 lg:hidden">
-            <div class="absolute inset-0 bg-black bg-opacity-50" @click="showMobileSidebar = false"></div>
-            <div class="relative">
-                <ChatSidebar @chat-selected="handleChatSelected" @new-chat-created="handleNewChatCreated" />
+        <Transition
+            enter-active-class="transition-opacity duration-300"
+            leave-active-class="transition-opacity duration-300"
+            enter-from-class="opacity-0"
+            leave-to-class="opacity-0"
+        >
+            <div v-if="showMobileSidebar" class="fixed inset-0 z-50 lg:hidden">
+                <div class="absolute inset-0 bg-white bg-opacity-20 backdrop-blur-sm" @click="showMobileSidebar = false"></div>
+                <Transition
+                    enter-active-class="transition-transform duration-300"
+                    leave-active-class="transition-transform duration-300"
+                    enter-from-class="-translate-x-full"
+                    leave-to-class="-translate-x-full"
+                >
+                    <div v-if="showMobileSidebar" class="relative w-80 h-full shadow-2xl">
+                        <ChatSidebar 
+                            :is-mobile="true"
+                            @chat-selected="handleChatSelected" 
+                            @new-chat-created="handleNewChatCreated"
+                            @close-mobile="showMobileSidebar = false"
+                        />
+                    </div>
+                </Transition>
             </div>
-        </div>
+        </Transition>
 
         <!-- Main Chat Area -->
         <div class="flex-1 flex flex-col">
@@ -485,7 +507,7 @@ const handleUpgradeClick = () => {
             />
 
             <!-- Chat Messages Area -->
-            <div class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+            <div class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 chat-scrollbar">
                 <div class="max-w-4xl mx-auto px-6 py-6">
                     <!-- Loading State -->
                     <div v-if="isLoading" class="flex items-center justify-center py-12">
