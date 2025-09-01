@@ -71,17 +71,32 @@ class ChatController extends Controller
     /**
      * Create a new chat
      */
-    public function store(): JsonResponse
+    public function store(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'exam_type' => 'nullable|string|in:sat,gre,gmat,custom',
+            'title' => 'nullable|string|max:255',
+        ]);
+
+        $examType = $validated['exam_type'] ?? null;
+        $title = $validated['title'] ?? ($examType ? ucfirst($examType) . ' Preparation' : 'New Chat');
+
         $chat = Auth::user()->chats()->create([
+            'title' => $title,
+            'exam_type' => $examType,
             'last_message_at' => now(),
         ]);
 
         // Usage tracking is handled by middleware
 
         return response()->json([
+            'chat' => [
+                'id' => $chat->id,
+                'title' => $chat->title,
+                'exam_type' => $chat->exam_type,
+            ],
             'id' => $chat->id,
-            'title' => 'New Chat',
+            'title' => $chat->title,
             'lastMessage' => null,
             'timestamp' => 'now',
         ]);

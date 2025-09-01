@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 const isMenuOpen = ref(false);
@@ -7,6 +7,88 @@ const openFaq = ref(null);
 
 const toggleFaq = (index) => {
     openFaq.value = openFaq.value === index ? null : index;
+};
+
+// Exam/Course data
+const examTypes = [
+    {
+        id: 'sat',
+        name: 'SAT Preparation',
+        description: 'College Admission Test',
+        fullDescription: 'Comprehensive SAT preparation with AI-powered practice tests and personalized study plans.',
+        icon: '📊',
+        color: 'from-blue-400 to-blue-600',
+        badge: 'POPULAR',
+        badgeColor: 'bg-blue-500',
+        students: '1,200+ Students'
+    },
+    {
+        id: 'gre',
+        name: 'GRE Preparation',
+        description: 'Graduate School Admission',
+        fullDescription: 'Advanced GRE preparation with adaptive learning technology and expert guidance.',
+        icon: '🎓',
+        color: 'from-purple-400 to-purple-600',
+        badge: 'ADVANCED',
+        badgeColor: 'bg-purple-500',
+        students: '800+ Students'
+    },
+    {
+        id: 'gmat',
+        name: 'GMAT Preparation',
+        description: 'Business School Admission',
+        fullDescription: 'Strategic GMAT preparation focused on business school admission requirements.',
+        icon: '💼',
+        color: 'from-green-400 to-green-600',
+        badge: 'BUSINESS',
+        badgeColor: 'bg-green-500',
+        students: '600+ Students'
+    },
+    {
+        id: 'custom',
+        name: 'Custom Preparation',
+        description: 'Personalized Learning',
+        fullDescription: 'Contact us for suggestions about specific exams you want to prepare for.',
+        icon: '💬',
+        color: 'from-orange-400 to-orange-600',
+        badge: 'CUSTOM',
+        badgeColor: 'bg-orange-500',
+        students: 'Request Info'
+    }
+];
+
+// Handle exam selection for logged-in users
+const selectExam = async (examType) => {
+    // This will be called only for authenticated users due to the template condition
+
+    try {
+        // Create or get exam-specific chat
+        const response = await fetch('/api/chats', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                exam_type: examType.id,
+                title: `${examType.name} Chat`
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            // Redirect to the chat with the exam context
+            router.visit(route('chat', { chat: data.chat.id }));
+        } else {
+            console.error('Failed to create exam chat');
+            // Fallback to general dashboard
+            router.visit(route('dashboard'));
+        }
+    } catch (error) {
+        console.error('Error selecting exam:', error);
+        // Fallback to general dashboard
+        router.visit(route('dashboard'));
+    }
 };
 
 const faqData = [
@@ -89,13 +171,15 @@ const faqData = [
                             Pricing
                             <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-yellow-300 transition-all duration-300 group-hover:w-full"></span>
                         </Link>
-                        <Link 
-                            v-if="$page.props.auth.user"
-                            :href="route('dashboard')"
-                            class="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 py-2.5 rounded-full hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                        >
-                            Dashboard
-                        </Link>
+                        <div v-if="$page.props.auth.user" class="flex items-center space-x-4">
+                            <span class="text-white text-sm">Welcome, {{ $page.props.auth.user.name }}!</span>
+                            <Link 
+                                :href="route('dashboard')"
+                                class="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 py-2.5 rounded-full hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                            >
+                                Dashboard
+                            </Link>
+                        </div>
                         <Link 
                             v-else
                             :href="route('login')"
@@ -120,13 +204,15 @@ const faqData = [
                         <Link href="#courses" class="text-white hover:text-yellow-300 transition-colors">Courses</Link>
                         <Link href="#about" class="text-white hover:text-yellow-300 transition-colors">About</Link>
                         <Link href="#pricing" class="text-white hover:text-yellow-300 transition-colors">Pricing</Link>
-                        <Link 
-                            v-if="$page.props.auth.user"
-                            :href="route('dashboard')"
-                            class="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-full text-center"
-                        >
-                            Dashboard
-                        </Link>
+                        <div v-if="$page.props.auth.user" class="space-y-2">
+                            <div class="text-white text-sm text-center">Welcome, {{ $page.props.auth.user.name }}!</div>
+                            <Link 
+                                :href="route('dashboard')"
+                                class="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-full text-center block"
+                            >
+                                Dashboard
+                            </Link>
+                        </div>
                         <Link 
                             v-else
                             :href="route('login')"
@@ -153,28 +239,63 @@ const faqData = [
                         </div>
                         
                         <h1 class="text-5xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-                            Master Your 
-                            <span class="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                                Exams
+                            <span v-if="$page.props.auth.user">
+                                Welcome Back,
+                                <span class="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                                    {{ $page.props.auth.user.name }}
+                                </span>
+                                <br />Choose Your Exam
                             </span>
-                            <br />with AI
+                            <span v-else>
+                                Master Your 
+                                <span class="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                                    Exams
+                                </span>
+                                <br />with AI
+                            </span>
                         </h1>
                         
                         <p class="text-xl text-gray-600 leading-relaxed mb-8 max-w-2xl">
-                            From <span class="font-semibold text-blue-600">StudyChat</span>, we provide you with a powerful combination of 
-                            <span class="font-semibold text-purple-600">Artificial Intelligence</span> along with 
-                            <span class="font-semibold text-cyan-600">updated curriculum</span> and 
-                            <span class="font-semibold text-green-600">practice exams</span> 
-                            from various <span class="font-semibold text-orange-600">standardized tests</span> to 
-                            <span class="font-semibold text-red-600">help you</span> 
-                            <span class="font-semibold text-blue-600">succeed</span> and achieve your goals.
+                            <span v-if="$page.props.auth.user">
+                                Select the exam you want to prepare for below and start your personalized AI-powered learning journey. 
+                                Each exam has a dedicated chat where our AI tutor will help you master the material.
+                            </span>
+                            <span v-else>
+                                From <span class="font-semibold text-blue-600">StudyChat</span>, we provide you with a powerful combination of 
+                                <span class="font-semibold text-purple-600">Artificial Intelligence</span> along with 
+                                <span class="font-semibold text-cyan-600">updated curriculum</span> and 
+                                <span class="font-semibold text-green-600">practice exams</span> 
+                                from various <span class="font-semibold text-orange-600">standardized tests</span> to 
+                                <span class="font-semibold text-red-600">help you</span> 
+                                <span class="font-semibold text-blue-600">succeed</span> and achieve your goals.
+                            </span>
                         </p>
 
                         <div class="flex flex-col sm:flex-row gap-4">
-                            <button class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:-translate-y-1">
+                            <a 
+                                v-if="$page.props.auth.user"
+                                href="#courses"
+                                class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:-translate-y-1 inline-block text-center"
+                            >
+                                Choose Your Exam
+                            </a>
+                            <button 
+                                v-else
+                                class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
+                            >
                                 Start Learning Free
                             </button>
-                            <button class="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-2xl font-semibold text-lg hover:border-blue-500 hover:text-blue-600 transition-all duration-300 bg-white/80 backdrop-blur-sm">
+                            <Link 
+                                v-if="$page.props.auth.user"
+                                :href="route('dashboard')"
+                                class="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-2xl font-semibold text-lg hover:border-blue-500 hover:text-blue-600 transition-all duration-300 bg-white/80 backdrop-blur-sm inline-block text-center"
+                            >
+                                Go to Dashboard
+                            </Link>
+                            <button 
+                                v-else
+                                class="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-2xl font-semibold text-lg hover:border-blue-500 hover:text-blue-600 transition-all duration-300 bg-white/80 backdrop-blur-sm"
+                            >
                                 Watch Demo
                             </button>
                         </div>
@@ -209,87 +330,69 @@ const faqData = [
             <div class="container mx-auto px-4 relative z-10">
                 <div class="text-center mb-16">
                     <h2 class="text-4xl lg:text-5xl font-bold text-white mb-6">
-                        Available <span class="text-yellow-400">Courses</span>
+                        <span v-if="$page.props.auth.user">Choose Your <span class="text-yellow-400">Exam</span></span>
+                        <span v-else>Available <span class="text-yellow-400">Courses</span></span>
                     </h2>
                     <p class="text-xl text-gray-300 max-w-3xl mx-auto">
-                        Choose from our comprehensive selection of exam preparation courses
+                        <span v-if="$page.props.auth.user">Select the exam you want to prepare for and start chatting with our AI tutor</span>
+                        <span v-else>Choose from our comprehensive selection of exam preparation courses</span>
                     </p>
                 </div>
                 
                 <div class="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto mb-12">
-                    <div class="group bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 hover:bg-white/20 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl">
+                    <div 
+                        v-for="exam in examTypes" 
+                        :key="exam.id"
+                        @click="$page.props.auth.user ? selectExam(exam) : null"
+                        class="group bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 hover:bg-white/20 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl"
+                        :class="{ 'cursor-pointer': $page.props.auth.user, 'cursor-default': !$page.props.auth.user }"
+                    >
                         <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center mr-4">
-                                <span class="text-white text-xl">📊</span>
+                            <div :class="`w-12 h-12 bg-gradient-to-br ${exam.color} rounded-xl flex items-center justify-center mr-4`">
+                                <span class="text-white text-xl">{{ exam.icon }}</span>
                             </div>
                             <div>
-                                <h3 class="text-xl font-bold text-white group-hover:text-yellow-300 transition-colors">SAT Preparation</h3>
-                                <p class="text-gray-300 text-sm">College Admission Test</p>
+                                <h3 class="text-xl font-bold text-white group-hover:text-yellow-300 transition-colors">
+                                    {{ exam.name }}
+                                </h3>
+                                <p class="text-gray-300 text-sm">{{ exam.description }}</p>
                             </div>
                         </div>
-                        <p class="text-gray-300 mb-4">Comprehensive SAT preparation with AI-powered practice tests and personalized study plans.</p>
+                        <p class="text-gray-300 mb-4">{{ exam.fullDescription }}</p>
                         <div class="flex items-center justify-between">
-                            <span class="inline-block bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium">POPULAR</span>
-                            <span class="text-yellow-400 font-semibold">1,200+ Students</span>
+                            <span :class="`inline-block ${exam.badgeColor} text-white px-3 py-1 rounded-full text-sm font-medium`">
+                                {{ exam.badge }}
+                            </span>
+                            <span class="text-yellow-400 font-semibold">{{ exam.students }}</span>
                         </div>
-                    </div>
-                    
-                    <div class="group bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 hover:bg-white/20 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex items-center justify-center mr-4">
-                                <span class="text-white text-xl">🎓</span>
+                        
+                        <!-- Action indicator for logged-in users -->
+                        <div v-if="$page.props.auth.user" class="mt-4 pt-4 border-t border-white/20">
+                            <div class="flex items-center justify-center text-yellow-300 font-medium text-sm">
+                                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                                </svg>
+                                Click to Start Learning
                             </div>
-                            <div>
-                                <h3 class="text-xl font-bold text-white group-hover:text-yellow-300 transition-colors">GRE Preparation</h3>
-                                <p class="text-gray-300 text-sm">Graduate School Admission</p>
-                            </div>
-                        </div>
-                        <p class="text-gray-300 mb-4">Advanced GRE preparation with adaptive learning technology and expert guidance.</p>
-                        <div class="flex items-center justify-between">
-                            <span class="inline-block bg-purple-500 text-white px-3 py-1 rounded-full text-sm font-medium">ADVANCED</span>
-                            <span class="text-yellow-400 font-semibold">800+ Students</span>
-                        </div>
-                    </div>
-                    
-                    <div class="group bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 hover:bg-white/20 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center mr-4">
-                                <span class="text-white text-xl">💼</span>
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold text-white group-hover:text-yellow-300 transition-colors">GMAT Preparation</h3>
-                                <p class="text-gray-300 text-sm">Business School Admission</p>
-                            </div>
-                        </div>
-                        <p class="text-gray-300 mb-4">Strategic GMAT preparation focused on business school admission requirements.</p>
-                        <div class="flex items-center justify-between">
-                            <span class="inline-block bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium">BUSINESS</span>
-                            <span class="text-yellow-400 font-semibold">600+ Students</span>
-                        </div>
-                    </div>
-                    
-                    <div class="group bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 hover:bg-white/20 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center mr-4">
-                                <span class="text-white text-xl">💬</span>
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold text-white group-hover:text-yellow-300 transition-colors">Custom Preparation</h3>
-                                <p class="text-gray-300 text-sm">Personalized Learning</p>
-                            </div>
-                        </div>
-                        <p class="text-gray-300 mb-4">Contact us for suggestions about specific exams you want to prepare for.</p>
-                        <div class="flex items-center justify-between">
-                            <span class="inline-block bg-orange-500 text-white px-3 py-1 rounded-full text-sm font-medium">CUSTOM</span>
-                            <span class="text-yellow-400 font-semibold">Request Info</span>
                         </div>
                     </div>
                 </div>
                 
                 <div class="text-center">
-                    <button class="bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 px-10 py-4 rounded-2xl font-bold text-lg hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:-translate-y-1">
-                        EXPLORE ALL COURSES
-                    </button>
+                    <Link 
+                        v-if="$page.props.auth.user"
+                        :href="route('dashboard')"
+                        class="bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 px-10 py-4 rounded-2xl font-bold text-lg hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 inline-block"
+                    >
+                        GO TO DASHBOARD
+                    </Link>
+                    <Link 
+                        v-else
+                        :href="route('register')"
+                        class="bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 px-10 py-4 rounded-2xl font-bold text-lg hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 inline-block"
+                    >
+                        GET STARTED FREE
+                    </Link>
                 </div>
             </div>
         </section>
