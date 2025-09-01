@@ -8,6 +8,10 @@ Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
 
+Route::get('/pricing', function () {
+    return Inertia::render('Pricing');
+})->name('pricing');
+
 // CSRF token refresh endpoint
 Route::get('/csrf-token', function () {
     return response()->json([
