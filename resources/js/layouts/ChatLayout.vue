@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue';
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head, usePage, Link } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ChatSidebar from '@/components/ChatSidebar.vue';
@@ -13,7 +13,7 @@ import UsageIndicator from '@/components/UsageIndicator.vue';
 import { useSubscription } from '@/composables/useSubscription.js';
 import chatApi from '@/services/chatApi.js';
 import streamingChatService from '@/services/streamingChatService.js';
-import { Send, User, Bot, Paperclip, Mic, Settings, Menu, Download, BarChart3, Pencil, Sun, Moon } from 'lucide-vue-next';
+import { Send, User, Bot, Paperclip, Mic, Settings, Menu, Download, BarChart3, Pencil, Sun, Moon, Home } from 'lucide-vue-next';
 import { useAppearance } from '@/composables/useAppearance';
 
 interface Message {
@@ -475,6 +475,15 @@ const cycleTheme = () => {
                         </h1>
                     </div>
                     <div class="flex items-center space-x-2">
+                        <!-- Home Button -->
+                        <Link 
+                            :href="route('home')"
+                            class="hidden sm:inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            title="Go to Home"
+                        >
+                            <Home class="w-4 h-4 mr-2" />
+                            Home
+                        </Link>
                         <!-- Premium Features -->
                         <div v-if="currentChat" class="hidden md:flex items-center space-x-2">
                             <!-- Export Chat Button -->

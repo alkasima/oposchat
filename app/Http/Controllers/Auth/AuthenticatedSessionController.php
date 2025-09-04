@@ -41,6 +41,11 @@ class AuthenticatedSessionController extends Controller
             'remember_requested' => $request->boolean('remember'),
         ]);
 
+        // Redirect admin users to admin dashboard
+        if ($user->is_admin) {
+            return redirect()->intended(route('admin.dashboard', absolute: false));
+        }
+
         return redirect()->intended(route('home', absolute: false));
     }
 

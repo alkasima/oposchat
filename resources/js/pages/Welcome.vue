@@ -124,23 +124,24 @@ const faqData = [
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
     </Head>
     
-    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 font-inter">
+    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-950 font-inter">
         <SiteHeader />
 
         <!-- Hero Section -->
         <section id="home" class="relative py-20 overflow-hidden">
             <div class="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50"></div>
+            <div class="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-900 to-black opacity-0 dark:opacity-100"></div>
             <div class="absolute inset-0 opacity-40" style="background-image: url('data:image/svg+xml,%3Csvg width=&quot;60&quot; height=&quot;60&quot; viewBox=&quot;0 0 60 60&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;%3E%3Cg fill=&quot;none&quot; fill-rule=&quot;evenodd&quot;%3E%3Cg fill=&quot;%239C92AC&quot; fill-opacity=&quot;0.05&quot;%3E%3Ccircle cx=&quot;30&quot; cy=&quot;30&quot; r=&quot;4&quot;/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')"></div>
             
             <div class="container mx-auto px-4 relative z-10">
                 <div class="flex flex-col lg:flex-row items-center justify-between">
                     <div class="lg:w-3/5 mb-12 lg:mb-0">
-                        <div class="inline-flex items-center bg-white/80 backdrop-blur-sm rounded-full px-4 py-2 mb-6 shadow-lg">
+                        <div class="inline-flex items-center bg-white/80 dark:bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 mb-6 shadow-lg">
                             <span class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
-                            <span class="text-sm font-medium text-gray-700">AI-Powered Learning Platform</span>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">AI-Powered Learning Platform</span>
                         </div>
                         
-                        <h1 class="text-5xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
+                        <h1 class="text-5xl lg:text-7xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
                             <span v-if="$page.props.auth.user">
                                 Welcome Back,
                                 <span class="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
@@ -157,7 +158,7 @@ const faqData = [
                             </span>
                         </h1>
                         
-                        <p class="text-xl text-gray-600 leading-relaxed mb-8 max-w-2xl">
+                        <p class="text-xl text-gray-600 dark:text-gray-300 leading-relaxed mb-8 max-w-2xl">
                             <span v-if="$page.props.auth.user">
                                 Select the exam you want to prepare for below and start your personalized AI-powered learning journey. 
                                 Each exam has a dedicated chat where our AI tutor will help you master the material.
@@ -190,13 +191,13 @@ const faqData = [
                             <Link 
                                 v-if="$page.props.auth.user"
                                 :href="route('dashboard')"
-                                class="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-2xl font-semibold text-lg hover:border-blue-500 hover:text-blue-600 transition-all duration-300 bg-white/80 backdrop-blur-sm inline-block text-center"
+                                class="border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 px-8 py-4 rounded-2xl font-semibold text-lg hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition-all duration-300 bg-white/80 dark:bg-white/10 backdrop-blur-sm inline-block text-center"
                             >
                                 Go to Dashboard
                             </Link>
                             <button 
                                 v-else
-                                class="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-2xl font-semibold text-lg hover:border-blue-500 hover:text-blue-600 transition-all duration-300 bg-white/80 backdrop-blur-sm"
+                                class="border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 px-8 py-4 rounded-2xl font-semibold text-lg hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition-all duration-300 bg-white/80 dark:bg-white/10 backdrop-blur-sm"
                             >
                                 Watch Demo
                             </button>
@@ -300,19 +301,19 @@ const faqData = [
         </section>
 
         <!-- Features Section -->
-        <section class="py-20 bg-gradient-to-br from-blue-50 to-indigo-100">
+        <section class="py-20 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800">
             <div class="container mx-auto px-4">
                 <div class="text-center mb-16">
-                    <h2 class="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+                    <h2 class="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6">
                         What We <span class="text-blue-600">Offer</span>
                     </h2>
-                    <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    <p class="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
                         Discover our comprehensive approach to exam preparation with cutting-edge technology
                     </p>
                 </div>
                 
                 <div class="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto">
-                    <div class="group bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+                    <div class="group bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
                         <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-center relative overflow-hidden">
                             <div class="absolute inset-0 opacity-30" style="background-image: url('data:image/svg+xml,%3Csvg width=&quot;40&quot; height=&quot;40&quot; viewBox=&quot;0 0 40 40&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;%3E%3Cg fill=&quot;%23ffffff&quot; fill-opacity=&quot;0.1&quot;%3E%3Cpath d=&quot;M20 20c0 11.046-8.954 20-20 20v20h40V20H20z&quot;/%3E%3C/g%3E%3C/svg%3E')"></div>
                             <div class="relative z-10">
@@ -323,14 +324,14 @@ const faqData = [
                                 <p class="text-blue-100 text-sm">Personalized study plans adapted to your learning style</p>
                             </div>
                         </div>
-                        <div class="p-8 bg-gradient-to-br from-blue-50 to-purple-50">
-                            <p class="text-gray-700 leading-relaxed">
+                        <div class="p-8 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-800">
+                            <p class="text-gray-700 dark:text-gray-300 leading-relaxed">
                                 Our advanced AI analyzes your performance and creates customized study plans that adapt to your strengths and weaknesses, ensuring optimal learning efficiency.
                             </p>
                         </div>
                     </div>
                     
-                    <div class="group bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+                    <div class="group bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
                         <div class="bg-gradient-to-r from-green-600 to-teal-600 p-8 text-center relative overflow-hidden">
                             <div class="absolute inset-0 opacity-30" style="background-image: url('data:image/svg+xml,%3Csvg width=&quot;40&quot; height=&quot;40&quot; viewBox=&quot;0 0 40 40&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;%3E%3Cg fill=&quot;%23ffffff&quot; fill-opacity=&quot;0.1&quot;%3E%3Cpath d=&quot;M20 20c0 11.046-8.954 20-20 20v20h40V20H20z&quot;/%3E%3C/g%3E%3C/svg%3E')"></div>
                             <div class="relative z-10">
@@ -341,14 +342,14 @@ const faqData = [
                                 <p class="text-green-100 text-sm">Latest exam patterns and practice materials</p>
                             </div>
                         </div>
-                        <div class="p-8 bg-gradient-to-br from-green-50 to-teal-50">
-                            <p class="text-gray-700 leading-relaxed">
+                        <div class="p-8 bg-gradient-to-br from-green-50 to-teal-50 dark:from-slate-800 dark:to-slate-800">
+                            <p class="text-gray-700 dark:text-gray-300 leading-relaxed">
                                 Stay ahead with our continuously updated content library featuring the latest exam patterns, questions, and study materials from official sources.
                             </p>
                         </div>
                     </div>
                     
-                    <div class="group bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+                    <div class="group bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
                         <div class="bg-gradient-to-r from-orange-600 to-red-600 p-8 text-center relative overflow-hidden">
                             <div class="absolute inset-0 opacity-30" style="background-image: url('data:image/svg+xml,%3Csvg width=&quot;40&quot; height=&quot;40&quot; viewBox=&quot;0 0 40 40&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;%3E%3Cg fill=&quot;%23ffffff&quot; fill-opacity=&quot;0.1&quot;%3E%3Cpath d=&quot;M20 20c0 11.046-8.954 20-20 20v20h40V20H20z&quot;/%3E%3C/g%3E%3C/svg%3E')"></div>
                             <div class="relative z-10">
@@ -359,8 +360,8 @@ const faqData = [
                                 <p class="text-orange-100 text-sm">Professional tutors and mentorship</p>
                             </div>
                         </div>
-                        <div class="p-8 bg-gradient-to-br from-orange-50 to-red-50">
-                            <p class="text-gray-700 leading-relaxed">
+                        <div class="p-8 bg-gradient-to-br from-orange-50 to-red-50 dark:from-slate-800 dark:to-slate-800">
+                            <p class="text-gray-700 dark:text-gray-300 leading-relaxed">
                                 Get personalized guidance from experienced tutors and mentors who have helped thousands of students achieve their target scores.
                             </p>
                         </div>
@@ -370,13 +371,13 @@ const faqData = [
         </section>
 
         <!-- Pricing Section -->
-        <section id="pricing" class="py-20 bg-gradient-to-br from-gray-50 to-blue-50">
+        <section id="pricing" class="py-20 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
             <div class="container mx-auto px-4">
                 <div class="text-center mb-16">
-                    <h2 class="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+                    <h2 class="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6">
                         Choose Your <span class="text-blue-600">Plan</span>
                     </h2>
-                    <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    <p class="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
                         Start free and upgrade as you grow. All plans include our core AI-powered learning features.
                     </p>
                 </div>
@@ -386,11 +387,11 @@ const faqData = [
                     <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 hover:border-blue-300 transition-all duration-300 transform hover:-translate-y-2">
                         <div class="p-8">
                             <div class="text-center mb-8">
-                                <h3 class="text-2xl font-bold text-gray-900 mb-2">Free</h3>
-                                <p class="text-gray-600 mb-4">Get started with basic features</p>
-                                <div class="text-4xl font-bold text-gray-900 mb-2">
+                                <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Free</h3>
+                                <p class="text-gray-600 dark:text-gray-300 mb-4">Get started with basic features</p>
+                                <div class="text-4xl font-bold text-gray-900 dark:text-white mb-2">
                                     $0
-                                    <span class="text-lg font-normal text-gray-600">/month</span>
+                                    <span class="text-lg font-normal text-gray-600 dark:text-gray-300">/month</span>
                                 </div>
                             </div>
                             
@@ -399,33 +400,33 @@ const faqData = [
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">50 chat messages per month</span>
+                                    <span class="text-gray-700 dark:text-gray-300">50 chat messages per month</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">10 file uploads per month</span>
+                                    <span class="text-gray-700 dark:text-gray-300">10 file uploads per month</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Community support</span>
+                                    <span class="text-gray-700 dark:text-gray-300">Community support</span>
                                 </li>
                             </ul>
                             
                             <Link 
                                 v-if="!$page.props.auth.user"
                                 :href="route('register')"
-                                class="w-full bg-gray-200 text-gray-800 py-3 px-6 rounded-xl font-semibold text-center hover:bg-gray-300 transition-colors duration-300 block"
+                                class="w-full bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-gray-100 py-3 px-6 rounded-xl font-semibold text-center hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors duration-300 block"
                             >
                                 Get Started Free
                             </Link>
                             <Link 
                                 v-else
                                 :href="route('dashboard')"
-                                class="w-full bg-gray-200 text-gray-800 py-3 px-6 rounded-xl font-semibold text-center hover:bg-gray-300 transition-colors duration-300 block"
+                                class="w-full bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-gray-100 py-3 px-6 rounded-xl font-semibold text-center hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors duration-300 block"
                             >
                                 Go to Dashboard
                             </Link>
@@ -439,11 +440,11 @@ const faqData = [
                         </div>
                         <div class="p-8 pt-12">
                             <div class="text-center mb-8">
-                                <h3 class="text-2xl font-bold text-gray-900 mb-2">Pro</h3>
-                                <p class="text-gray-600 mb-4">Perfect for individuals and small teams</p>
+                                <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Pro</h3>
+                                <p class="text-gray-600 dark:text-gray-300 mb-4">Perfect for individuals and small teams</p>
                                 <div class="text-4xl font-bold text-blue-600 mb-2">
                                     $9.99
-                                    <span class="text-lg font-normal text-gray-600">/month</span>
+                                    <span class="text-lg font-normal text-gray-600 dark:text-gray-300">/month</span>
                                 </div>
                             </div>
                             
@@ -452,25 +453,25 @@ const faqData = [
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Unlimited chat messages</span>
+                                    <span class="text-gray-700 dark:text-gray-300">Unlimited chat messages</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Unlimited file uploads</span>
+                                    <span class="text-gray-700 dark:text-gray-300">Unlimited file uploads</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Priority support</span>
+                                    <span class="text-gray-700 dark:text-gray-300">Priority support</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Advanced analytics</span>
+                                    <span class="text-gray-700 dark:text-gray-300">Advanced analytics</span>
                                 </li>
                             </ul>
                             
@@ -495,11 +496,11 @@ const faqData = [
                     <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 hover:border-purple-300 transition-all duration-300 transform hover:-translate-y-2">
                         <div class="p-8">
                             <div class="text-center mb-8">
-                                <h3 class="text-2xl font-bold text-gray-900 mb-2">Team</h3>
-                                <p class="text-gray-600 mb-4">For growing teams and businesses</p>
+                                <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Team</h3>
+                                <p class="text-gray-600 dark:text-gray-300 mb-4">For growing teams and businesses</p>
                                 <div class="text-4xl font-bold text-purple-600 mb-2">
                                     $19.99
-                                    <span class="text-lg font-normal text-gray-600">/month</span>
+                                    <span class="text-lg font-normal text-gray-600 dark:text-gray-300">/month</span>
                                 </div>
                             </div>
                             
@@ -508,25 +509,25 @@ const faqData = [
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Everything in Pro</span>
+                                    <span class="text-gray-700 dark:text-gray-300">Everything in Pro</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Team collaboration</span>
+                                    <span class="text-gray-700 dark:text-gray-300">Team collaboration</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Custom themes</span>
+                                    <span class="text-gray-700 dark:text-gray-300">Custom themes</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Dedicated support</span>
+                                    <span class="text-gray-700 dark:text-gray-300">Dedicated support</span>
                                 </li>
                             </ul>
                             
@@ -549,10 +550,10 @@ const faqData = [
                 </div>
                 
                 <div class="text-center mt-12">
-                    <p class="text-gray-600 mb-4">All plans include a 14-day free trial. No credit card required.</p>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">All plans include a 14-day free trial. No credit card required.</p>
                     <Link 
                         :href="route('pricing')"
-                        class="text-blue-600 hover:text-blue-800 font-semibold underline"
+                        class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-semibold underline"
                     >
                         View detailed pricing comparison →
                     </Link>
@@ -605,26 +606,26 @@ const faqData = [
         </section>
 
         <!-- FAQ Section -->
-        <section class="py-20 bg-gradient-to-br from-gray-50 to-blue-50">
+        <section class="py-20 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
             <div class="container mx-auto px-4">
                 <div class="text-center mb-16">
-                    <h2 class="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+                    <h2 class="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6">
                         Frequently Asked <span class="text-blue-600">Questions</span>
                     </h2>
-                    <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    <p class="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
                         Get answers to common questions about our platform and services
                     </p>
                 </div>
                 
                 <div class="max-w-4xl mx-auto space-y-4">
-                    <div v-for="(faq, index) in faqData" :key="index" class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <div v-for="(faq, index) in faqData" :key="index" class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg overflow-hidden">
                         <button 
                             @click="toggleFaq(index)"
-                            class="w-full p-6 text-left hover:bg-blue-50 transition-all duration-300 flex justify-between items-center group"
+                            class="w-full p-6 text-left hover:bg-blue-50 dark:hover:bg-slate-700 transition-all duration-300 flex justify-between items-center group"
                         >
-                            <span class="font-semibold text-gray-800 text-lg group-hover:text-blue-600">{{ faq.question }}</span>
+                            <span class="font-semibold text-gray-800 dark:text-gray-100 text-lg group-hover:text-blue-600 dark:group-hover:text-blue-400">{{ faq.question }}</span>
                             <svg 
-                                class="w-6 h-6 text-gray-600 transform transition-transform duration-300"
+                                class="w-6 h-6 text-gray-600 dark:text-gray-300 transform transition-transform duration-300"
                                 :class="{ 'rotate-180': openFaq === index }"
                                 fill="currentColor" 
                                 viewBox="0 0 20 20"
@@ -634,7 +635,7 @@ const faqData = [
                         </button>
                         <div 
                             v-if="openFaq === index"
-                            class="px-6 pb-6 text-gray-600 leading-relaxed border-t border-gray-100 pt-4 animate-fadeIn"
+                            class="px-6 pb-6 text-gray-600 dark:text-gray-300 leading-relaxed border-t border-gray-100 dark:border-slate-700 pt-4 animate-fadeIn"
                         >
                             {{ faq.answer }}
                         </div>

@@ -38,7 +38,7 @@ const cycleTheme = () => {
 
                 <!-- Desktop Navigation -->
                 <div class="hidden md:flex items-center space-x-8">
-                    <Link href="#home" class="text-white hover:text-yellow-300 transition-all duration-300 font-medium relative group">
+                    <Link :href="route('home')" class="text-white hover:text-yellow-300 transition-all duration-300 font-medium relative group">
                         Home
                         <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-yellow-300 transition-all duration-300 group-hover:w-full"></span>
                     </Link>
@@ -61,12 +61,11 @@ const cycleTheme = () => {
                         About
                         <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-yellow-300 transition-all duration-300 group-hover:w-full"></span>
                     </Link>
-                    <Link href="#pricing" class="text-white hover:text-yellow-300 transition-all duration-300 font-medium relative group">
+                    <Link :href="route('pricing')" class="text-white hover:text-yellow-300 transition-all duration-300 font-medium relative group">
                         Pricing
                         <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-yellow-300 transition-all duration-300 group-hover:w-full"></span>
                     </Link>
                     <div v-if="$page.props.auth.user" class="flex items-center space-x-4">
-                        <span class="text-white text-sm">Welcome, {{ $page.props.auth.user.name }}!</span>
                         <Link 
                             :href="route('dashboard')"
                             class="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 py-2.5 rounded-full hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
@@ -99,12 +98,11 @@ const cycleTheme = () => {
             <!-- Mobile Menu -->
             <div v-if="isMenuOpen" class="md:hidden mt-4 pb-4 border-t border-blue-800">
                 <div class="flex flex-col space-y-4 pt-4">
-                    <Link href="#home" class="text-white hover:text-yellow-300 transition-colors">Home</Link>
-                    <Link href="#courses" class="text-white hover:text-yellow-300 transition-colors">Courses</Link>
+                    <Link :href="route('home')" class="text-white hover:text-yellow-300 transition-colors">Home</Link>
+                    <Link href="#courses" class="text-white hover:text-yellow-300 transition-colors">Exams</Link>
                     <Link :href="route('about')" class="text-white hover:text-yellow-300 transition-colors">About</Link>
-                    <Link href="#pricing" class="text-white hover:text-yellow-300 transition-colors">Pricing</Link>
+                    <Link :href="route('pricing')" class="text-white hover:text-yellow-300 transition-colors">Pricing</Link>
                     <div v-if="$page.props.auth.user" class="space-y-2">
-                        <div class="text-white text-sm text-center">Welcome, {{ $page.props.auth.user.name }}!</div>
                         <Link 
                             :href="route('dashboard')"
                             class="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-full text-center block"
