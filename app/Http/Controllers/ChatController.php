@@ -269,6 +269,29 @@ class ChatController extends Controller
     }
 
     /**
+     * Update chat properties (e.g., title)
+     */
+    public function update(Request $request, Chat $chat): JsonResponse
+    {
+        // Ensure user owns this chat
+        if ($chat->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255'
+        ]);
+
+        $chat->title = $validated['title'];
+        $chat->save();
+
+        return response()->json([
+            'id' => $chat->id,
+            'title' => $chat->title,
+        ]);
+    }
+
+    /**
      * Export chat conversations (Premium feature)
      */
     public function exportChat(Chat $chat): JsonResponse

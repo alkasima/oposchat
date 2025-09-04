@@ -13,7 +13,8 @@ import UsageIndicator from '@/components/UsageIndicator.vue';
 import { useSubscription } from '@/composables/useSubscription.js';
 import chatApi from '@/services/chatApi.js';
 import streamingChatService from '@/services/streamingChatService.js';
-import { Send, User, Bot, Paperclip, Mic, Settings, Menu, Download, BarChart3 } from 'lucide-vue-next';
+import { Send, User, Bot, Paperclip, Mic, Settings, Menu, Download, BarChart3, Pencil, Sun, Moon } from 'lucide-vue-next';
+import { useAppearance } from '@/composables/useAppearance';
 
 interface Message {
     id: string;
@@ -388,6 +389,30 @@ const handleUpgradeClick = () => {
     showSubscriptionPrompt.value = false;
     showSettingsModal.value = true;
 };
+
+// Rename chat
+const renameCurrentChat = async () => {
+    if (!currentChat.value) return;
+    const newTitle = prompt('Rename chat', currentChat.value.title || 'New Chat');
+    if (!newTitle || newTitle.trim() === '' || newTitle === currentChat.value.title) return;
+    try {
+        const updated = await chatApi.updateChat(currentChat.value.id, { title: newTitle.trim() });
+        currentChat.value.title = updated.title;
+    } catch (error) {
+        console.error('Failed to rename chat:', error);
+        alert('Could not rename chat. Please try again.');
+    }
+};
+
+// Theme toggle
+const { appearance, updateAppearance } = useAppearance();
+const prefersDark = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+const isDark = computed(() => appearance.value === 'dark' || (appearance.value === 'system' && prefersDark()));
+const cycleTheme = () => {
+    const current = appearance.value || 'system';
+    const next = current === 'light' ? 'dark' : current === 'dark' ? 'system' : 'light';
+    updateAppearance(next);
+};
 </script>
 
 <template>
@@ -442,8 +467,11 @@ const handleUpgradeClick = () => {
                             <Menu class="w-5 h-5" />
                         </Button>
                         
-                        <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
-                            {{ currentChat?.title || 'OposChat' }}
+                        <h1 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
+                            <span>{{ currentChat?.title || 'OposChat' }}</span>
+                            <button v-if="currentChat" @click="renameCurrentChat" class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700" title="Rename chat">
+                                <Pencil class="w-4 h-4 text-gray-500" />
+                            </button>
                         </h1>
                     </div>
                     <div class="flex items-center space-x-2">
@@ -486,6 +514,12 @@ const handleUpgradeClick = () => {
                             class="p-2"
                         >
                             <Settings class="w-4 h-4" />
+                        </Button>
+
+                        <!-- Theme Toggle -->
+                        <Button @click="cycleTheme" variant="ghost" size="sm" class="p-2 text-gray-500 hover:text-gray-700" :title="`Theme: ${appearance}`">
+                            <Sun v-if="isDark" class="w-4 h-4" />
+                            <Moon v-else class="w-4 h-4" />
                         </Button>
                         
                         <Button size="sm" variant="outline" class="text-xs hidden sm:inline-flex">
@@ -622,15 +656,8 @@ const handleUpgradeClick = () => {
                     
                     <!-- Footer -->
                     <div class="flex items-center justify-center mt-4 space-x-6 text-xs text-gray-500">
-                        <a href="#" class="hover:text-gray-700 transition-colors">About us</a>
-                        <a href="#" class="hover:text-gray-700 transition-colors">Privacy policy</a>
-                        <a href="#" class="hover:text-gray-700 transition-colors">Contact us</a>
-                        <div class="flex space-x-2">
-                            <span class="cursor-pointer hover:scale-110 transition-transform">📷</span>
-                            <span class="cursor-pointer hover:scale-110 transition-transform">📱</span>
-                            <span class="cursor-pointer hover:scale-110 transition-transform">🐦</span>
-                            <span class="cursor-pointer hover:scale-110 transition-transform">📧</span>
-                        </div>
+                        <Link :href="route('about')" class="hover:text-gray-700 transition-colors">About us</Link>
+                        <Link :href="route('legal.privacy')" class="hover:text-gray-700 transition-colors">Privacy policy</Link>
                     </div>
                 </div>
             </div>

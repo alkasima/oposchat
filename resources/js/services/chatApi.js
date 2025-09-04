@@ -94,6 +94,19 @@ class ChatApiService {
             throw error;
         }
     }
+
+    /**
+     * Update chat (e.g., rename title)
+     */
+    async updateChat(chatId, payload) {
+        try {
+            const response = await axios.patch(`/api/chats/${chatId}`, payload);
+            return response.data;
+        } catch (error) {
+            console.error('Error updating chat:', error);
+            throw error;
+        }
+    }
 }
 
 export default new ChatApiService();

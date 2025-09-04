@@ -20,6 +20,7 @@ import UsageIndicator from '@/components/UsageIndicator.vue';
 import SubscriptionPrompt from '@/components/SubscriptionPrompt.vue';
 import { useSubscription } from '@/composables/useSubscription.js';
 import chatApi from '@/services/chatApi.js';
+import EditChatModal from '@/components/EditChatModal.vue';
 
 interface Chat {
     id: string;
@@ -47,6 +48,9 @@ const showSubscriptionPrompt = ref(false);
 const subscriptionPromptData = ref({});
 const searchQuery = ref('');
 const isLoading = ref(false);
+const showEditModal = ref(false);
+const editTargetChatId = ref<string | null>(null);
+const editTargetTitle = ref('');
 
 // Subscription management
 const {
@@ -219,6 +223,31 @@ const deleteChat = async (chatId: string, event: Event) => {
     }
 };
 
+const openEditChat = (chat: Chat, event: Event) => {
+    event.stopPropagation();
+    editTargetChatId.value = chat.id.toString();
+    editTargetTitle.value = chat.title || '';
+    showEditModal.value = true;
+};
+
+const handleEditSave = async (newTitle: string) => {
+    if (!editTargetChatId.value) return;
+    try {
+        const updated = await chatApi.updateChat(editTargetChatId.value, { title: newTitle });
+        // Update local list
+        const idx = chats.value.findIndex(c => c.id.toString() === editTargetChatId.value);
+        if (idx !== -1) {
+            chats.value[idx].title = updated.title;
+        }
+        showEditModal.value = false;
+        editTargetChatId.value = null;
+        editTargetTitle.value = '';
+    } catch (error) {
+        console.error('Failed to update chat title:', error);
+        alert('Could not update chat title. Please try again.');
+    }
+};
+
 const openSettings = () => {
     showUserMenu.value = false;
     showSettingsModal.value = true;
@@ -324,6 +353,15 @@ onMounted(async () => {
                             <Button 
                                 size="sm" 
                                 variant="ghost" 
+                                class="h-6 w-6 p-0 text-gray-400 hover:text-blue-400"
+                                @click="openEditChat(chat, $event)"
+                                title="Rename chat"
+                            >
+                                <Edit3 class="w-3 h-3" />
+                            </Button>
+                            <Button 
+                                size="sm" 
+                                variant="ghost" 
                                 class="h-6 w-6 p-0 text-gray-400 hover:text-red-400"
                                 @click="deleteChat(chat.id.toString(), $event)"
                                 title="Delete chat"
@@ -383,6 +421,14 @@ onMounted(async () => {
                 </div>
             </div>
         </div>
+
+        <!-- Edit Chat Modal -->
+        <EditChatModal
+            :is-open="showEditModal"
+            :initial-title="editTargetTitle"
+            @close="showEditModal = false"
+            @save="handleEditSave"
+        />
 
         <!-- Settings Modal -->
         <SettingsModal 

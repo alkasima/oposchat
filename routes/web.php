@@ -8,9 +8,31 @@ Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
 
+Route::get('/test', function () {
+    return Inertia::render('Test');
+})->name('test');
+
 Route::get('/pricing', function () {
     return Inertia::render('Pricing');
 })->name('pricing');
+
+// Legal pages
+Route::get('/privacy-policy', function () {
+    return Inertia::render('legal/PrivacyPolicy');
+})->name('legal.privacy');
+
+Route::get('/terms-of-service', function () {
+    return Inertia::render('legal/TermsOfService');
+})->name('legal.terms');
+
+Route::get('/cookie-policy', function () {
+    return Inertia::render('legal/CookiePolicy');
+})->name('legal.cookies');
+
+// About page
+Route::get('/about', function () {
+    return Inertia::render('About');
+})->name('about');
 
 // CSRF token refresh endpoint
 Route::get('/csrf-token', function () {
@@ -55,6 +77,7 @@ Route::middleware(['auth', 'verified'])->prefix('api')->group(function () {
     Route::get('/chats/analytics', [App\Http\Controllers\ChatController::class, 'getAnalytics'])->middleware('premium');
     Route::get('/chats', [App\Http\Controllers\ChatController::class, 'index']);
     Route::post('/chats', [App\Http\Controllers\ChatController::class, 'store']);
+    Route::patch('/chats/{chat}', [App\Http\Controllers\ChatController::class, 'update']);
     Route::get('/chats/{chat}', [App\Http\Controllers\ChatController::class, 'show']);
     Route::get('/chats/{chat}/export', [App\Http\Controllers\ChatController::class, 'exportChat'])->middleware('premium');
     Route::post('/chats/{chat}/messages', [App\Http\Controllers\ChatController::class, 'sendMessage'])->middleware('usage.limit:chat_messages');
