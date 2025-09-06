@@ -55,15 +55,6 @@ import { Link } from '@inertiajs/vue3';
                             <span class="text-xl">💼</span>
                         </a>
                     </div>
-                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-                        <p class="text-sm text-gray-300 mb-2">Subscribe to our newsletter</p>
-                        <div class="flex">
-                            <input type="email" placeholder="Enter your email" class="flex-1 bg-white/20 border border-white/30 rounded-l-lg px-3 py-2 text-white placeholder-gray-300 focus:outline-none focus:border-yellow-400">
-                            <button class="bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 px-4 py-2 rounded-r-lg font-semibold hover:from-yellow-500 hover:to-orange-600 transition-all duration-300">
-                                →
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
 

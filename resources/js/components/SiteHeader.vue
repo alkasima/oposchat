@@ -2,9 +2,10 @@
 import { Link } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import { useAppearance } from '@/composables/useAppearance';
-import { Sun, Moon } from 'lucide-vue-next';
+import { Sun, Moon, User, Settings, LogOut, CreditCard, BarChart3 } from 'lucide-vue-next';
 
 const isMenuOpen = ref(false);
+const isProfileOpen = ref(false);
 const { appearance, updateAppearance } = useAppearance();
 const prefersDark = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 const isDark = computed(() => appearance.value === 'dark' || (appearance.value === 'system' && prefersDark()));
@@ -15,10 +16,15 @@ const cycleTheme = () => {
     const next = current === 'light' ? 'dark' : current === 'dark' ? 'system' : 'light';
     updateAppearance(next);
 };
+
+// Close profile dropdown when clicking outside
+const closeProfileDropdown = () => {
+    isProfileOpen.value = false;
+};
 </script>
 
 <template>
-    <header class="bg-gradient-to-r from-indigo-900 via-blue-900 to-purple-900 shadow-2xl sticky top-0 z-50 backdrop-blur-sm">
+    <header class="bg-gradient-to-r from-indigo-900 via-blue-900 to-purple-900 shadow-2xl sticky top-0 z-50 backdrop-blur-sm" @click="closeProfileDropdown">
         <div class="container mx-auto px-4 py-4">
             <nav class="flex items-center justify-between">
                 <div class="flex items-center space-x-4">
@@ -66,12 +72,87 @@ const cycleTheme = () => {
                         <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-yellow-300 transition-all duration-300 group-hover:w-full"></span>
                     </Link>
                     <div v-if="$page.props.auth.user" class="flex items-center space-x-4">
-                        <Link 
-                            :href="route('dashboard')"
-                            class="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 py-2.5 rounded-full hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                        >
-                            Dashboard
-                        </Link>
+                        <!-- Profile Dropdown -->
+                        <div class="relative" @click.stop>
+                            <button 
+                                @click="isProfileOpen = !isProfileOpen"
+                                class="flex items-center space-x-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full transition-all duration-300"
+                            >
+                                <div class="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
+                                    <span class="text-white font-semibold text-sm">
+                                        {{ $page.props.auth.user.name?.charAt(0)?.toUpperCase() || 'U' }}
+                                    </span>
+                                </div>
+                                <span class="font-medium">{{ $page.props.auth.user.name || 'User' }}</span>
+                                <svg class="w-4 h-4 transform transition-transform duration-200" :class="{ 'rotate-180': isProfileOpen }" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                            
+                            <!-- Dropdown Menu -->
+                            <div 
+                                v-if="isProfileOpen" 
+                                class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-200 z-50"
+                            >
+                                <div class="py-2">
+                                    <!-- User Info -->
+                                    <div class="px-4 py-3 border-b border-gray-100">
+                                        <p class="text-sm font-medium text-gray-900">{{ $page.props.auth.user.name || 'User' }}</p>
+                                        <p class="text-sm text-gray-500">{{ $page.props.auth.user.email }}</p>
+                                    </div>
+                                    
+                                    <!-- Menu Items -->
+                                    <div class="py-1">
+                                        <Link 
+                                            :href="route('dashboard')"
+                                            class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                                            @click="isProfileOpen = false"
+                                        >
+                                            <BarChart3 class="w-4 h-4 mr-3" />
+                                            Dashboard
+                                        </Link>
+                                        <Link 
+                                            :href="route('profile.edit')"
+                                            class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                                            @click="isProfileOpen = false"
+                                        >
+                                            <User class="w-4 h-4 mr-3" />
+                                            Profile Settings
+                                        </Link>
+                                        <Link 
+                                            :href="route('settings.subscription')"
+                                            class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                                            @click="isProfileOpen = false"
+                                        >
+                                            <CreditCard class="w-4 h-4 mr-3" />
+                                            Subscription & Billing
+                                        </Link>
+                                        <Link 
+                                            :href="route('settings')"
+                                            class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                                            @click="isProfileOpen = false"
+                                        >
+                                            <Settings class="w-4 h-4 mr-3" />
+                                            Settings
+                                        </Link>
+                                    </div>
+                                    
+                                    <!-- Logout -->
+                                    <div class="border-t border-gray-100 py-1">
+                                        <Link 
+                                            :href="route('logout')"
+                                            method="post"
+                                            as="button"
+                                            class="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                            @click="isProfileOpen = false"
+                                        >
+                                            <LogOut class="w-4 h-4 mr-3" />
+                                            Sign Out
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <Link 
                         v-else
@@ -103,11 +184,51 @@ const cycleTheme = () => {
                     <Link :href="route('about')" class="text-white hover:text-yellow-300 transition-colors">About</Link>
                     <Link :href="route('pricing')" class="text-white hover:text-yellow-300 transition-colors">Pricing</Link>
                     <div v-if="$page.props.auth.user" class="space-y-2">
+                        <div class="px-4 py-2 border-b border-blue-800 mb-2">
+                            <p class="text-sm font-medium text-white">{{ $page.props.auth.user.name || 'User' }}</p>
+                            <p class="text-xs text-blue-200">{{ $page.props.auth.user.email }}</p>
+                        </div>
                         <Link 
                             :href="route('dashboard')"
-                            class="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-full text-center block"
+                            class="flex items-center text-white hover:text-yellow-300 transition-colors px-4 py-2"
+                            @click="isMenuOpen = false"
                         >
+                            <BarChart3 class="w-4 h-4 mr-3" />
                             Dashboard
+                        </Link>
+                        <Link 
+                            :href="route('profile.edit')"
+                            class="flex items-center text-white hover:text-yellow-300 transition-colors px-4 py-2"
+                            @click="isMenuOpen = false"
+                        >
+                            <User class="w-4 h-4 mr-3" />
+                            Profile Settings
+                        </Link>
+                        <Link 
+                            :href="route('settings.subscription')"
+                            class="flex items-center text-white hover:text-yellow-300 transition-colors px-4 py-2"
+                            @click="isMenuOpen = false"
+                        >
+                            <CreditCard class="w-4 h-4 mr-3" />
+                            Subscription & Billing
+                        </Link>
+                        <Link 
+                            :href="route('settings')"
+                            class="flex items-center text-white hover:text-yellow-300 transition-colors px-4 py-2"
+                            @click="isMenuOpen = false"
+                        >
+                            <Settings class="w-4 h-4 mr-3" />
+                            Settings
+                        </Link>
+                        <Link 
+                            :href="route('logout')"
+                            method="post"
+                            as="button"
+                            class="flex items-center w-full text-red-300 hover:text-red-200 transition-colors px-4 py-2"
+                            @click="isMenuOpen = false"
+                        >
+                            <LogOut class="w-4 h-4 mr-3" />
+                            Sign Out
                         </Link>
                     </div>
                     <Link 
