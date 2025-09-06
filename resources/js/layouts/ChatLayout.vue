@@ -13,7 +13,7 @@ import UsageIndicator from '@/components/UsageIndicator.vue';
 import { useSubscription } from '@/composables/useSubscription.js';
 import chatApi from '@/services/chatApi.js';
 import streamingChatService from '@/services/streamingChatService.js';
-import { Send, User, Bot, Paperclip, Mic, Settings, Menu, Download, BarChart3, Pencil, Sun, Moon, Home } from 'lucide-vue-next';
+import { Send, User, Bot, Paperclip, Settings, Menu, Download, BarChart3, Pencil, Sun, Moon, Home } from 'lucide-vue-next';
 import { useAppearance } from '@/composables/useAppearance';
 
 interface Message {
@@ -32,6 +32,10 @@ const user = computed(() => page.props.auth.user);
 const currentMessage = ref('');
 const isTyping = ref(false);
 const isLoading = ref(false);
+const fileInput = ref<HTMLInputElement | null>(null);
+const selectedFile = ref<File | null>(null);
+const isProcessingFile = ref(false);
+const imagePreviewUrl = ref<string | null>(null);
 
 // Real chat data
 const messages = ref<Message[]>([]);
@@ -144,8 +148,33 @@ const sendMessage = async () => {
         return;
     }
 
-    const messageContent = currentMessage.value;
+    let messageContent = currentMessage.value;
+    let fullMessageForAI = messageContent;
+    
+    // Add file content to message if file is selected
+    if (selectedFile.value) {
+        isProcessingFile.value = true;
+        try {
+            const fileContent = await extractFileContent(selectedFile.value);
+            // Clean message for user display
+            messageContent = `[Document: ${selectedFile.value.name}] ${messageContent}`;
+            // Full message with document content for AI processing
+            fullMessageForAI = `Document: ${selectedFile.value.name}\n\n${currentMessage.value}\n\nDocument Content:\n${fileContent}`;
+        } catch (error) {
+            console.error('Error reading file:', error);
+            messageContent = `[Document: ${selectedFile.value.name}] ${messageContent}`;
+            fullMessageForAI = `Document: ${selectedFile.value.name}\n\n${currentMessage.value}\n\n(Note: Could not read file content - ${error.message})`;
+        } finally {
+            isProcessingFile.value = false;
+        }
+    }
+    
     currentMessage.value = '';
+    selectedFile.value = null;
+    imagePreviewUrl.value = null;
+    if (fileInput.value) {
+        fileInput.value.value = '';
+    }
     isTyping.value = true;
 
     // Add user message immediately
@@ -178,7 +207,7 @@ const sendMessage = async () => {
         // Start streaming
         streamingChatService.startStreaming(
             currentChat.value.id,
-            messageContent,
+            fullMessageForAI,
             // onChunk callback
             (chunk, accumulatedContent, formattedContent) => {
                 // Update the streaming message content
@@ -208,7 +237,7 @@ const sendMessage = async () => {
                 console.error('Streaming error:', error);
                 
                 // Try fallback to regular chat API
-                fallbackToRegularChat(messageContent, assistantMessage.id);
+                fallbackToRegularChat(fullMessageForAI, assistantMessage.id);
             }
         );
 
@@ -412,6 +441,169 @@ const cycleTheme = () => {
     const current = appearance.value || 'system';
     const next = current === 'light' ? 'dark' : current === 'dark' ? 'system' : 'light';
     updateAppearance(next);
+};
+
+// File upload methods
+const triggerFileUpload = () => {
+    fileInput.value?.click();
+};
+
+const handleFileSelect = (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (file) {
+        // File size validation (5MB limit)
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxSize) {
+            alert('File size too large. Please select a file smaller than 5MB.');
+            target.value = '';
+            return;
+        }
+        
+        selectedFile.value = file;
+        
+        // Create image preview if it's an image
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreviewUrl.value = e.target?.result as string;
+            };
+            reader.readAsDataURL(file);
+        } else {
+            imagePreviewUrl.value = null;
+        }
+        
+        console.log('File selected:', file.name, file.size, file.type);
+    }
+};
+
+const removeSelectedFile = () => {
+    selectedFile.value = null;
+    imagePreviewUrl.value = null;
+    if (fileInput.value) {
+        fileInput.value.value = '';
+    }
+};
+
+// Extract content from uploaded file
+const extractFileContent = async (file: File): Promise<string> => {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Handle PDF files
+            if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+                const pdfContent = await extractPDFText(file);
+                resolve(pdfContent);
+                return;
+            }
+            
+            // Handle text files
+            if (file.type.startsWith('text/') || 
+                file.name.endsWith('.txt') || 
+                file.name.endsWith('.md') ||
+                file.name.endsWith('.json') ||
+                file.name.endsWith('.csv')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const content = e.target?.result as string;
+                    resolve(content);
+                };
+                reader.onerror = () => reject(new Error('Failed to read file'));
+                reader.readAsText(file);
+                return;
+            }
+            
+            // Handle images with OCR
+            if (file.type.startsWith('image/')) {
+                const imageText = await extractImageText(file);
+                resolve(imageText || `[Image file: ${file.name} - ${file.type} - No text detected]`);
+                return;
+            }
+            
+            // For other file types, try to read as text
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const content = e.target?.result as string;
+                resolve(content);
+            };
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsText(file);
+            
+        } catch (error) {
+            reject(error);
+        }
+    });
+};
+
+// Extract text from PDF using pdfjs-dist
+const extractPDFText = async (file: File): Promise<string> => {
+    try {
+        // Dynamically import pdfjs-dist
+        const pdfjsLib = await import('pdfjs-dist');
+        
+        // Set up the worker - use local worker file
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+        
+        // Convert file to ArrayBuffer
+        const arrayBuffer = await file.arrayBuffer();
+        
+        // Load the PDF document
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        
+        let fullText = '';
+        
+        // Extract text from each page
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            const page = await pdf.getPage(pageNum);
+            const textContent = await page.getTextContent();
+            
+            // Combine all text items from the page
+            const pageText = textContent.items
+                .map((item: any) => item.str)
+                .join(' ');
+            
+            fullText += pageText + '\n\n';
+        }
+        
+        return fullText.trim();
+    } catch (error) {
+        console.error('Error extracting PDF text:', error);
+        throw new Error(`Failed to extract text from PDF: ${error.message}`);
+    }
+};
+
+// Extract text from images using Tesseract.js OCR
+const extractImageText = async (file: File): Promise<string> => {
+    try {
+        // Dynamically import tesseract.js
+        const { createWorker } = await import('tesseract.js');
+        
+        // Create a worker with progress callback
+        const worker = await createWorker('eng', 1, {
+            logger: m => {
+                if (m.status === 'recognizing text') {
+                    console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
+                }
+            }
+        });
+        
+        // Perform OCR on the image
+        const { data: { text } } = await worker.recognize(file);
+        
+        // Terminate the worker
+        await worker.terminate();
+        
+        const extractedText = text.trim();
+        
+        // If no text was extracted, return a helpful message
+        if (!extractedText || extractedText.length < 3) {
+            return `[Image file: ${file.name} - No readable text detected in image]`;
+        }
+        
+        return extractedText;
+    } catch (error) {
+        console.error('Error extracting image text:', error);
+        throw new Error(`Failed to extract text from image: ${error.message}`);
+    }
 };
 </script>
 
@@ -623,11 +815,57 @@ const cycleTheme = () => {
             <!-- Message Input -->
             <div class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
                 <div class="max-w-4xl mx-auto">
-                    <div class="flex items-end space-x-4">
+                    <!-- Selected File Display -->
+                    <div v-if="selectedFile" class="mb-3 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                        <!-- Image Preview -->
+                        <div v-if="imagePreviewUrl" class="mb-3">
+                            <img 
+                                :src="imagePreviewUrl" 
+                                :alt="selectedFile.name"
+                                class="max-w-xs max-h-32 object-contain rounded-lg border border-gray-300 dark:border-gray-600"
+                            />
+                        </div>
+                        
+                        <!-- File Info -->
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <Paperclip class="w-4 h-4 text-gray-500" />
+                                <span class="text-sm text-gray-700 dark:text-gray-300">{{ selectedFile.name }}</span>
+                                <span class="text-xs text-gray-500">({{ Math.round(selectedFile.size / 1024) }} KB)</span>
+                                <span v-if="isProcessingFile" class="text-xs text-blue-500">Processing...</span>
+                            </div>
+                            <Button 
+                                @click="removeSelectedFile"
+                                variant="ghost" 
+                                size="sm" 
+                                class="text-red-500 hover:text-red-700 p-1"
+                                :disabled="isProcessingFile"
+                            >
+                                ×
+                            </Button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-end space-x-3">
                         <!-- Attachment Button -->
-                        <Button variant="ghost" size="sm" class="text-gray-500 hover:text-gray-700 p-2">
+                        <Button 
+                            @click="triggerFileUpload"
+                            variant="ghost" 
+                            size="sm" 
+                            class="text-gray-500 hover:text-gray-700 p-2 flex-shrink-0"
+                            title="Attach file"
+                        >
                             <Paperclip class="w-5 h-5" />
                         </Button>
+                        
+                        <!-- Hidden File Input -->
+                        <input
+                            ref="fileInput"
+                            type="file"
+                            @change="handleFileSelect"
+                            class="hidden"
+                            accept=".pdf,.doc,.docx,.txt,.md,.json,.csv,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.webp"
+                        />
                         
                         <!-- Message Input -->
                         <div class="flex-1 relative">
@@ -649,18 +887,13 @@ const cycleTheme = () => {
                                         console.error('Failed to send message:', error);
                                     }
                                 }"
-                                :disabled="!currentMessage.trim() || isTyping"
+                                :disabled="!currentMessage.trim() || isTyping || isProcessingFile"
                                 class="absolute right-2 bottom-2 bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 size="sm"
                             >
                                 <Send class="w-4 h-4" />
                             </Button>
                         </div>
-                        
-                        <!-- Voice Button -->
-                        <Button variant="ghost" size="sm" class="text-gray-500 hover:text-gray-700 p-2">
-                            <Mic class="w-5 h-5" />
-                        </Button>
                     </div>
                     
                     <!-- Footer -->

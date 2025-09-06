@@ -22,10 +22,10 @@ fly secrets set STRIPE_KEY="pk_live_your_live_publishable_key"
 fly secrets set STRIPE_SECRET="sk_live_your_live_secret_key"
 fly secrets set STRIPE_WEBHOOK_SECRET="whsec_your_live_webhook_secret"
 
-# AI Provider (Gemini)
-fly secrets set AI_PROVIDER=gemini
-fly secrets set GEMINI_API_KEY="your_gemini_api_key"
-fly secrets set GEMINI_MODEL="gemini-1.5-flash"
+# AI Provider (OpenAI)
+fly secrets set AI_PROVIDER=openai
+fly secrets set OPENAI_API_KEY="your_openai_api_key"
+fly secrets set OPENAI_MODEL="gpt-4o-mini"
 
 echo "✅ Secrets configured!"
 echo "⚠️  Remember to update Stripe keys with your live/production keys"

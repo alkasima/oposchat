@@ -1,6 +1,6 @@
 # AI Provider Setup
 
-This application supports both OpenAI (GPT) and Google Gemini as AI providers. You can switch between them using environment variables.
+This application supports both OpenAI (GPT) and Google Gemini as AI providers. OpenAI with GPT-4o-mini is the default and recommended provider. You can switch between them using environment variables.
 
 ## Configuration
 
@@ -9,10 +9,10 @@ This application supports both OpenAI (GPT) and Google Gemini as AI providers. Y
 Set the AI provider in your `.env` file:
 
 ```env
-# For OpenAI (GPT)
+# For OpenAI (GPT) - Default and Recommended
 AI_PROVIDER=openai
 
-# For Google Gemini
+# For Google Gemini (Alternative)
 AI_PROVIDER=gemini
 ```
 
