@@ -16,15 +16,23 @@ class Chat extends Model
         'title',
         'exam_type',
         'last_message_at',
+        'course_id',
+        'course_ids',
     ];
 
     protected $casts = [
         'last_message_at' => 'datetime',
+        'course_ids' => 'array',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function course(): BelongsTo
+    {
+        return $this->belongsTo(Course::class);
     }
 
     public function messages(): HasMany
@@ -83,5 +91,38 @@ class Chat extends Model
     public function updateLastMessageTime(): void
     {
         $this->update(['last_message_at' => now()]);
+    }
+
+    /**
+     * Get the namespace for embeddings based on course selection
+     */
+    public function getEmbeddingNamespace(): ?string
+    {
+        if ($this->course_id) {
+            return $this->course->slug ?? "course:{$this->course_id}";
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get multiple namespaces for multi-course queries
+     */
+    public function getEmbeddingNamespaces(): array
+    {
+        $namespaces = [];
+        
+        if ($this->course_id) {
+            $namespaces[] = $this->course->slug ?? "course:{$this->course_id}";
+        }
+        
+        if ($this->course_ids && is_array($this->course_ids)) {
+            $courses = Course::whereIn('id', $this->course_ids)->get();
+            foreach ($courses as $course) {
+                $namespaces[] = $course->slug ?? "course:{$course->id}";
+            }
+        }
+        
+        return array_unique($namespaces);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Chat;
 use App\Services\AIProviderService;
 use App\Services\StreamingMessageService;
+use App\Services\DocumentProcessingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -14,8 +15,12 @@ class StreamingChatController extends Controller
 {
     public function __construct(
         private AIProviderService $aiProviderService,
-        private StreamingMessageService $streamingMessageService
-    ) {}
+        private StreamingMessageService $streamingMessageService,
+        private DocumentProcessingService $documentProcessor
+    ) {
+        // Inject DocumentProcessingService into AIProviderService
+        $this->aiProviderService = new AIProviderService($this->documentProcessor);
+    }
 
     /**
      * Stream AI response using Server-Sent Events
@@ -80,11 +85,14 @@ class StreamingChatController extends Controller
                 'content' => $userMessage,
             ];
 
+            // Get course namespaces for context
+            $namespaces = $chat->getEmbeddingNamespaces();
+
             $chunkCount = 0;
             
             try {
-                // Stream AI response
-                $this->aiProviderService->streamChatCompletion(
+                // Stream AI response with course context
+                $this->aiProviderService->streamChatCompletionWithContext(
                     $messages,
                     function (string $chunk) use ($sessionId, &$chunkCount) {
                         $chunkCount++;
@@ -112,6 +120,7 @@ class StreamingChatController extends Controller
                         }
                         flush();
                     },
+                    $namespaces,
                     ['chat_id' => $chat->id]
                 );
                 

@@ -45,4 +45,14 @@ return [
         ],
     ],
 
+    'pinecone' => [
+        'api_key' => env('PINECONE_API_KEY'),
+        'environment' => env('PINECONE_ENVIRONMENT'),
+        'index_name' => env('PINECONE_INDEX_NAME', 'oposchat'),
+    ],
+
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+    ],
+
 ];

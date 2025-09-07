@@ -64,6 +64,16 @@ const selectExam = async (examType) => {
     // This will be called only for authenticated users due to the template condition
 
     try {
+        // Map exam types to course IDs (you'll need to create these courses in admin)
+        const examToCourseMap = {
+            'sat': 1,    // SAT Preparation course
+            'gre': 2,    // GRE Preparation course  
+            'gmat': 3,   // GMAT Preparation course
+            'custom': null // No specific course for custom
+        };
+
+        const courseId = examToCourseMap[examType.id];
+
         // Create or get exam-specific chat
         const response = await fetch('/api/chats', {
             method: 'POST',
@@ -73,7 +83,8 @@ const selectExam = async (examType) => {
             },
             body: JSON.stringify({
                 exam_type: examType.id,
-                title: `${examType.name} Chat`
+                title: `${examType.name} Chat`,
+                course_id: courseId
             })
         });
 
@@ -91,6 +102,12 @@ const selectExam = async (examType) => {
         // Fallback to general dashboard
         router.visit(route('dashboard'));
     }
+};
+
+const openMoreInfo = ref<string | null>(null);
+
+const toggleMoreInfo = (id: string) => {
+    openMoreInfo.value = openMoreInfo.value === id ? null : id;
 };
 
 const faqData = [
@@ -240,6 +257,11 @@ const faqData = [
                         <span v-if="$page.props.auth.user">Select the exam you want to prepare for and start chatting with our AI tutor</span>
                         <span v-else>Choose from our comprehensive selection of exam preparation courses</span>
                     </p>
+                    <div class="mt-4">
+                        <Link :href="route('exams.wiki')" class="text-yellow-300 hover:text-yellow-200 font-semibold underline">
+                            General information about competitive examinations →
+                        </Link>
+                    </div>
                 </div>
                 
                 <div class="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto mb-12">
@@ -267,6 +289,15 @@ const faqData = [
                                 {{ exam.badge }}
                             </span>
                             <span class="text-yellow-400 font-semibold">{{ exam.students }}</span>
+                        </div>
+                        <div class="mt-4">
+                            <button type="button" @click.stop="toggleMoreInfo(exam.id)" class="inline-flex items-center px-3 py-1 text-sm rounded-full bg-blue-500 text-white hover:bg-blue-600">
+                                + MORE INFO
+                            </button>
+                        </div>
+                        <div v-if="openMoreInfo === exam.id" class="mt-4 p-4 rounded-xl bg-white/5 border border-white/10 text-gray-200">
+                            <p class="mb-3">{{ exam.fullDescription }}</p>
+                            <Link :href="route('exams.wiki')" class="text-yellow-300 hover:text-yellow-200 font-semibold underline">Read detailed info in the Wiki →</Link>
                         </div>
                         
                         <!-- Action indicator for logged-in users -->

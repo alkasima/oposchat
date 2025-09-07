@@ -9,6 +9,7 @@ import SettingsModal from '@/components/SettingsModal.vue';
 import SubscriptionPrompt from '@/components/SubscriptionPrompt.vue';
 import SubscriptionSuccessModal from '@/components/SubscriptionSuccessModal.vue';
 import UsageIndicator from '@/components/UsageIndicator.vue';
+import CourseSelector from '@/components/CourseSelector.vue';
 
 import { useSubscription } from '@/composables/useSubscription.js';
 import chatApi from '@/services/chatApi.js';
@@ -39,7 +40,7 @@ const imagePreviewUrl = ref<string | null>(null);
 
 // Real chat data
 const messages = ref<Message[]>([]);
-const currentChat = ref<{ id: string; title: string } | null>(null);
+const currentChat = ref<{ id: string; title: string; course_id?: number } | null>(null);
 const showMobileSidebar = ref(false);
 const showSettingsModal = ref(false);
 const showSubscriptionPrompt = ref(false);
@@ -95,7 +96,11 @@ const handleChatSelected = async (chatId: string | null) => {
     try {
         isLoading.value = true;
         const chatData = await chatApi.getChat(chatId);
-        currentChat.value = chatData.chat;
+        currentChat.value = {
+            id: chatData.chat.id,
+            title: chatData.chat.title,
+            course_id: chatData.chat.course_id
+        };
         messages.value = chatData.messages;
     } catch (error) {
         console.error('Failed to load chat:', error);
@@ -112,7 +117,8 @@ const handleNewChatCreated = (newChat: any) => {
     // Set the new chat as current
     currentChat.value = {
         id: newChat.id.toString(),
-        title: newChat.title || 'New Chat'
+        title: newChat.title || 'New Chat',
+        course_id: newChat.course_id
     };
     
     // Clear messages for new chat
@@ -433,6 +439,13 @@ const renameCurrentChat = async () => {
     }
 };
 
+// Handle course selection
+const handleCourseSelected = (course: any) => {
+    if (currentChat.value) {
+        currentChat.value.course_id = course?.id || null;
+    }
+};
+
 // Theme toggle
 const { appearance, updateAppearance } = useAppearance();
 const prefersDark = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -659,12 +672,22 @@ const extractImageText = async (file: File): Promise<string> => {
                             <Menu class="w-5 h-5" />
                         </Button>
                         
-                        <h1 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
-                            <span>{{ currentChat?.title || 'OposChat' }}</span>
-                            <button v-if="currentChat" @click="renameCurrentChat" class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700" title="Rename chat">
-                                <Pencil class="w-4 h-4 text-gray-500" />
-                            </button>
-                        </h1>
+                        <div class="flex items-center space-x-4">
+                            <h1 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
+                                <span>{{ currentChat?.title || 'OposChat' }}</span>
+                                <button v-if="currentChat" @click="renameCurrentChat" class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700" title="Rename chat">
+                                    <Pencil class="w-4 h-4 text-gray-500" />
+                                </button>
+                            </h1>
+                            
+                            <!-- Course Selector -->
+                            <CourseSelector 
+                                v-if="currentChat"
+                                :chat-id="parseInt(currentChat.id)"
+                                :initial-course-id="currentChat.course_id"
+                                @course-selected="handleCourseSelected"
+                            />
+                        </div>
                     </div>
                     <div class="flex items-center space-x-2">
                         <!-- Home Button -->
@@ -846,7 +869,9 @@ const extractImageText = async (file: File): Promise<string> => {
                         </div>
                     </div>
                     
-                    <div class="flex items-end space-x-3">
+                    
+
+                    <div class="flex items-center space-x-3">
                         <!-- Attachment Button -->
                         <Button 
                             @click="triggerFileUpload"
@@ -888,14 +913,14 @@ const extractImageText = async (file: File): Promise<string> => {
                                     }
                                 }"
                                 :disabled="!currentMessage.trim() || isTyping || isProcessingFile"
-                                class="absolute right-2 bottom-2 bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 size="sm"
                             >
                                 <Send class="w-4 h-4" />
                             </Button>
                         </div>
                     </div>
-                    
+
                     <!-- Footer -->
                     <div class="flex items-center justify-center mt-4 space-x-6 text-xs text-gray-500">
                         <Link :href="route('about')" class="hover:text-gray-700 transition-colors">About us</Link>

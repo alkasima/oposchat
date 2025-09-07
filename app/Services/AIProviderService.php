@@ -4,17 +4,20 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Services\DocumentProcessingService;
 use Exception;
 
 class AIProviderService
 {
     private string $provider;
     private array $config;
+    private ?DocumentProcessingService $documentProcessor;
 
-    public function __construct()
+    public function __construct(?DocumentProcessingService $documentProcessor = null)
     {
         $this->provider = config('ai.provider', 'openai');
         $this->config = config('ai.providers.' . $this->provider);
+        $this->documentProcessor = $documentProcessor;
     }
 
     /**
@@ -421,5 +424,116 @@ class AIProviderService
     public function supportsStreaming(): bool
     {
         return in_array($this->provider, ['openai', 'gemini']);
+    }
+
+    /**
+     * Get relevant context based on course namespaces using vector search
+     */
+    public function getRelevantContext(string $query, array $namespaces = []): array
+    {
+        if (empty($namespaces) || !$this->documentProcessor) {
+            return [];
+        }
+
+        try {
+            // Search for relevant content using vector database
+            $searchResults = $this->documentProcessor->searchRelevantContent($query, $namespaces, 3);
+            
+            if (!$searchResults['success'] || empty($searchResults['results'])) {
+                Log::warning('No relevant context found', [
+                    'query' => $query,
+                    'namespaces' => $namespaces
+                ]);
+                return [];
+            }
+
+            // Extract and format relevant content
+            $context = [];
+            foreach ($searchResults['results'] as $result) {
+                if (isset($result['metadata']['content'])) {
+                    $context[] = $result['metadata']['content'];
+                }
+            }
+
+            Log::info('Retrieved relevant context', [
+                'query' => $query,
+                'namespaces' => $namespaces,
+                'context_chunks' => count($context)
+            ]);
+
+            return $context;
+
+        } catch (Exception $e) {
+            Log::error('Failed to retrieve relevant context', [
+                'query' => $query,
+                'namespaces' => $namespaces,
+                'error' => $e->getMessage()
+            ]);
+            
+            // Fallback to simple context
+            $context = [];
+            foreach ($namespaces as $namespace) {
+                $context[] = "This response is based on {$namespace} course materials.";
+            }
+            return $context;
+        }
+    }
+
+    /**
+     * Enhanced chat completion with course-specific context
+     */
+    public function chatCompletionWithContext(array $messages, array $namespaces = [], array $options = []): array
+    {
+        // Get relevant context if namespaces are provided
+        $context = [];
+        if (!empty($namespaces)) {
+            $lastUserMessage = end($messages);
+            if ($lastUserMessage && $lastUserMessage['role'] === 'user') {
+                $context = $this->getRelevantContext($lastUserMessage['content'], $namespaces);
+            }
+        }
+
+        // Add context to system message if available
+        if (!empty($context)) {
+            $contextText = implode(' ', $context);
+            $systemMessage = [
+                'role' => 'system',
+                'content' => config('ai.defaults.system_message') . "\n\nRelevant context: " . $contextText
+            ];
+            
+            // Insert system message at the beginning
+            array_unshift($messages, $systemMessage);
+        }
+
+        return $this->chatCompletion($messages, $options);
+    }
+
+    /**
+     * Enhanced streaming chat completion with course-specific context
+     */
+    public function streamChatCompletionWithContext(array $messages, callable $callback, array $namespaces = [], array $options = []): array
+    {
+        // Get relevant context if namespaces are provided
+        $context = [];
+        if (!empty($namespaces)) {
+            $lastUserMessage = end($messages);
+            if ($lastUserMessage && $lastUserMessage['role'] === 'user') {
+                $context = $this->getRelevantContext($lastUserMessage['content'], $namespaces);
+            }
+        }
+
+        // Add context to system message if available
+        if (!empty($context)) {
+            $contextText = implode(' ', $context);
+            $systemMessage = [
+                'role' => 'system',
+                'content' => config('ai.defaults.system_message') . "\n\nRelevant context: " . $contextText
+            ];
+            
+            // Insert system message at the beginning
+            array_unshift($messages, $systemMessage);
+        }
+
+        return $this->streamChatCompletion($messages, $callback, $options);
     }
 }

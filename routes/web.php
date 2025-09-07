@@ -16,6 +16,11 @@ Route::get('/pricing', function () {
     return Inertia::render('Pricing');
 })->name('pricing');
 
+// Exams Wiki page
+Route::get('/exams/wiki', function () {
+    return Inertia::render('exams/Wiki');
+})->name('exams.wiki');
+
 // Legal pages
 Route::get('/privacy-policy', function () {
     return Inertia::render('legal/PrivacyPolicy');
@@ -83,6 +88,9 @@ Route::middleware(['auth', 'verified'])->prefix('api')->group(function () {
     Route::post('/chats/{chat}/messages', [App\Http\Controllers\ChatController::class, 'sendMessage'])->middleware('usage.limit:chat_messages');
     Route::delete('/chats/{chat}', [App\Http\Controllers\ChatController::class, 'destroy']);
     
+    // Courses API routes
+    Route::get('/courses', [App\Http\Controllers\ChatController::class, 'getCourses']);
+    
     // Streaming chat routes
     Route::get('/chats/{chat}/stream', [App\Http\Controllers\StreamingChatController::class, 'streamMessage'])->middleware('usage.limit:chat_messages');
     Route::post('/chats/stream/stop', [App\Http\Controllers\StreamingChatController::class, 'stopStreaming']);
@@ -99,6 +107,13 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/courses/{course}/edit', [App\Http\Controllers\AdminController::class, 'coursesEdit'])->name('admin.courses.edit');
     Route::put('/courses/{course}', [App\Http\Controllers\AdminController::class, 'coursesUpdate'])->name('admin.courses.update');
     Route::delete('/courses/{course}', [App\Http\Controllers\AdminController::class, 'coursesDestroy'])->name('admin.courses.destroy');
+    
+    // Course content management routes
+    Route::get('/course-content', [App\Http\Controllers\Admin\CourseContentController::class, 'index'])->name('admin.course-content.index');
+    Route::post('/course-content/upload', [App\Http\Controllers\Admin\CourseContentController::class, 'uploadContent'])->name('admin.course-content.upload');
+    Route::post('/course-content/upload-file', [App\Http\Controllers\Admin\CourseContentController::class, 'uploadFile'])->name('admin.course-content.upload-file');
+    Route::post('/course-content/delete', [App\Http\Controllers\Admin\CourseContentController::class, 'deleteContent'])->name('admin.course-content.delete');
+    Route::get('/course-content/stats', [App\Http\Controllers\Admin\CourseContentController::class, 'getContentStats'])->name('admin.course-content.stats');
 });
 
 require __DIR__.'/settings.php';

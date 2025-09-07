@@ -63,7 +63,10 @@ export function initializeTheme() {
     mediaQuery()?.addEventListener('change', handleSystemThemeChange);
 }
 
-const appearance = ref<Appearance>('system');
+// Initialize the shared appearance ref from localStorage (if available)
+// This ensures reactive state matches the actual theme applied to the document
+// so the first click on the toggle behaves as expected.
+const appearance = ref<Appearance>(getStoredAppearance() || 'system');
 
 export function useAppearance() {
     onMounted(() => {

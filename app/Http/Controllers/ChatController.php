@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Chat;
 use App\Models\Message;
+use App\Models\Course;
 use App\Services\AIProviderService;
 use App\Services\UsageService;
+use App\Services\DocumentProcessingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -18,8 +20,12 @@ class ChatController extends Controller
 {
     public function __construct(
         private AIProviderService $aiProvider,
-        private UsageService $usageService
-    ) {}
+        private UsageService $usageService,
+        private DocumentProcessingService $documentProcessor
+    ) {
+        // Inject DocumentProcessingService into AIProviderService
+        $this->aiProvider = new AIProviderService($this->documentProcessor);
+    }
     /**
      * Get user subscription status and usage info
      */
@@ -76,6 +82,7 @@ class ChatController extends Controller
         $validated = $request->validate([
             'exam_type' => 'nullable|string|in:sat,gre,gmat,custom',
             'title' => 'nullable|string|max:255',
+            'course_id' => 'nullable|exists:courses,id',
         ]);
 
         $examType = $validated['exam_type'] ?? null;
@@ -84,6 +91,7 @@ class ChatController extends Controller
         $chat = Auth::user()->chats()->create([
             'title' => $title,
             'exam_type' => $examType,
+            'course_id' => $validated['course_id'] ?? null,
             'last_message_at' => now(),
         ]);
 
@@ -94,6 +102,7 @@ class ChatController extends Controller
                 'id' => $chat->id,
                 'title' => $chat->title,
                 'exam_type' => $chat->exam_type,
+                'course_id' => $chat->course_id,
             ],
             'id' => $chat->id,
             'title' => $chat->title,
@@ -164,8 +173,11 @@ class ChatController extends Controller
             // Get conversation history for context
             $messages = $this->buildConversationHistory($chat);
 
-            // Get AI response
-            $aiResponse = $this->aiProvider->chatCompletion($messages, [
+            // Get course namespaces for context
+            $namespaces = $chat->getEmbeddingNamespaces();
+
+            // Get AI response with course context
+            $aiResponse = $this->aiProvider->chatCompletionWithContext($messages, $namespaces, [
                 'temperature' => 0.7,
                 'max_tokens' => 1000,
             ]);
@@ -269,7 +281,7 @@ class ChatController extends Controller
     }
 
     /**
-     * Update chat properties (e.g., title)
+     * Update chat properties (e.g., title, course selection)
      */
     public function update(Request $request, Chat $chat): JsonResponse
     {
@@ -279,15 +291,31 @@ class ChatController extends Controller
         }
 
         $validated = $request->validate([
-            'title' => 'required|string|max:255'
+            'title' => 'nullable|string|max:255',
+            'course_id' => 'nullable|exists:courses,id',
+            'course_ids' => 'nullable|array',
+            'course_ids.*' => 'exists:courses,id',
         ]);
 
-        $chat->title = $validated['title'];
+        if (isset($validated['title'])) {
+            $chat->title = $validated['title'];
+        }
+        
+        if (isset($validated['course_id'])) {
+            $chat->course_id = $validated['course_id'];
+        }
+        
+        if (isset($validated['course_ids'])) {
+            $chat->course_ids = $validated['course_ids'];
+        }
+        
         $chat->save();
 
         return response()->json([
             'id' => $chat->id,
             'title' => $chat->title,
+            'course_id' => $chat->course_id,
+            'course_ids' => $chat->course_ids,
         ]);
     }
 
@@ -432,5 +460,17 @@ class ChatController extends Controller
         }
 
         return $conversationHistory;
+    }
+
+    /**
+     * Get available courses for selection
+     */
+    public function getCourses(): JsonResponse
+    {
+        $courses = Course::active()
+            ->ordered()
+            ->get(['id', 'name', 'slug', 'description', 'namespace', 'icon', 'color']);
+
+        return response()->json($courses);
     }
 }

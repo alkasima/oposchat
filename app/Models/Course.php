@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class Course extends Model
@@ -19,6 +20,7 @@ class Course extends Model
         'full_description',
         'is_active',
         'sort_order',
+        'namespace',
     ];
 
     protected $casts = [
@@ -34,6 +36,9 @@ class Course extends Model
             if (empty($course->slug)) {
                 $course->slug = Str::slug($course->name);
             }
+            if (empty($course->namespace)) {
+                $course->namespace = $course->slug ?? Str::slug($course->name);
+            }
         });
     }
 
@@ -45,5 +50,10 @@ class Course extends Model
     public function scopeOrdered($query)
     {
         return $query->orderBy('sort_order')->orderBy('name');
+    }
+
+    public function chats(): HasMany
+    {
+        return $this->hasMany(Chat::class);
     }
 }
