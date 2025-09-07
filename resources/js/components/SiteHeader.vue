@@ -120,7 +120,7 @@ const closeProfileDropdown = () => {
                                             Profile Settings
                                         </Link>
                                         <Link 
-                                            :href="route('settings.subscription')"
+                                            :href="route('subscription')"
                                             class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                                             @click="isProfileOpen = false"
                                         >
@@ -128,7 +128,7 @@ const closeProfileDropdown = () => {
                                             Subscription & Billing
                                         </Link>
                                         <Link 
-                                            :href="route('settings')"
+                                            :href="route('profile.edit')"
                                             class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                                             @click="isProfileOpen = false"
                                         >
@@ -205,7 +205,7 @@ const closeProfileDropdown = () => {
                             Profile Settings
                         </Link>
                         <Link 
-                            :href="route('settings.subscription')"
+                            :href="route('subscription')"
                             class="flex items-center text-white hover:text-yellow-300 transition-colors px-4 py-2"
                             @click="isMenuOpen = false"
                         >
@@ -213,7 +213,7 @@ const closeProfileDropdown = () => {
                             Subscription & Billing
                         </Link>
                         <Link 
-                            :href="route('settings')"
+                            :href="route('profile.edit')"
                             class="flex items-center text-white hover:text-yellow-300 transition-colors px-4 py-2"
                             @click="isMenuOpen = false"
                         >
