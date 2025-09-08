@@ -16,6 +16,20 @@ class PineconeService
     {
         $this->apiKey = config('services.pinecone.api_key');
         $this->environment = config('services.pinecone.environment');
+
+        try {
+            $settings = app(\App\Services\SettingsService::class);
+            $dbKey = $settings->get('PINECONE_API_KEY');
+            $dbEnv = $settings->get('PINECONE_ENVIRONMENT');
+            if (!empty($dbKey)) {
+                $this->apiKey = $dbKey;
+            }
+            if (!empty($dbEnv)) {
+                $this->environment = $dbEnv;
+            }
+        } catch (\Throwable $e) {
+            // Fallback to config
+        }
         $this->baseUrl = "https://{$this->environment}.pinecone.io";
     }
 

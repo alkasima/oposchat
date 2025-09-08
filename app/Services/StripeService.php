@@ -18,7 +18,17 @@ class StripeService
 {
     public function __construct()
     {
-        Stripe::setApiKey(config('services.stripe.secret'));
+        $secret = config('services.stripe.secret');
+        try {
+            $settings = app(\App\Services\SettingsService::class);
+            $dbSecret = $settings->get('STRIPE_SECRET');
+            if (!empty($dbSecret)) {
+                $secret = $dbSecret;
+            }
+        } catch (\Throwable $e) {
+            // Fallback to config
+        }
+        Stripe::setApiKey($secret);
         
         // Set additional Stripe configuration for debugging
         Stripe::setAppInfo(

@@ -100,6 +100,12 @@ Route::middleware(['auth', 'verified'])->prefix('api')->group(function () {
 Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\AdminController::class, 'dashboard'])->name('admin.dashboard');
     
+    // Users management
+    Route::get('/users', [App\Http\Controllers\AdminController::class, 'usersIndex'])->name('admin.users.index');
+
+    // Reports
+    Route::get('/reports', [App\Http\Controllers\AdminController::class, 'reportsIndex'])->name('admin.reports.index');
+
     // Course management routes
     Route::get('/courses', [App\Http\Controllers\AdminController::class, 'coursesIndex'])->name('admin.courses.index');
     Route::get('/courses/create', [App\Http\Controllers\AdminController::class, 'coursesCreate'])->name('admin.courses.create');
@@ -114,6 +120,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::post('/course-content/upload-file', [App\Http\Controllers\Admin\CourseContentController::class, 'uploadFile'])->name('admin.course-content.upload-file');
     Route::post('/course-content/delete', [App\Http\Controllers\Admin\CourseContentController::class, 'deleteContent'])->name('admin.course-content.delete');
     Route::get('/course-content/stats', [App\Http\Controllers\Admin\CourseContentController::class, 'getContentStats'])->name('admin.course-content.stats');
+
+    // Settings
+    Route::get('/settings', [App\Http\Controllers\Admin\SettingsController::class, 'index'])->name('admin.settings.index');
+    Route::post('/settings/keys', [App\Http\Controllers\Admin\SettingsController::class, 'updateKeys'])->name('admin.settings.update-keys');
+    Route::post('/settings/password', [App\Http\Controllers\Admin\SettingsController::class, 'updatePassword'])->name('admin.settings.update-password');
 });
 
 require __DIR__.'/settings.php';

@@ -58,12 +58,12 @@ const colorOptions = [
 ];
 
 const badgeColorOptions = [
-    { value: 'bg-blue-500', label: 'Blue' },
-    { value: 'bg-purple-500', label: 'Purple' },
-    { value: 'bg-green-500', label: 'Green' },
-    { value: 'bg-orange-500', label: 'Orange' },
-    { value: 'bg-red-500', label: 'Red' },
-    { value: 'bg-indigo-500', label: 'Indigo' },
+    { value: 'bg-blue-500 text-white', label: 'Blue' },
+    { value: 'bg-purple-500 text-white', label: 'Purple' },
+    { value: 'bg-green-500 text-white', label: 'Green' },
+    { value: 'bg-orange-500 text-white', label: 'Orange' },
+    { value: 'bg-red-500 text-white', label: 'Red' },
+    { value: 'bg-indigo-500 text-white', label: 'Indigo' },
 ];
 </script>
 
@@ -109,7 +109,7 @@ const badgeColorOptions = [
                                         type="text"
                                         id="name"
                                         v-model="form.name"
-                                        class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        class="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 sm:text-sm"
                                         :class="{ 'border-red-300': form.errors.name }"
                                     />
                                     <p v-if="form.errors.name" class="mt-2 text-sm text-red-600">
@@ -125,7 +125,7 @@ const badgeColorOptions = [
                                         type="text"
                                         id="description"
                                         v-model="form.description"
-                                        class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        class="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 sm:text-sm"
                                     />
                                 </div>
 
@@ -137,7 +137,7 @@ const badgeColorOptions = [
                                         id="full_description"
                                         v-model="form.full_description"
                                         rows="3"
-                                        class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        class="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 sm:text-sm"
                                     ></textarea>
                                 </div>
 
@@ -148,7 +148,7 @@ const badgeColorOptions = [
                                     <select
                                         id="exam_type"
                                         v-model="form.exam_type"
-                                        class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        class="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 sm:text-sm"
                                     >
                                         <option value="">Select exam type</option>
                                         <option v-for="type in examTypes" :key="type.value" :value="type.value">
@@ -166,7 +166,7 @@ const badgeColorOptions = [
                                         id="sort_order"
                                         v-model="form.sort_order"
                                         min="0"
-                                        class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        class="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 sm:text-sm"
                                     />
                                 </div>
                             </div>
@@ -195,7 +195,7 @@ const badgeColorOptions = [
                                         id="icon"
                                         v-model="form.icon"
                                         placeholder="📊"
-                                        class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        class="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 sm:text-sm"
                                     />
                                 </div>
 
@@ -206,7 +206,7 @@ const badgeColorOptions = [
                                     <select
                                         id="color"
                                         v-model="form.color"
-                                        class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        class="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 sm:text-sm"
                                     >
                                         <option value="">Select color</option>
                                         <option v-for="color in colorOptions" :key="color.value" :value="color.value">

@@ -17,6 +17,32 @@ class AIProviderService
     {
         $this->provider = config('ai.provider', 'openai');
         $this->config = config('ai.providers.' . $this->provider);
+
+        // Override with DB settings if available
+        try {
+            $settings = app(\App\Services\SettingsService::class);
+            if ($this->provider === 'openai') {
+                $dbKey = $settings->get('OPENAI_API_KEY');
+                $dbModel = $settings->get('OPENAI_MODEL');
+                if (!empty($dbKey)) {
+                    $this->config['api_key'] = $dbKey;
+                }
+                if (!empty($dbModel)) {
+                    $this->config['model'] = $dbModel;
+                }
+            } elseif ($this->provider === 'gemini') {
+                $dbKey = $settings->get('GEMINI_API_KEY');
+                $dbModel = $settings->get('GEMINI_MODEL');
+                if (!empty($dbKey)) {
+                    $this->config['api_key'] = $dbKey;
+                }
+                if (!empty($dbModel)) {
+                    $this->config['model'] = $dbModel;
+                }
+            }
+        } catch (\Throwable $e) {
+            // If settings service fails (e.g., during migration), keep config fallback
+        }
         $this->documentProcessor = $documentProcessor;
     }
 
