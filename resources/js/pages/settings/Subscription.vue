@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
 import SubscriptionSuccessModal from '@/components/SubscriptionSuccessModal.vue';
 import stripeService from '@/services/stripeService';
-import { useSubscription } from '@/composables/useSubscription.js';
 import { 
     Check, 
     Crown, 
@@ -29,6 +28,7 @@ const error = ref<string | null>(null);
 const subscriptionData = ref<any>(null);
 const plansData = ref<any>(null);
 const processingUpgrade = ref(false);
+const preselectedPlanKey = ref<string | null>(null);
 
 // Success modal state
 const page = usePage();
@@ -39,8 +39,31 @@ onMounted(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('success') === 'true') {
         showSuccessModal.value = true;
+        // If we have a session_id, confirm immediately to persist DB without webhook
+        const sessionId = urlParams.get('session_id');
+        if (sessionId) {
+            stripeService.confirmCheckout(sessionId).then(() => {
+                loadData();
+            }).catch(() => {
+                // Fallback to polling if confirm fails
+                stripeService.pollSubscriptionUntilActive().then((status) => {
+                    if (status) subscriptionData.value = status;
+                });
+            });
+        } else {
+            // No session id, try polling
+            stripeService.pollSubscriptionUntilActive().then((status) => {
+                if (status) subscriptionData.value = status;
+            });
+        }
         // Clean up URL without reloading
         window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // Capture preselected plan from query param
+    const planParam = urlParams.get('plan');
+    if (planParam) {
+        preselectedPlanKey.value = planParam;
     }
 });
 
@@ -106,13 +129,24 @@ const loadData = async () => {
         loading.value = true;
         error.value = null;
 
-        // For MVP: Load plans from API but use subscription data from props
-        const { subscription } = useSubscription();
-        subscriptionData.value = subscription.value;
+        // Load live subscription status from API
+        const subResp = await stripeService.getSubscriptionStatus();
+        subscriptionData.value = subResp;
 
         // Load plans data
         const plans = await stripeService.getPlans();
         plansData.value = plans;
+
+        // If plan preselected, attempt to auto-focus the plan card or start upgrade flow
+        if (preselectedPlanKey.value && plansData.value?.plans?.[preselectedPlanKey.value]) {
+            // If user already subscribed to another plan, just highlight and scroll; else, optionally auto-open checkout
+            const selected = plansData.value.plans[preselectedPlanKey.value];
+            // Smooth scroll to plans section
+            setTimeout(() => {
+                const el = document.querySelector('[data-plans-section]');
+                el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 200);
+        }
     } catch (err) {
         console.error('Failed to load subscription data:', err);
         error.value = err instanceof Error ? err.message : 'Failed to load subscription data';
@@ -280,12 +314,12 @@ onMounted(() => {
                     {{ hasActiveSubscription ? 'Change Your Plan' : 'Upgrade Your Plan' }}
                 </h2>
                 
-                <div class="grid md:grid-cols-2 gap-6">
+                <div class="grid md:grid-cols-2 gap-6" data-plans-section>
                     <Card 
                         v-for="plan in availablePlans" 
                         :key="plan.name"
                         class="relative p-6 hover:shadow-lg transition-shadow"
-                        :class="{ 'ring-2 ring-orange-500': plan.popular }"
+                        :class="{ 'ring-2 ring-orange-500': plan.popular || plan.name?.toLowerCase() === preselectedPlanKey }"
                     >
                         <div v-if="plan.popular" class="absolute -top-3 left-1/2 transform -translate-x-1/2">
                             <Badge class="bg-orange-500 text-white px-3 py-1">

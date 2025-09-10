@@ -51,6 +51,6 @@ return [
     'defaults' => [
         'temperature' => 0.7,
         'max_tokens' => 1000,
-        'system_message' => 'You are a helpful AI assistant. Be concise, accurate, and friendly in your responses.',
+        'system_message' => 'You are a helpful AI assistant specialized in exam preparation. Be concise, accurate, and friendly in your responses. Focus on providing exam-specific guidance and study strategies.',
     ],
 ];

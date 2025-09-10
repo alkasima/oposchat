@@ -70,6 +70,25 @@ class StripeService {
     }
 
     /**
+     * Poll subscription status briefly after returning from Stripe (no webhook dependency)
+     */
+    async pollSubscriptionUntilActive(timeoutMs = 15000, intervalMs = 1500) {
+        const start = Date.now();
+        while (Date.now() - start < timeoutMs) {
+            try {
+                const status = await this.getSubscriptionStatus();
+                if (status?.subscription?.is_active || status?.subscription?.status === 'active' || status?.on_trial) {
+                    return status;
+                }
+            } catch (e) {
+                // ignore and retry
+            }
+            await new Promise(r => setTimeout(r, intervalMs));
+        }
+        return null;
+    }
+
+    /**
      * Create a customer portal session for subscription management
      * @param {string} returnUrl - URL to return to after managing subscription
      * @returns {Promise<Object>} Portal session data with URL
@@ -130,7 +149,7 @@ class StripeService {
      */
     async redirectToCheckout(priceId, successUrl = null, cancelUrl = null) {
         // Use current page as default URLs if not provided
-        const defaultSuccessUrl = successUrl || `${window.location.origin}/dashboard?success=true`;
+        const defaultSuccessUrl = successUrl || `${window.location.origin}/settings/subscription?success=true`;
         const defaultCancelUrl = cancelUrl || `${window.location.origin}/settings/subscription?canceled=true`;
 
         try {
@@ -146,6 +165,14 @@ class StripeService {
             console.error('Failed to redirect to checkout:', error);
             throw error;
         }
+    }
+
+    /**
+     * Confirm checkout by posting session_id to backend to persist subscription immediately
+     */
+    async confirmCheckout(sessionId) {
+        const response = await axios.post(`${this.baseUrl}/confirm`, { session_id: sessionId });
+        return response.data;
     }
 
     /**

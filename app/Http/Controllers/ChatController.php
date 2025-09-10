@@ -66,6 +66,7 @@ class ChatController extends Controller
                 return [
                     'id' => $chat->id,
                     'title' => $chat->title ?: 'New Chat',
+                    'course_id' => $chat->course_id,
                     'lastMessage' => $latestMessage ? substr($latestMessage->content, 0, 50) . '...' : null,
                     'timestamp' => $chat->last_message_at ? $chat->last_message_at->diffForHumans() : null,
                 ];
@@ -80,7 +81,7 @@ class ChatController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'exam_type' => 'nullable|string|in:sat,gre,gmat,custom',
+            'exam_type' => 'nullable|string|max:255',
             'title' => 'nullable|string|max:255',
             'course_id' => 'nullable|exists:courses,id',
         ]);
@@ -155,6 +156,15 @@ class ChatController extends Controller
             'message' => 'required|string|max:4000',
         ]);
 
+        // Require course selection before chatting to enforce exam-specific context
+        if (!$chat->course_id) {
+            return response()->json([
+                'success' => false,
+                'error' => 'COURSE_REQUIRED',
+                'message' => 'Please select an exam/course before sending messages.'
+            ], 422);
+        }
+
         try {
             // Save user message
             $userMessage = $chat->messages()->create([
@@ -170,17 +180,29 @@ class ChatController extends Controller
                 $chat->generateTitle();
             }
 
-            // Get conversation history for context
-            $messages = $this->buildConversationHistory($chat);
+        // Get conversation history for context
+        $messages = $this->buildConversationHistory($chat);
 
-            // Get course namespaces for context
-            $namespaces = $chat->getEmbeddingNamespaces();
+        // Get course namespaces for context
+        $namespaces = $chat->getEmbeddingNamespaces();
 
-            // Get AI response with course context
-            $aiResponse = $this->aiProvider->chatCompletionWithContext($messages, $namespaces, [
-                'temperature' => 0.7,
-                'max_tokens' => 1000,
-            ]);
+        // Build exam-specific system message
+        $systemMessage = $this->buildExamSpecificSystemMessage($chat);
+
+        // Log the system message for debugging
+        \Log::info('Exam-specific system message', [
+            'chat_id' => $chat->id,
+            'course_id' => $chat->course_id,
+            'course_name' => $chat->course?->name,
+            'system_message' => $systemMessage
+        ]);
+
+        // Get AI response with course context
+        $aiResponse = $this->aiProvider->chatCompletionWithContext($messages, $namespaces, [
+            'temperature' => 0.7,
+            'max_tokens' => 1000,
+            'system_message' => $systemMessage,
+        ]);
 
             // Save AI response
             $assistantMessage = $chat->messages()->create([
@@ -431,6 +453,33 @@ class ChatController extends Controller
     }
 
     /**
+     * Build exam-specific system message
+     */
+    private function buildExamSpecificSystemMessage(Chat $chat): string
+    {
+        $baseMessage = config('ai.defaults.system_message');
+        
+        if (!$chat->course_id) {
+            return $baseMessage;
+        }
+
+        $course = $chat->course;
+        if (!$course) {
+            return $baseMessage;
+        }
+
+        $examContext = match($course->slug) {
+            'sat-preparation' => "You are specifically helping with SAT (Scholastic Assessment Test) preparation. Focus on SAT-specific content including Reading & Writing, Math sections, test strategies, timing, and practice questions. The SAT is scored 400-1600 and is used for undergraduate college admissions.",
+            'gre-preparation' => "You are specifically helping with GRE (Graduate Record Examination) preparation. Focus on GRE-specific content including Verbal Reasoning, Quantitative Reasoning, and Analytical Writing sections. The GRE is used for graduate school admissions worldwide.",
+            'gmat-preparation' => "You are specifically helping with GMAT (Graduate Management Admission Test) preparation. Focus on GMAT-specific content including Quantitative, Verbal, and Data Insights sections. The GMAT is used for business school admissions.",
+            'custom-preparation' => "You are helping with custom exam preparation. Adapt your guidance based on the specific exam requirements and content the user mentions.",
+            default => "You are helping with {$course->name} exam preparation. Focus on exam-specific strategies, content, and practice materials for this particular exam."
+        };
+
+        return "{$baseMessage}\n\n{$examContext}\n\nAlways provide exam-specific guidance, study strategies, and practice recommendations relevant to the selected exam.";
+    }
+
+    /**
      * Build conversation history for AI context
      */
     private function buildConversationHistory(Chat $chat): array
@@ -445,13 +494,7 @@ class ChatController extends Controller
 
         $conversationHistory = [];
 
-        // Add system message
-        $conversationHistory[] = [
-            'role' => 'system',
-            'content' => config('ai.defaults.system_message')
-        ];
-
-        // Add conversation messages
+        // Add conversation messages (system message is handled separately now)
         foreach ($messages as $message) {
             $conversationHistory[] = [
                 'role' => $message->role,

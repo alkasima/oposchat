@@ -519,17 +519,22 @@ class AIProviderService
             }
         }
 
+        // Use custom system message if provided in options, otherwise use default
+        $systemMessageContent = $options['system_message'] ?? config('ai.defaults.system_message');
+
         // Add context to system message if available
         if (!empty($context)) {
             $contextText = implode(' ', $context);
-            $systemMessage = [
-                'role' => 'system',
-                'content' => config('ai.defaults.system_message') . "\n\nRelevant context: " . $contextText
-            ];
-            
-            // Insert system message at the beginning
-            array_unshift($messages, $systemMessage);
+            $systemMessageContent .= "\n\nRelevant context: " . $contextText;
         }
+
+        $systemMessage = [
+            'role' => 'system',
+            'content' => $systemMessageContent
+        ];
+        
+        // Insert system message at the beginning
+        array_unshift($messages, $systemMessage);
 
         return $this->chatCompletion($messages, $options);
     }
@@ -548,17 +553,22 @@ class AIProviderService
             }
         }
 
+        // Use custom system message if provided in options, otherwise use default
+        $systemMessageContent = $options['system_message'] ?? config('ai.defaults.system_message');
+
         // Add context to system message if available
         if (!empty($context)) {
             $contextText = implode(' ', $context);
-            $systemMessage = [
-                'role' => 'system',
-                'content' => config('ai.defaults.system_message') . "\n\nRelevant context: " . $contextText
-            ];
-            
-            // Insert system message at the beginning
-            array_unshift($messages, $systemMessage);
+            $systemMessageContent .= "\n\nRelevant context: " . $contextText;
         }
+
+        $systemMessage = [
+            'role' => 'system',
+            'content' => $systemMessageContent
+        ];
+        
+        // Insert system message at the beginning
+        array_unshift($messages, $systemMessage);
 
         return $this->streamChatCompletion($messages, $callback, $options);
     }

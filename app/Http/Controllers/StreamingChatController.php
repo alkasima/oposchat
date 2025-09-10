@@ -88,6 +88,9 @@ class StreamingChatController extends Controller
             // Get course namespaces for context
             $namespaces = $chat->getEmbeddingNamespaces();
 
+            // Build exam-specific system message
+            $systemMessage = $this->buildExamSpecificSystemMessage($chat);
+
             $chunkCount = 0;
             
             try {
@@ -121,7 +124,10 @@ class StreamingChatController extends Controller
                         flush();
                     },
                     $namespaces,
-                    ['chat_id' => $chat->id]
+                    [
+                        'chat_id' => $chat->id,
+                        'system_message' => $systemMessage
+                    ]
                 );
                 
                 // If no chunks were received, use fallback
@@ -197,6 +203,33 @@ class StreamingChatController extends Controller
     {
         echo "event: {$event}\n";
         echo "data: " . json_encode($data) . "\n\n";
+    }
+
+    /**
+     * Build exam-specific system message
+     */
+    private function buildExamSpecificSystemMessage(Chat $chat): string
+    {
+        $baseMessage = config('ai.defaults.system_message');
+        
+        if (!$chat->course_id) {
+            return $baseMessage;
+        }
+
+        $course = $chat->course;
+        if (!$course) {
+            return $baseMessage;
+        }
+
+        $examContext = match($course->slug) {
+            'sat-preparation' => "You are specifically helping with SAT (Scholastic Assessment Test) preparation. Focus on SAT-specific content including Reading & Writing, Math sections, test strategies, timing, and practice questions. The SAT is scored 400-1600 and is used for undergraduate college admissions.",
+            'gre-preparation' => "You are specifically helping with GRE (Graduate Record Examination) preparation. Focus on GRE-specific content including Verbal Reasoning, Quantitative Reasoning, and Analytical Writing sections. The GRE is used for graduate school admissions worldwide.",
+            'gmat-preparation' => "You are specifically helping with GMAT (Graduate Management Admission Test) preparation. Focus on GMAT-specific content including Quantitative, Verbal, and Data Insights sections. The GMAT is used for business school admissions.",
+            'custom-preparation' => "You are helping with custom exam preparation. Adapt your guidance based on the specific exam requirements and content the user mentions.",
+            default => "You are helping with {$course->name} exam preparation. Focus on exam-specific strategies, content, and practice materials for this particular exam."
+        };
+
+        return "{$baseMessage}\n\n{$examContext}\n\nAlways provide exam-specific guidance, study strategies, and practice recommendations relevant to the selected exam.";
     }
 
     /**

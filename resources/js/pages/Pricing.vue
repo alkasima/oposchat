@@ -64,10 +64,10 @@ import SiteFooter from '@/components/SiteFooter.vue';
                             </Link>
                             <Link 
                                 v-else
-                                :href="route('dashboard')"
+                                :href="route('subscription', { plan: 'free' })"
                                 class="w-full bg-gray-200 text-gray-800 py-3 px-6 rounded-xl font-semibold text-center hover:bg-gray-300 transition-colors duration-300 block"
                             >
-                                Go to Dashboard
+                                Manage Plan
                             </Link>
                         </div>
                     </div>
@@ -123,7 +123,7 @@ import SiteFooter from '@/components/SiteFooter.vue';
                             </Link>
                             <Link 
                                 v-else
-                                :href="route('dashboard')"
+                                :href="route('subscription', { plan: 'pro' })"
                                 class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-blue-600 hover:to-purple-700 transition-all duration-300 block"
                             >
                                 Upgrade to Pro
@@ -179,7 +179,7 @@ import SiteFooter from '@/components/SiteFooter.vue';
                             </Link>
                             <Link 
                                 v-else
-                                :href="route('dashboard')"
+                                :href="route('subscription', { plan: 'team' })"
                                 class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block"
                             >
                                 Upgrade to Team

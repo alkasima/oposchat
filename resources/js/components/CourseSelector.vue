@@ -1,21 +1,24 @@
 <template>
   <div class="relative">
-    <!-- Course Selection Button -->
+    <!-- Enhanced Course Selection Button -->
     <button
       @click="toggleDropdown"
-      class="flex items-center space-x-2 px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors duration-200"
+      class="flex items-center space-x-3 px-4 py-2.5 bg-gradient-to-r from-white to-gray-50 dark:from-slate-700 dark:to-slate-600 border border-gray-200 dark:border-slate-600 rounded-2xl hover:from-gray-50 hover:to-gray-100 dark:hover:from-slate-600 dark:hover:to-slate-500 transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105"
     >
-      <div v-if="selectedCourse" class="flex items-center space-x-2">
-        <span v-if="selectedCourse.icon" class="text-lg">{{ selectedCourse.icon }}</span>
-        <span class="text-sm font-medium text-gray-700 dark:text-gray-200">
+      <div v-if="selectedCourse" class="flex items-center space-x-3">
+        <span v-if="selectedCourse.icon" class="text-xl">{{ selectedCourse.icon }}</span>
+        <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">
           {{ selectedCourse.name }}
         </span>
       </div>
-      <div v-else class="flex items-center space-x-2">
-        <span class="text-sm text-gray-500 dark:text-gray-400">Select Course</span>
+      <div v-else class="flex items-center space-x-3">
+        <div class="w-5 h-5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+          <span class="text-white text-xs font-bold">+</span>
+        </div>
+        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Select Exam</span>
       </div>
       <svg
-        class="w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+        class="w-4 h-4 text-gray-500 dark:text-gray-400 transition-all duration-200"
         :class="{ 'rotate-180': isOpen }"
         fill="none"
         stroke="currentColor"
@@ -25,47 +28,57 @@
       </svg>
     </button>
 
-    <!-- Dropdown Menu -->
+    <!-- Enhanced Dropdown Menu -->
     <div
       v-if="isOpen"
-      class="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg shadow-lg z-50"
+      class="absolute top-full left-0 mt-2 w-72 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-2xl shadow-xl z-50 backdrop-blur-sm"
     >
-      <div class="p-2">
+      <div class="p-3">
         <!-- Clear Selection -->
         <button
           @click="clearSelection"
-          class="w-full text-left px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-md transition-colors duration-200"
+          class="w-full text-left px-4 py-3 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-xl transition-all duration-200 group"
         >
-          <span class="flex items-center space-x-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            <span>No specific course</span>
+          <span class="flex items-center space-x-3">
+            <div class="w-8 h-8 bg-gray-100 dark:bg-slate-600 rounded-full flex items-center justify-center group-hover:bg-gray-200 dark:group-hover:bg-slate-500 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <span class="font-medium">No specific exam</span>
           </span>
         </button>
 
         <!-- Course List -->
-        <div v-if="courses.length > 0" class="border-t border-gray-200 dark:border-slate-600 mt-2 pt-2">
-          <div class="text-xs font-medium text-gray-500 dark:text-gray-400 px-3 py-1 mb-1">
-            Available Courses
+        <div v-if="courses.length > 0" class="border-t border-gray-200 dark:border-slate-600 mt-3 pt-3">
+          <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 px-4 py-2 mb-2 uppercase tracking-wide">
+            Available Exams
           </div>
           <button
             v-for="course in courses"
             :key="course.id"
             @click="selectCourse(course)"
-            class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700 rounded-md transition-colors duration-200"
+            class="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 dark:hover:bg-slate-700 rounded-xl transition-all duration-200 group"
             :class="{
-              'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300': selectedCourse?.id === course.id,
+              'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800': selectedCourse?.id === course.id,
               'text-gray-700 dark:text-gray-200': selectedCourse?.id !== course.id
             }"
           >
             <div class="flex items-center space-x-3">
-              <span v-if="course.icon" class="text-lg">{{ course.icon }}</span>
+              <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                <span v-if="course.icon">{{ course.icon }}</span>
+                <span v-else>{{ course.name.charAt(0) }}</span>
+              </div>
               <div class="flex-1 min-w-0">
-                <div class="font-medium truncate">{{ course.name }}</div>
-                <div v-if="course.description" class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                <div class="font-semibold truncate">{{ course.name }}</div>
+                <div v-if="course.description" class="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
                   {{ course.description }}
                 </div>
+              </div>
+              <div v-if="selectedCourse?.id === course.id" class="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
               </div>
             </div>
           </button>
@@ -91,17 +104,15 @@
       </div>
     </div>
 
-    <!-- Course Scope Indicator -->
-    <div v-if="selectedCourse" class="mt-2">
-      <div class="inline-flex items-center space-x-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs">
-        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-        </svg>
-        <span>Using: {{ selectedCourse.name }}</span>
+    <!-- Enhanced Course Scope Indicator -->
+    <div v-if="selectedCourse" class="mt-3">
+      <div class="inline-flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 text-blue-700 dark:text-blue-300 rounded-xl text-xs font-medium border border-blue-200 dark:border-blue-800 shadow-sm">
+        <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+        <span>Active: {{ selectedCourse.name }}</span>
         <button
           @click="clearSelection"
-          class="ml-1 hover:text-blue-800 dark:hover:text-blue-200"
-          title="Clear course selection"
+          class="ml-1 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-lg p-1 transition-all duration-200 hover:scale-110"
+          title="Clear selection"
         >
           <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -152,7 +163,7 @@ const toggleDropdown = () => {
 const fetchCourses = async () => {
   loading.value = true;
   try {
-    const response = await fetch('/api/courses');
+    const response = await fetch('/api/courses', { headers: { 'Accept': 'application/json' } });
     if (response.ok) {
       courses.value = await response.json();
       
@@ -184,6 +195,7 @@ const selectCourse = async (course: Course) => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
         },
         body: JSON.stringify({
@@ -208,6 +220,7 @@ const clearSelection = async () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
         },
         body: JSON.stringify({

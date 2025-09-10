@@ -28,6 +28,7 @@ interface Message {
 }
 
 const page = usePage();
+const props = defineProps<{ initialChatId?: string | number | null }>();
 const user = computed(() => page.props.auth.user);
 
 const currentMessage = ref('');
@@ -41,6 +42,8 @@ const imagePreviewUrl = ref<string | null>(null);
 // Real chat data
 const messages = ref<Message[]>([]);
 const currentChat = ref<{ id: string; title: string; course_id?: number } | null>(null);
+const currentCourse = ref<{ id: number; name: string } | null>(null);
+const showCourseRequired = ref(false);
 const showMobileSidebar = ref(false);
 const showSettingsModal = ref(false);
 const showSubscriptionPrompt = ref(false);
@@ -102,12 +105,18 @@ const handleChatSelected = async (chatId: string | null) => {
             course_id: chatData.chat.course_id
         };
         messages.value = chatData.messages;
+        showCourseRequired.value = !currentChat.value.course_id;
     } catch (error) {
         console.error('Failed to load chat:', error);
     } finally {
         isLoading.value = false;
     }
 };
+
+// Auto-load chat if provided via prop (from /chat/{id})
+if (props.initialChatId) {
+    handleChatSelected(props.initialChatId.toString());
+}
 
 // Handle new chat creation from sidebar
 const handleNewChatCreated = (newChat: any) => {
@@ -120,6 +129,7 @@ const handleNewChatCreated = (newChat: any) => {
         title: newChat.title || 'New Chat',
         course_id: newChat.course_id
     };
+    showCourseRequired.value = !currentChat.value.course_id;
     
     // Clear messages for new chat
     messages.value = [];
@@ -136,6 +146,12 @@ const handleNewChatCreated = (newChat: any) => {
 // Send message to current chat using streaming
 const sendMessage = async () => {
     if (!currentMessage.value.trim() || !currentChat.value) return;
+
+    // Require an exam selection before chatting
+    if (!currentChat.value.course_id) {
+        showCourseRequired.value = true;
+        return;
+    }
 
     // Check if user has exceeded usage limits
     if (!hasFeatureAccess('chat_messages')) {
@@ -444,6 +460,8 @@ const handleCourseSelected = (course: any) => {
     if (currentChat.value) {
         currentChat.value.course_id = course?.id || null;
     }
+    currentCourse.value = course ? { id: course.id, name: course.name } : null;
+    showCourseRequired.value = !currentChat.value?.course_id;
 };
 
 // Theme toggle
@@ -626,7 +644,11 @@ const extractImageText = async (file: File): Promise<string> => {
     <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
         <!-- Left Sidebar - Hidden on mobile, shown on desktop -->
         <div class="hidden lg:block">
-            <ChatSidebar @chat-selected="handleChatSelected" @new-chat-created="handleNewChatCreated" />
+            <ChatSidebar 
+                :filter-by-course-id="currentChat?.course_id"
+                @chat-selected="handleChatSelected" 
+                @new-chat-created="handleNewChatCreated" 
+            />
         </div>
         
         <!-- Mobile Sidebar Overlay -->
@@ -647,6 +669,7 @@ const extractImageText = async (file: File): Promise<string> => {
                     <div v-if="showMobileSidebar" class="relative w-80 h-full shadow-2xl">
                         <ChatSidebar 
                             :is-mobile="true"
+                            :filter-by-course-id="currentChat?.course_id"
                             @chat-selected="handleChatSelected" 
                             @new-chat-created="handleNewChatCreated"
                             @close-mobile="showMobileSidebar = false"
@@ -659,96 +682,159 @@ const extractImageText = async (file: File): Promise<string> => {
         <!-- Main Chat Area -->
         <div class="flex-1 flex flex-col">
             <!-- Chat Header -->
-            <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <!-- Mobile Menu Button -->
-                        <Button 
-                            @click="showMobileSidebar = true"
-                            variant="ghost" 
-                            size="sm" 
-                            class="lg:hidden p-2"
-                        >
-                            <Menu class="w-5 h-5" />
-                        </Button>
-                        
-                        <div class="flex items-center space-x-4">
-                            <h1 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
-                                <span>{{ currentChat?.title || 'OposChat' }}</span>
-                                <button v-if="currentChat" @click="renameCurrentChat" class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700" title="Rename chat">
-                                    <Pencil class="w-4 h-4 text-gray-500" />
-                                </button>
-                            </h1>
+            <div class="bg-gradient-to-r from-white via-gray-50 to-white dark:from-gray-800 dark:via-gray-850 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+                <div class="px-6 py-5">
+                    <div class="flex items-center justify-between">
+                        <!-- Left Section -->
+                        <div class="flex items-center space-x-6">
+                            <!-- Mobile Menu Button -->
+                            <Button 
+                                @click="showMobileSidebar = true"
+                                variant="ghost" 
+                                size="sm" 
+                                class="lg:hidden p-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-200"
+                            >
+                                <Menu class="w-5 h-5" />
+                            </Button>
                             
-                            <!-- Course Selector -->
-                            <CourseSelector 
-                                v-if="currentChat"
-                                :chat-id="parseInt(currentChat.id)"
-                                :initial-course-id="currentChat.course_id"
-                                @course-selected="handleCourseSelected"
-                            />
+                            <!-- Chat Title and Course Info -->
+                            <div class="flex items-center space-x-4">
+                                <div class="flex items-center space-x-3">
+                                    <div class="flex items-center space-x-2">
+                                        <h1 class="text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
+                                            {{ currentChat?.title || 'OposChat' }}
+                                        </h1>
+                                        <button v-if="currentChat" @click="renameCurrentChat" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 group" title="Rename chat">
+                                            <Pencil class="w-4 h-4 text-gray-500 group-hover:text-blue-600 dark:text-gray-400 dark:group-hover:text-blue-400 transition-colors" />
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Enhanced Course Badge -->
+                                    <div v-if="currentCourse" class="relative">
+                                        <div class="inline-flex items-center px-4 py-2.5 rounded-2xl text-sm font-semibold bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                                            <div class="flex items-center space-x-2">
+                                                <div class="w-2.5 h-2.5 bg-white rounded-full animate-pulse"></div>
+                                                <span class="font-bold">{{ currentCourse.name }}</span>
+                                                <div class="w-1 h-1 bg-white/60 rounded-full"></div>
+                                                <span class="text-xs opacity-90">ACTIVE</span>
+                                            </div>
+                                        </div>
+                                        <!-- Subtle glow effect -->
+                                        <div class="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 opacity-20 blur-sm -z-10"></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Course Selector with enhanced styling -->
+                                <div v-if="currentChat" class="relative">
+                                    <CourseSelector 
+                                        :chat-id="parseInt(currentChat.id)"
+                                        :initial-course-id="currentChat.course_id"
+                                        @course-selected="handleCourseSelected"
+                                        class="transform transition-all duration-200 hover:scale-105"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Section -->
+                        <div class="flex items-center space-x-4">
+                            <!-- Home Button -->
+                            <Link 
+                                :href="route('home')"
+                                class="hidden sm:inline-flex items-center px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-xl hover:from-gray-200 hover:to-gray-300 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105"
+                                title="Go to Home"
+                            >
+                                <Home class="w-4 h-4 mr-2" />
+                                Home
+                            </Link>
+                            
+                            <!-- Premium Features -->
+                            <div v-if="currentChat" class="hidden md:flex items-center space-x-2">
+                                <!-- Export Chat Button -->
+                                <Button 
+                                    @click="exportCurrentChat"
+                                    variant="ghost" 
+                                    size="sm" 
+                                    class="p-2.5 rounded-xl text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
+                                    :class="{ 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20': hasPremium }"
+                                    title="Export Chat"
+                                >
+                                    <Download class="w-4 h-4" />
+                                </Button>
+                                
+                                <!-- Analytics Button -->
+                                <Button 
+                                    @click="viewAnalytics"
+                                    variant="ghost" 
+                                    size="sm" 
+                                    class="p-2.5 rounded-xl text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
+                                    :class="{ 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20': hasPremium }"
+                                    title="View Analytics"
+                                >
+                                    <BarChart3 class="w-4 h-4" />
+                                </Button>
+                            </div>
+                            
+                            <!-- User Info -->
+                            <div class="hidden sm:flex items-center space-x-4">
+                                <div class="text-right">
+                                    <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                                        {{ user?.name || 'User' }}
+                                    </div>
+                                    <div class="text-xs font-medium px-2 py-0.5 rounded-full"
+                                         :class="hasPremium ? 'text-yellow-700 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-900/30' : 'text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700'">
+                                        {{ hasPremium ? 'Premium' : 'Free' }}
+                                    </div>
+                                </div>
+                                
+                                <!-- Enhanced User Avatar -->
+                                <div class="relative">
+                                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110">
+                                        <span class="text-white text-sm font-bold">
+                                            {{ user?.name?.charAt(0)?.toUpperCase() || 'U' }}
+                                        </span>
+                                    </div>
+                                    <!-- Online indicator -->
+                                    <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Settings Button -->
+                            <Button 
+                                @click="showSettingsModal = true"
+                                variant="ghost" 
+                                size="sm" 
+                                class="p-2.5 rounded-xl text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
+                                title="Settings"
+                            >
+                                <Settings class="w-4 h-4" />
+                            </Button>
+
+                            <!-- Enhanced Theme Toggle -->
+                            <Button 
+                                @click="cycleTheme" 
+                                variant="ghost" 
+                                size="sm" 
+                                class="p-2.5 rounded-xl text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
+                                :title="`Theme: ${appearance}`"
+                            >
+                                <Sun v-if="isDark" class="w-4 h-4" />
+                                <Moon v-else class="w-4 h-4" />
+                            </Button>
                         </div>
                     </div>
-                    <div class="flex items-center space-x-2">
-                        <!-- Home Button -->
-                        <Link 
-                            :href="route('home')"
-                            class="hidden sm:inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                            title="Go to Home"
-                        >
-                            <Home class="w-4 h-4 mr-2" />
-                            Home
-                        </Link>
-                        <!-- Premium Features -->
-                        <div v-if="currentChat" class="hidden md:flex items-center space-x-2">
-                            <!-- Export Chat Button -->
-                            <Button 
-                                @click="exportCurrentChat"
-                                variant="ghost" 
-                                size="sm" 
-                                class="p-2 text-gray-500 hover:text-gray-700"
-                                :class="{ 'text-yellow-600': hasPremium }"
-                                title="Export Chat"
-                            >
-                                <Download class="w-4 h-4" />
-                            </Button>
-                            
-                            <!-- Analytics Button -->
-                            <Button 
-                                @click="viewAnalytics"
-                                variant="ghost" 
-                                size="sm" 
-                                class="p-2 text-gray-500 hover:text-gray-700"
-                                :class="{ 'text-yellow-600': hasPremium }"
-                                title="View Analytics"
-                            >
-                                <BarChart3 class="w-4 h-4" />
-                            </Button>
-                        </div>
-                        
-                        <span class="hidden md:inline text-sm text-gray-500">Profile</span>
-                        <span class="hidden md:inline text-sm text-gray-500">Exams</span>
-                        <span class="hidden sm:inline text-sm text-gray-500">Hello, {{ user?.name || 'User' }}</span>
-                        
-                        <!-- Settings Button -->
-                        <Button 
-                            @click="showSettingsModal = true"
-                            variant="ghost" 
-                            size="sm" 
-                            class="p-2"
-                        >
-                            <Settings class="w-4 h-4" />
-                        </Button>
+                </div>
+            </div>
 
-                        <!-- Theme Toggle -->
-                        <Button @click="cycleTheme" variant="ghost" size="sm" class="p-2 text-gray-500 hover:text-gray-700" :title="`Theme: ${appearance}`">
-                            <Sun v-if="isDark" class="w-4 h-4" />
-                            <Moon v-else class="w-4 h-4" />
-                        </Button>
-                        
-                        <Button size="sm" variant="outline" class="text-xs hidden sm:inline-flex">
-                            {{ user?.name?.toUpperCase() || 'USER' }}
-                        </Button>
+            <!-- Enhanced Course Required Banner -->
+            <div v-if="showCourseRequired" class="mx-6 mt-4 mb-0 p-4 rounded-2xl bg-gradient-to-r from-yellow-50 via-amber-50 to-yellow-50 border border-yellow-200 text-yellow-800 dark:from-yellow-900/20 dark:via-amber-900/20 dark:to-yellow-900/20 dark:text-yellow-200 dark:border-yellow-800 shadow-sm">
+                <div class="flex items-center space-x-3">
+                    <div class="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center">
+                        <span class="text-white text-xs font-bold">!</span>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-semibold">Exam Selection Required</p>
+                        <p class="text-sm opacity-90">Please select an exam in the header above to start your personalized chat experience.</p>
                     </div>
                 </div>
             </div>

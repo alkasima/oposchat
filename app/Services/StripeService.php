@@ -6,6 +6,7 @@ use Stripe\Stripe;
 use Stripe\Customer;
 use Stripe\Subscription;
 use Stripe\Checkout\Session;
+use Stripe\Checkout\Session as CheckoutSession;
 use Stripe\BillingPortal\Session as PortalSession;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Exception\CardException;
@@ -36,6 +37,22 @@ class StripeService
             '1.0.0',
             config('app.url')
         );
+    }
+
+    /**
+     * Retrieve a Checkout Session by ID
+     */
+    public function retrieveCheckoutSession(string $sessionId): Session
+    {
+        return Session::retrieve($sessionId);
+    }
+
+    /**
+     * Retrieve a Subscription by ID
+     */
+    public function retrieveSubscriptionById(string $subscriptionId): Subscription
+    {
+        return Subscription::retrieve($subscriptionId);
     }
 
     /**

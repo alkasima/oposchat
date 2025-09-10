@@ -64,6 +64,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'chatId' => $chatId,
         ]);
     })->name('chat');
+    
+    // Test route for exam-specific system message
+    Route::get('/test-exam-context/{chat}', function(\App\Models\Chat $chat) {
+        $controller = new \App\Http\Controllers\ChatController();
+        $reflection = new ReflectionClass($controller);
+        $method = $reflection->getMethod('buildExamSpecificSystemMessage');
+        $method->setAccessible(true);
+        $systemMessage = $method->invoke($controller, $chat);
+        
+        return response()->json([
+            'chat_id' => $chat->id,
+            'course_id' => $chat->course_id,
+            'course_name' => $chat->course?->name,
+            'system_message' => $systemMessage
+        ]);
+    })->name('test.exam.context');
 });
 
 // API routes for subscription (using web middleware for session-based auth)
@@ -73,6 +89,7 @@ Route::middleware(['auth', 'verified'])->prefix('api')->group(function () {
         Route::get('/status', [App\Http\Controllers\SubscriptionController::class, 'status']);
         Route::get('/plans', [App\Http\Controllers\SubscriptionController::class, 'plans']);
         Route::post('/checkout', [App\Http\Controllers\SubscriptionController::class, 'createCheckoutSession']);
+        Route::post('/confirm', [App\Http\Controllers\SubscriptionController::class, 'confirmCheckout']);
         Route::post('/manage', [App\Http\Controllers\SubscriptionController::class, 'manageSubscription']);
         Route::delete('/cancel', [App\Http\Controllers\SubscriptionController::class, 'cancelSubscription']);
     });

@@ -32,6 +32,7 @@ interface Chat {
 
 const props = defineProps<{
     isMobile?: boolean;
+    filterByCourseId?: number | null;
 }>();
 
 const emit = defineEmits<{
@@ -103,8 +104,12 @@ const chats = ref<Chat[]>([]);
 const activeChat = ref<string | null>(null);
 
 const filteredChats = computed(() => {
-    if (!searchQuery.value) return chats.value;
-    return chats.value.filter(chat => 
+    let list = chats.value;
+    if (props.filterByCourseId) {
+        list = list.filter(chat => chat.course_id === props.filterByCourseId);
+    }
+    if (!searchQuery.value) return list;
+    return list.filter(chat => 
         chat.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
         chat.lastMessage?.toLowerCase().includes(searchQuery.value.toLowerCase())
     );

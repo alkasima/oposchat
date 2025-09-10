@@ -41,6 +41,15 @@ class AuthenticatedSessionController extends Controller
             'remember_requested' => $request->boolean('remember'),
         ]);
 
+        // If the intended URL is an API endpoint, ignore it to prevent Inertia expecting a page from JSON
+        $intended = url()->previous();
+        if ($request->session()->has('url.intended')) {
+            $intended = $request->session()->get('url.intended');
+        }
+        if (is_string($intended) && str_contains(parse_url($intended, PHP_URL_PATH) ?? '', '/api/')) {
+            $request->session()->forget('url.intended');
+        }
+
         // Redirect admin users to admin dashboard
         if ($user->is_admin) {
             return redirect()->intended(route('admin.dashboard', absolute: false));

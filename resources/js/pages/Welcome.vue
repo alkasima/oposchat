@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import SiteFooter from '@/components/SiteFooter.vue';
 
@@ -11,79 +11,46 @@ const toggleFaq = (index) => {
     openFaq.value = openFaq.value === index ? null : index;
 };
 
-// Exam/Course data
-const examTypes = [
-    {
-        id: 'sat',
-        name: 'SAT Preparation',
-        description: 'College Admission Test',
-        fullDescription: 'Comprehensive SAT preparation with AI-powered practice tests and personalized study plans.',
-        icon: '📊',
-        color: 'from-blue-400 to-blue-600',
-        badge: 'POPULAR',
-        badgeColor: 'bg-blue-500',
-        students: '1,200+ Students'
-    },
-    {
-        id: 'gre',
-        name: 'GRE Preparation',
-        description: 'Graduate School Admission',
-        fullDescription: 'Advanced GRE preparation with adaptive learning technology and expert guidance.',
-        icon: '🎓',
-        color: 'from-purple-400 to-purple-600',
-        badge: 'ADVANCED',
-        badgeColor: 'bg-purple-500',
-        students: '800+ Students'
-    },
-    {
-        id: 'gmat',
-        name: 'GMAT Preparation',
-        description: 'Business School Admission',
-        fullDescription: 'Strategic GMAT preparation focused on business school admission requirements.',
-        icon: '💼',
-        color: 'from-green-400 to-green-600',
-        badge: 'BUSINESS',
-        badgeColor: 'bg-green-500',
-        students: '600+ Students'
-    },
-    {
-        id: 'custom',
-        name: 'Custom Preparation',
-        description: 'Personalized Learning',
-        fullDescription: 'Contact us for suggestions about specific exams you want to prepare for.',
-        icon: '💬',
-        color: 'from-orange-400 to-orange-600',
-        badge: 'CUSTOM',
-        badgeColor: 'bg-orange-500',
-        students: 'Request Info'
+// Courses loaded from admin via API
+const courses = ref<any[]>([]);
+const loadingCourses = ref<boolean>(false);
+const coursesError = ref<string | null>(null);
+
+onMounted(async () => {
+    try {
+        loadingCourses.value = true;
+        coursesError.value = null;
+        const res = await fetch('/api/courses', { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) throw new Error('Failed to load courses');
+        const data = await res.json();
+        // Expecting: id, name, slug, description, namespace, icon, color
+        courses.value = Array.isArray(data) ? data : [];
+    } catch (e: any) {
+        coursesError.value = e?.message || 'Could not load courses';
+        courses.value = [];
+    } finally {
+        loadingCourses.value = false;
     }
-];
+});
 
 // Handle exam selection for logged-in users
-const selectExam = async (examType) => {
+const selectCourse = async (course: any) => {
     // This will be called only for authenticated users due to the template condition
 
     try {
-        // Map exam types to course IDs (you'll need to create these courses in admin)
-        const examToCourseMap = {
-            'sat': 1,    // SAT Preparation course
-            'gre': 2,    // GRE Preparation course  
-            'gmat': 3,   // GMAT Preparation course
-            'custom': null // No specific course for custom
-        };
-
-        const courseId = examToCourseMap[examType.id];
+        const courseId = course.id;
 
         // Create or get exam-specific chat
         const response = await fetch('/api/chats', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             },
             body: JSON.stringify({
-                exam_type: examType.id,
-                title: `${examType.name} Chat`,
+                exam_type: course.slug || course.namespace || course.name,
+                title: `${course.name} Chat`,
                 course_id: courseId
             })
         });
@@ -98,7 +65,7 @@ const selectExam = async (examType) => {
             router.visit(route('dashboard'));
         }
     } catch (error) {
-        console.error('Error selecting exam:', error);
+        console.error('Error selecting course:', error);
         // Fallback to general dashboard
         router.visit(route('dashboard'));
     }
@@ -266,39 +233,42 @@ const faqData = [
                 
                 <div class="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto mb-12">
                     <div 
-                        v-for="exam in examTypes" 
-                        :key="exam.id"
-                        @click="$page.props.auth.user ? selectExam(exam) : null"
+                        v-if="!loadingCourses && !coursesError"
+                        v-for="course in courses" 
+                        :key="course.id"
+                        @click="$page.props.auth.user ? selectCourse(course) : null"
                         class="group bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 hover:bg-white/20 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl"
                         :class="{ 'cursor-pointer': $page.props.auth.user, 'cursor-default': !$page.props.auth.user }"
                     >
                         <div class="flex items-center mb-4">
-                            <div :class="`w-12 h-12 bg-gradient-to-br ${exam.color} rounded-xl flex items-center justify-center mr-4`">
-                                <span class="text-white text-xl">{{ exam.icon }}</span>
+                            <div :class="`w-12 h-12 bg-gradient-to-br ${course.color || 'from-blue-400 to-blue-600'} rounded-xl flex items-center justify-center mr-4`">
+                                <span class="text-white text-xl">{{ course.icon || '📘' }}</span>
                             </div>
                             <div>
                                 <h3 class="text-xl font-bold text-white group-hover:text-yellow-300 transition-colors">
-                                    {{ exam.name }}
+                                    {{ course.name }}
                                 </h3>
-                                <p class="text-gray-300 text-sm">{{ exam.description }}</p>
+                                <p class="text-gray-300 text-sm line-clamp-2">{{ course.description || 'Course description' }}</p>
                             </div>
                         </div>
-                        <p class="text-gray-300 mb-4">{{ exam.fullDescription }}</p>
+                        <p class="text-gray-300 mb-4" v-if="course.full_description">{{ course.full_description }}</p>
                         <div class="flex items-center justify-between">
-                            <span :class="`inline-block ${exam.badgeColor} text-white px-3 py-1 rounded-full text-sm font-medium`">
-                                {{ exam.badge }}
+                            <span class="inline-block bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                                More info
                             </span>
-                            <span class="text-yellow-400 font-semibold">{{ exam.students }}</span>
+                            <span class="text-yellow-400 font-semibold">&nbsp;</span>
                         </div>
                         <div class="mt-4">
-                            <button type="button" @click.stop="toggleMoreInfo(exam.id)" class="inline-flex items-center px-3 py-1 text-sm rounded-full bg-blue-500 text-white hover:bg-blue-600">
+                            <button type="button" @click.stop="toggleMoreInfo(course.id)" class="inline-flex items-center px-3 py-1 text-sm rounded-full bg-blue-500 text-white hover:bg-blue-600">
                                 + MORE INFO
                             </button>
                         </div>
-                        <div v-if="openMoreInfo === exam.id" class="mt-4 p-4 rounded-xl bg-white/5 border border-white/10 text-gray-200">
-                            <p class="mb-3">{{ exam.fullDescription }}</p>
-                            <Link :href="route('exams.wiki')" class="text-yellow-300 hover:text-yellow-200 font-semibold underline">Read detailed info in the Wiki →</Link>
+                        <div v-if="openMoreInfo === course.id" class="mt-4 p-4 rounded-xl bg-white/5 border border-white/10 text-gray-2 00">
+                            <p class="mb-3">{{ course.full_description || course.description || 'Learn more about this exam in our Wiki.' }}</p>
+                            <Link @click.stop :href="`${route('exams.wiki')}#${course.slug || course.namespace || ''}`" class="text-yellow-300 hover:text-yellow-200 font-semibold underline">Read detailed info in the Wiki →</Link>
                         </div>
+                <div v-if="loadingCourses" class="text-center text-gray-300 mb-8">Loading courses...</div>
+                <div v-if="coursesError" class="text-center text-red-300 mb-8">{{ coursesError }}</div>
                         
                         <!-- Action indicator for logged-in users -->
                         <div v-if="$page.props.auth.user" class="mt-4 pt-4 border-t border-white/20">

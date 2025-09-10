@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Exception\CardException;
 use Stripe\Exception\RateLimitException;
@@ -266,6 +267,66 @@ class SubscriptionController extends Controller
                 'success' => false,
                 'message' => 'Failed to create checkout session. Please try again.',
                 'error_code' => 'checkout_creation_failed'
+            ], 500);
+        }
+    }
+
+    /**
+     * Confirm checkout without webhook: fetch the latest Stripe subscription and persist immediately
+     */
+    public function confirmCheckout(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'session_id' => 'required|string'
+        ]);
+
+        try {
+            $user = Auth::user();
+
+            // Retrieve checkout session and subscription from Stripe using service (ensures API key)
+            $session = $this->stripeService->retrieveCheckoutSession($validated['session_id']);
+
+            if (!$session || $session->status !== 'complete') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Checkout session not completed yet'
+                ], 400);
+            }
+
+            if ($session->mode !== 'subscription' || !$session->subscription) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No subscription found on session'
+                ], 400);
+            }
+
+            $stripeSubscription = $this->stripeService->retrieveSubscriptionById($session->subscription);
+
+            DB::transaction(function () use ($stripeSubscription, $user) {
+                // If user has no local subscription for this stripe sub, create it; else update
+                $existing = \App\Models\Subscription::where('stripe_subscription_id', $stripeSubscription->id)->first();
+                if ($existing) {
+                    app(\App\Services\SubscriptionService::class)->updateSubscriptionFromStripe($stripeSubscription);
+                } else {
+                    app(\App\Services\SubscriptionService::class)->createSubscriptionFromStripe($stripeSubscription);
+                }
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'status' => 'updated',
+                    'subscription_id' => $stripeSubscription->id,
+                ]
+            ]);
+        } catch (Exception $e) {
+            Log::error('Failed to confirm checkout', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to confirm checkout'
             ], 500);
         }
     }
