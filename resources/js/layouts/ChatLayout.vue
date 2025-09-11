@@ -55,8 +55,13 @@ const subscriptionPromptData = ref({});
 const showSuccessModal = ref(false);
 
 // Audio recording
-const { isRecording, isSupported, error: recordingError, startRecording, stopRecording } = useAudioRecording();
+const { isRecording, isSupported, error: recordingError, startRecording, stopRecording, checkSupport } = useAudioRecording();
 const isTranscribing = ref(false);
+
+// Check audio recording support on mount
+onMounted(() => {
+    checkSupport();
+});
 
 // Check for success parameter in URL or page props
 const checkForSuccess = () => {

@@ -10,7 +10,18 @@ export function useAudioRecording() {
 
     // Check if MediaRecorder is supported
     const checkSupport = () => {
-        isSupported.value = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+        const hasMediaDevices = !!navigator.mediaDevices;
+        const hasGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+        const hasMediaRecorder = !!window.MediaRecorder;
+        
+        console.log('Audio recording support check:', {
+            hasMediaDevices,
+            hasGetUserMedia,
+            hasMediaRecorder,
+            isSupported: hasMediaDevices && hasGetUserMedia && hasMediaRecorder
+        });
+        
+        isSupported.value = hasMediaDevices && hasGetUserMedia && hasMediaRecorder;
     };
 
     // Start recording
@@ -96,6 +107,7 @@ export function useAudioRecording() {
         error,
         startRecording,
         stopRecording,
+        checkSupport,
         cleanup
     };
 }
