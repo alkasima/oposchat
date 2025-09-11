@@ -456,10 +456,43 @@ const renameCurrentChat = async () => {
 };
 
 // Handle course selection
-const handleCourseSelected = (course: any) => {
+const handleCourseSelected = async (course: any) => {
     if (currentChat.value) {
+        // Update existing chat with course
         currentChat.value.course_id = course?.id || null;
+    } else if (course) {
+        // Create new chat with selected course
+        try {
+            const response = await fetch('/api/chats', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({
+                    exam_type: course.slug || course.namespace || course.name,
+                    title: `${course.name} Chat`,
+                    course_id: course.id
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                currentChat.value = {
+                    id: data.chat.id,
+                    title: data.chat.title,
+                    course_id: data.chat.course_id
+                };
+                messages.value = [];
+            } else {
+                console.error('Failed to create exam chat');
+            }
+        } catch (error) {
+            console.error('Error creating exam chat:', error);
+        }
     }
+    
     currentCourse.value = course ? { id: course.id, name: course.name } : null;
     showCourseRequired.value = !currentChat.value?.course_id;
 };
@@ -469,8 +502,20 @@ const { appearance, updateAppearance } = useAppearance();
 const prefersDark = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 const isDark = computed(() => appearance.value === 'dark' || (appearance.value === 'system' && prefersDark()));
 const cycleTheme = () => {
+    // Get the current theme from the DOM to ensure accuracy
+    const isCurrentlyDark = document.documentElement.classList.contains('dark');
     const current = appearance.value || 'system';
-    const next = current === 'light' ? 'dark' : current === 'dark' ? 'system' : 'light';
+    
+    // Determine next theme based on current state
+    let next: 'light' | 'dark' | 'system';
+    if (current === 'light') {
+        next = 'dark';
+    } else if (current === 'dark') {
+        next = 'system';
+    } else {
+        next = 'light';
+    }
+    
     updateAppearance(next);
 };
 
@@ -645,7 +690,7 @@ const extractImageText = async (file: File): Promise<string> => {
         <!-- Left Sidebar - Hidden on mobile, shown on desktop -->
         <div class="hidden lg:block">
             <ChatSidebar 
-                :filter-by-course-id="currentChat?.course_id"
+                :current-chat-id="currentChat?.id"
                 @chat-selected="handleChatSelected" 
                 @new-chat-created="handleNewChatCreated" 
             />
@@ -669,7 +714,7 @@ const extractImageText = async (file: File): Promise<string> => {
                     <div v-if="showMobileSidebar" class="relative w-80 h-full shadow-2xl">
                         <ChatSidebar 
                             :is-mobile="true"
-                            :filter-by-course-id="currentChat?.course_id"
+                            :current-chat-id="currentChat?.id"
                             @chat-selected="handleChatSelected" 
                             @new-chat-created="handleNewChatCreated"
                             @close-mobile="showMobileSidebar = false"
@@ -697,41 +742,15 @@ const extractImageText = async (file: File): Promise<string> => {
                                 <Menu class="w-5 h-5" />
                             </Button>
                             
-                            <!-- Chat Title and Course Info -->
-                            <div class="flex items-center space-x-4">
-                                <div class="flex items-center space-x-3">
-                                    <div class="flex items-center space-x-2">
-                                        <h1 class="text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
-                                            {{ currentChat?.title || 'OposChat' }}
-                                        </h1>
-                                        <button v-if="currentChat" @click="renameCurrentChat" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 group" title="Rename chat">
-                                            <Pencil class="w-4 h-4 text-gray-500 group-hover:text-blue-600 dark:text-gray-400 dark:group-hover:text-blue-400 transition-colors" />
-                                        </button>
-                                    </div>
-                                    
-                                    <!-- Enhanced Course Badge -->
-                                    <div v-if="currentCourse" class="relative">
-                                        <div class="inline-flex items-center px-4 py-2.5 rounded-2xl text-sm font-semibold bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
-                                            <div class="flex items-center space-x-2">
-                                                <div class="w-2.5 h-2.5 bg-white rounded-full animate-pulse"></div>
-                                                <span class="font-bold">{{ currentCourse.name }}</span>
-                                                <div class="w-1 h-1 bg-white/60 rounded-full"></div>
-                                                <span class="text-xs opacity-90">ACTIVE</span>
-                                            </div>
-                                        </div>
-                                        <!-- Subtle glow effect -->
-                                        <div class="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 opacity-20 blur-sm -z-10"></div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Course Selector with enhanced styling -->
-                                <div v-if="currentChat" class="relative">
-                                    <CourseSelector 
-                                        :chat-id="parseInt(currentChat.id)"
-                                        :initial-course-id="currentChat.course_id"
-                                        @course-selected="handleCourseSelected"
-                                        class="transform transition-all duration-200 hover:scale-105"
-                                    />
+                            <!-- Chat Title -->
+                            <div class="flex items-center space-x-3">
+                                <div class="flex items-center space-x-2">
+                                    <h1 class="text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
+                                        {{ currentChat?.title || 'OposChat' }}
+                                    </h1>
+                                    <button v-if="currentChat" @click="renameCurrentChat" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 group" title="Rename chat">
+                                        <Pencil class="w-4 h-4 text-gray-500 group-hover:text-blue-600 dark:text-gray-400 dark:group-hover:text-blue-400 transition-colors" />
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -826,15 +845,45 @@ const extractImageText = async (file: File): Promise<string> => {
                 </div>
             </div>
 
-            <!-- Enhanced Course Required Banner -->
-            <div v-if="showCourseRequired" class="mx-6 mt-4 mb-0 p-4 rounded-2xl bg-gradient-to-r from-yellow-50 via-amber-50 to-yellow-50 border border-yellow-200 text-yellow-800 dark:from-yellow-900/20 dark:via-amber-900/20 dark:to-yellow-900/20 dark:text-yellow-200 dark:border-yellow-800 shadow-sm">
-                <div class="flex items-center space-x-3">
-                    <div class="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center">
-                        <span class="text-white text-xs font-bold">!</span>
+            <!-- Exam Selection Section -->
+            <div v-if="user" class="mx-6 mt-4 mb-3 relative z-10">
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-semibold text-gray-900 dark:text-white">Exam Selection</h3>
+                                <p class="text-xs text-gray-600 dark:text-gray-400">Choose an exam to personalize your chat</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Current Course Badge -->
+                        <div v-if="currentCourse" class="relative">
+                            <div class="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 text-white shadow-md">
+                                <div class="flex items-center space-x-1.5">
+                                    <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                                    <span class="font-bold">{{ currentCourse.name }}</span>
+                                    <div class="w-0.5 h-0.5 bg-white/60 rounded-full"></div>
+                                    <span class="text-xs opacity-90">ACTIVE</span>
+                                </div>
+                            </div>
+                            <!-- Subtle glow effect -->
+                            <div class="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 opacity-20 blur-sm -z-10"></div>
+                        </div>
                     </div>
-                    <div class="flex-1">
-                        <p class="font-semibold">Exam Selection Required</p>
-                        <p class="text-sm opacity-90">Please select an exam in the header above to start your personalized chat experience.</p>
+                    
+                    <!-- Course Selector -->
+                    <div class="relative">
+                        <CourseSelector 
+                            :chat-id="currentChat ? parseInt(currentChat.id) : undefined"
+                            :initial-course-id="currentChat?.course_id"
+                            @course-selected="handleCourseSelected"
+                            class="transform transition-all duration-200 hover:scale-[1.01]"
+                        />
                     </div>
                 </div>
             </div>

@@ -70,11 +70,13 @@ const appearance = ref<Appearance>(getStoredAppearance() || 'system');
 
 export function useAppearance() {
     onMounted(() => {
-        const savedAppearance = localStorage.getItem('appearance') as Appearance | null;
-
-        if (savedAppearance) {
-            appearance.value = savedAppearance;
+        // Ensure the theme is applied based on the current appearance value
+        // and sync the appearance ref with what's actually stored
+        const storedAppearance = getStoredAppearance();
+        if (storedAppearance) {
+            appearance.value = storedAppearance;
         }
+        updateTheme(appearance.value);
     });
 
     function updateAppearance(value: Appearance) {

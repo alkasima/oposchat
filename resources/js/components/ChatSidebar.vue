@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -32,7 +32,7 @@ interface Chat {
 
 const props = defineProps<{
     isMobile?: boolean;
-    filterByCourseId?: number | null;
+    currentChatId?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -105,9 +105,6 @@ const activeChat = ref<string | null>(null);
 
 const filteredChats = computed(() => {
     let list = chats.value;
-    if (props.filterByCourseId) {
-        list = list.filter(chat => chat.course_id === props.filterByCourseId);
-    }
     if (!searchQuery.value) return list;
     return list.filter(chat => 
         chat.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
@@ -134,8 +131,10 @@ const loadChats = async () => {
         const chatData = await chatApi.getChats();
         chats.value = chatData.map(chat => ({
             ...chat,
-            isActive: chat.id === activeChat.value
+            isActive: chat.id.toString() === props.currentChatId
         }));
+        // Update activeChat to match currentChatId
+        activeChat.value = props.currentChatId;
     } catch (error) {
         console.error('Failed to load chats:', error);
     } finally {
@@ -262,6 +261,15 @@ const handleUpgradeClick = () => {
     showSubscriptionPrompt.value = false;
     showSettingsModal.value = true;
 };
+
+// Watch for currentChatId changes to update active state
+watch(() => props.currentChatId, (newChatId) => {
+    activeChat.value = newChatId;
+    // Update all chats' active state
+    chats.value.forEach(chat => {
+        chat.isActive = chat.id.toString() === newChatId;
+    });
+}, { immediate: true });
 
 // Load chats when component mounts
 onMounted(async () => {
