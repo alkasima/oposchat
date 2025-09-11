@@ -14,8 +14,9 @@ import CourseSelector from '@/components/CourseSelector.vue';
 import { useSubscription } from '@/composables/useSubscription.js';
 import chatApi from '@/services/chatApi.js';
 import streamingChatService from '@/services/streamingChatService.js';
-import { Send, User, Bot, Paperclip, Settings, Menu, Download, BarChart3, Pencil, Sun, Moon } from 'lucide-vue-next';
+import { Send, User, Bot, Paperclip, Settings, Menu, Download, BarChart3, Pencil, Sun, Moon, Mic, Square } from 'lucide-vue-next';
 import { useAppearance } from '@/composables/useAppearance';
+import { useAudioRecording } from '@/composables/useAudioRecording';
 
 interface Message {
     id: string;
@@ -45,12 +46,17 @@ const currentChat = ref<{ id: string; title: string; course_id?: number } | null
 const currentCourse = ref<{ id: number; name: string } | null>(null);
 const showCourseRequired = ref(false);
 const showMobileSidebar = ref(false);
+const isExamSectionCollapsed = ref(true);
 const showSettingsModal = ref(false);
 const showSubscriptionPrompt = ref(false);
 const subscriptionPromptData = ref({});
 
 // Success modal state
 const showSuccessModal = ref(false);
+
+// Audio recording
+const { isRecording, isSupported, error: recordingError, startRecording, stopRecording } = useAudioRecording();
+const isTranscribing = ref(false);
 
 // Check for success parameter in URL or page props
 const checkForSuccess = () => {
@@ -681,6 +687,70 @@ const extractImageText = async (file: File): Promise<string> => {
         throw new Error(`Failed to extract text from image: ${error.message}`);
     }
 };
+
+// Audio recording functions
+const handleStartRecording = async () => {
+    try {
+        await startRecording();
+    } catch (error) {
+        console.error('Failed to start recording:', error);
+    }
+};
+
+const handleStopRecording = async () => {
+    try {
+        isTranscribing.value = true;
+        const audioBlob = await stopRecording();
+        
+        // Send audio to backend for transcription
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.webm');
+        
+        const response = await fetch('/api/transcribe-audio', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+            },
+        });
+        
+        if (!response.ok) {
+            throw new Error('Transcription failed');
+        }
+        
+        const result = await response.json();
+        
+        if (result.success && result.text) {
+            // Add transcribed text to the input
+            currentMessage.value = result.text;
+        } else {
+            throw new Error(result.error || 'No text transcribed');
+        }
+        
+    } catch (error) {
+        console.error('Transcription error:', error);
+        alert('Failed to transcribe audio. Please try again.');
+    } finally {
+        isTranscribing.value = false;
+    }
+};
+
+// Toggle exam section collapse state
+const toggleExamSection = () => {
+    isExamSectionCollapsed.value = !isExamSectionCollapsed.value;
+    // Save preference to localStorage
+    localStorage.setItem('examSectionCollapsed', isExamSectionCollapsed.value.toString());
+};
+
+// Initialize exam section collapse state from localStorage
+// Default to collapsed (true) unless user has previously expanded it
+const savedCollapseState = localStorage.getItem('examSectionCollapsed');
+if (savedCollapseState === 'false') {
+    isExamSectionCollapsed.value = false;
+} else {
+    // Default to collapsed state
+    isExamSectionCollapsed.value = true;
+}
 </script>
 
 <template>
@@ -768,6 +838,7 @@ const extractImageText = async (file: File): Promise<string> => {
                         <div class="flex items-center space-x-4">
                             <!-- Premium Features -->
                             <div v-if="currentChat" class="hidden md:flex items-center space-x-2">
+                                
                                 <!-- Export Chat Button -->
                                 <Button 
                                     @click="exportCurrentChat"
@@ -844,46 +915,73 @@ const extractImageText = async (file: File): Promise<string> => {
                 </div>
             </div>
 
-            <!-- Exam Selection Section -->
+            <!-- Compact Exam Selection Section -->
             <div v-if="user" class="mx-6 mt-4 mb-3 relative z-10">
-                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
-                    <div class="flex items-center justify-between mb-3">
+                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <!-- Compact Header -->
+                    <div class="flex items-center justify-between p-3">
                         <div class="flex items-center space-x-2">
-                            <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-md flex items-center justify-center">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                             </div>
                             <div>
-                                <h3 class="text-base font-semibold text-gray-900 dark:text-white">Exam Selection</h3>
-                                <p class="text-xs text-gray-600 dark:text-gray-400">Choose an exam to personalize your chat</p>
+                                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Select Exam</h3>
+                                <p class="text-xs text-gray-600 dark:text-gray-400">Personalize your chat</p>
                             </div>
                         </div>
                         
-                        <!-- Current Course Badge -->
-                        <div v-if="currentCourse" class="relative">
-                            <div class="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 text-white shadow-md">
-                                <div class="flex items-center space-x-1.5">
-                                    <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                                    <span class="font-bold">{{ currentCourse.name }}</span>
-                                    <div class="w-0.5 h-0.5 bg-white/60 rounded-full"></div>
-                                    <span class="text-xs opacity-90">ACTIVE</span>
+                        <div class="flex items-center space-x-2">
+                            <!-- Current Course Badge (Compact) -->
+                            <div v-if="currentCourse" class="relative">
+                                <div class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 text-white shadow-sm">
+                                    <div class="flex items-center space-x-1">
+                                        <div class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
+                                        <span class="font-bold text-xs">{{ currentCourse.name }}</span>
+                                    </div>
                                 </div>
                             </div>
-                            <!-- Subtle glow effect -->
-                            <div class="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 opacity-20 blur-sm -z-10"></div>
+                            
+                            <!-- Collapse Toggle Button -->
+                            <button 
+                                @click="toggleExamSection"
+                                class="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200"
+                            >
+                                <svg 
+                                    class="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+                                    :class="{ 'rotate-180': isExamSectionCollapsed }"
+                                    fill="none" 
+                                    stroke="currentColor" 
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
                         </div>
                     </div>
                     
-                    <!-- Course Selector -->
-                    <div class="relative">
-                        <CourseSelector 
-                            :chat-id="currentChat ? parseInt(currentChat.id) : undefined"
-                            :initial-course-id="currentChat?.course_id"
-                            @course-selected="handleCourseSelected"
-                            class="transform transition-all duration-200 hover:scale-[1.01]"
-                        />
-                    </div>
+                    <!-- Collapsible Content -->
+                    <Transition
+                        enter-active-class="transition-all duration-300 ease-out"
+                        leave-active-class="transition-all duration-300 ease-in"
+                        enter-from-class="opacity-0 max-h-0"
+                        enter-to-class="opacity-100 max-h-96"
+                        leave-from-class="opacity-100 max-h-96"
+                        leave-to-class="opacity-0 max-h-0"
+                    >
+                        <div v-if="!isExamSectionCollapsed" class="px-3 pb-3 border-t border-gray-100 dark:border-gray-700">
+                            <!-- Course Selector -->
+                            <div class="relative pt-3">
+                                <CourseSelector 
+                                    :chat-id="currentChat ? parseInt(currentChat.id) : undefined"
+                                    :initial-course-id="currentChat?.course_id"
+                                    @course-selected="handleCourseSelected"
+                                    class="transform transition-all duration-200 hover:scale-[1.01]"
+                                />
+                            </div>
+                        </div>
+                    </Transition>
                 </div>
             </div>
 
@@ -1006,6 +1104,12 @@ const extractImageText = async (file: File): Promise<string> => {
                     
 
                     <div class="flex items-center space-x-3">
+                        <!-- Recording Status Indicator -->
+                        <div v-if="isRecording" class="flex items-center space-x-2 text-red-600 dark:text-red-400 text-sm">
+                            <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                            <span class="font-medium">Recording...</span>
+                        </div>
+                        
                         <!-- Attachment Button -->
                         <Button 
                             @click="triggerFileUpload"
@@ -1033,10 +1137,36 @@ const extractImageText = async (file: File): Promise<string> => {
                                 @keydown="handleKeyDown"
                                 placeholder="Type a message..."
                                 rows="1"
-                                class="w-full resize-none pr-12 py-3 px-4 text-base border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                                class="w-full resize-none pr-24 py-3 px-4 text-base border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                                 style="min-height: 48px; max-height: 120px;"
                                 :disabled="isTyping"
                             ></textarea>
+                            
+                            <!-- Record Button -->
+                            <Button
+                                v-if="isSupported"
+                                @click="isRecording ? handleStopRecording() : handleStartRecording()"
+                                :disabled="isTranscribing || isTyping"
+                                class="absolute right-12 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-all duration-200"
+                                :class="isRecording 
+                                    ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 animate-pulse' 
+                                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                                size="sm"
+                                variant="ghost"
+                                :title="isRecording ? 'Stop Recording' : 'Start Recording'"
+                            >
+                                <div class="relative">
+                                    <Mic v-if="!isRecording" class="w-4 h-4" />
+                                    <Square v-else class="w-4 h-4" />
+                                    <!-- Recording indicator dot -->
+                                    <div 
+                                        v-if="isRecording" 
+                                        class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"
+                                    ></div>
+                                </div>
+                            </Button>
+                            
+                            <!-- Send Button -->
                             <Button
                                 @click="async () => { 
                                     try {
@@ -1055,11 +1185,6 @@ const extractImageText = async (file: File): Promise<string> => {
                         </div>
                     </div>
 
-                    <!-- Footer -->
-                    <div class="flex items-center justify-center mt-4 space-x-6 text-xs text-gray-500">
-                        <Link :href="route('about')" class="hover:text-gray-700 transition-colors">About us</Link>
-                        <Link :href="route('legal.privacy')" class="hover:text-gray-700 transition-colors">Privacy policy</Link>
-                    </div>
                 </div>
             </div>
         </div>

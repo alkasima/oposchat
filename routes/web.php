@@ -111,6 +111,9 @@ Route::middleware(['auth', 'verified'])->prefix('api')->group(function () {
     // Streaming chat routes
     Route::get('/chats/{chat}/stream', [App\Http\Controllers\StreamingChatController::class, 'streamMessage'])->middleware('usage.limit:chat_messages');
     Route::post('/chats/stream/stop', [App\Http\Controllers\StreamingChatController::class, 'stopStreaming']);
+    
+    // Audio transcription route
+    Route::post('/transcribe-audio', [App\Http\Controllers\AudioTranscriptionController::class, 'transcribe']);
 });
 
 // Admin routes
