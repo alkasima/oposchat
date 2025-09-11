@@ -18,12 +18,15 @@ class AIProviderService
         $this->provider = config('ai.provider', 'openai');
         $this->config = config('ai.providers.' . $this->provider);
 
+
         // Override with DB settings if available
         try {
             $settings = app(\App\Services\SettingsService::class);
             if ($this->provider === 'openai') {
                 $dbKey = $settings->get('OPENAI_API_KEY');
                 $dbModel = $settings->get('OPENAI_MODEL');
+
+                
                 if (!empty($dbKey)) {
                     $this->config['api_key'] = $dbKey;
                 }
@@ -522,6 +525,11 @@ class AIProviderService
         // Use custom system message if provided in options, otherwise use default
         $systemMessageContent = $options['system_message'] ?? config('ai.defaults.system_message');
 
+        // Ensure accurate model disclosure if the user asks about model/version
+        $modelName = $this->getModel();
+        $providerName = $this->getProvider();
+        $systemMessageContent .= "\n\nModel disclosure policy: You are running on {$providerName} model {$modelName}. If a user asks which model you are, reply exactly '{$modelName}'. Do not claim older models (e.g., GPT-3 or GPT-3.5).";
+
         // Add context to system message if available
         if (!empty($context)) {
             $contextText = implode(' ', $context);
@@ -555,6 +563,11 @@ class AIProviderService
 
         // Use custom system message if provided in options, otherwise use default
         $systemMessageContent = $options['system_message'] ?? config('ai.defaults.system_message');
+
+        // Ensure accurate model disclosure if the user asks about model/version
+        $modelName = $this->getModel();
+        $providerName = $this->getProvider();
+        $systemMessageContent .= "\n\nModel disclosure policy: You are running on {$providerName} model {$modelName}. If a user asks which model you are, reply exactly '{$modelName}'. Do not claim older models (e.g., GPT-3 or GPT-3.5).";
 
         // Add context to system message if available
         if (!empty($context)) {
