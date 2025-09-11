@@ -283,7 +283,7 @@ onMounted(async () => {
         <!-- Header -->
         <div class="p-4 border-b border-gray-700">
             <div class="flex items-center justify-between mb-4">
-                <Link :href="route('dashboard')" class="flex items-center space-x-2">
+                <Link :href="route('home')" class="flex items-center space-x-2">
                     <div class="w-14 h-14 bg-gradient-to-br from-white to-white rounded-full flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300 p-2">
     <img src="/images/logo.png" alt="OposChat" class="w-full h-full rounded-full" />
 </div>

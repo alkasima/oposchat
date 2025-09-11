@@ -61,7 +61,7 @@ const togglePasswordVisibility = () => {
                         Email address
                     </Label>
                     <div class="relative">
-                        <Mail class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Mail class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-white" />
                         <Input
                             id="email"
                             type="email"
@@ -71,7 +71,7 @@ const togglePasswordVisibility = () => {
                             autocomplete="email"
                             v-model="form.email"
                             placeholder="Enter your email"
-                            class="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors"
+                            class="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors dark:text-black"
                             :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': form.errors.email }"
                         />
                     </div>
@@ -94,7 +94,7 @@ const togglePasswordVisibility = () => {
                         </TextLink>
                     </div>
                     <div class="relative">
-                        <Lock class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Lock class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-white" />
                         <Input
                             id="password"
                             :type="showPassword ? 'text' : 'password'"
@@ -103,13 +103,13 @@ const togglePasswordVisibility = () => {
                             autocomplete="current-password"
                             v-model="form.password"
                             placeholder="Enter your password"
-                            class="pl-10 pr-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors"
+                            class="pl-10 pr-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors dark:text-black"
                             :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': form.errors.password }"
                         />
                         <button
                             type="button"
                             @click="togglePasswordVisibility"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-white dark:hover:text-gray-200 transition-colors"
                         >
                             <Eye v-if="!showPassword" class="h-4 w-4" />
                             <EyeOff v-else class="h-4 w-4" />
@@ -157,11 +157,11 @@ const togglePasswordVisibility = () => {
 
         <!-- Sign Up Link -->
         <div class="text-center">
-            <p class="text-sm text-gray-600">
+            <p class="text-sm text-gray-600 dark:text-gray-300">
                 Don't have an account yet?
                 <TextLink 
                     :href="route('register')" 
-                    class="font-medium text-blue-600 hover:text-blue-800 transition-colors ml-1" 
+                    class="font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors ml-1" 
                     :tabindex="6"
                 >
                     Create a free account

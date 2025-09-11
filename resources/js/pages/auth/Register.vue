@@ -67,7 +67,7 @@ const passwordsMatch = computed(() => {
                         Full name
                     </Label>
                     <div class="relative">
-                        <User class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <User class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-white" />
                         <Input
                             id="name"
                             type="text"
@@ -77,7 +77,7 @@ const passwordsMatch = computed(() => {
                             autocomplete="name"
                             v-model="form.name"
                             placeholder="Enter your full name"
-                            class="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors"
+                            class="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors dark:text-black"
                             :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': form.errors.name }"
                         />
                     </div>
@@ -90,7 +90,7 @@ const passwordsMatch = computed(() => {
                         Email address
                     </Label>
                     <div class="relative">
-                        <Mail class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Mail class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-white" />
                         <Input
                             id="email"
                             type="email"
@@ -99,7 +99,7 @@ const passwordsMatch = computed(() => {
                             autocomplete="email"
                             v-model="form.email"
                             placeholder="Enter your email"
-                            class="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors"
+                            class="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors dark:text-black"
                             :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': form.errors.email }"
                         />
                     </div>
@@ -112,7 +112,7 @@ const passwordsMatch = computed(() => {
                         Password
                     </Label>
                     <div class="relative">
-                        <Lock class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Lock class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-white" />
                         <Input
                             id="password"
                             :type="showPassword ? 'text' : 'password'"
@@ -121,13 +121,13 @@ const passwordsMatch = computed(() => {
                             autocomplete="new-password"
                             v-model="form.password"
                             placeholder="Create a strong password"
-                            class="pl-10 pr-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors"
+                            class="pl-10 pr-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors dark:text-black"
                             :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': form.errors.password }"
                         />
                         <button
                             type="button"
                             @click="togglePasswordVisibility"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-white dark:hover:text-gray-200 transition-colors"
                         >
                             <Eye v-if="!showPassword" class="h-4 w-4" />
                             <EyeOff v-else class="h-4 w-4" />
@@ -190,7 +190,7 @@ const passwordsMatch = computed(() => {
                         Confirm password
                     </Label>
                     <div class="relative">
-                        <Lock class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Lock class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-white" />
                         <Input
                             id="password_confirmation"
                             :type="showConfirmPassword ? 'text' : 'password'"
@@ -199,7 +199,7 @@ const passwordsMatch = computed(() => {
                             autocomplete="new-password"
                             v-model="form.password_confirmation"
                             placeholder="Confirm your password"
-                            class="pl-10 pr-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors"
+                            class="pl-10 pr-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors dark:text-black"
                             :class="{ 
                                 'border-red-300 focus:border-red-500 focus:ring-red-500': form.errors.password_confirmation,
                                 'border-green-300 focus:border-green-500 focus:ring-green-500': passwordsMatch && form.password_confirmation
@@ -208,7 +208,7 @@ const passwordsMatch = computed(() => {
                         <button
                             type="button"
                             @click="toggleConfirmPasswordVisibility"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-white dark:hover:text-gray-200 transition-colors"
                         >
                             <Eye v-if="!showConfirmPassword" class="h-4 w-4" />
                             <EyeOff v-else class="h-4 w-4" />
@@ -228,11 +228,11 @@ const passwordsMatch = computed(() => {
                 </div>
 
                 <!-- Terms and Privacy -->
-                <div class="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
+                <div class="text-xs text-gray-500 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
                     By creating an account, you agree to our 
-                    <TextLink href="#" class="text-blue-600 hover:text-blue-800">Terms of Service</TextLink>
+                    <TextLink href="#" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Terms of Service</TextLink>
                     and 
-                    <TextLink href="#" class="text-blue-600 hover:text-blue-800">Privacy Policy</TextLink>.
+                    <TextLink href="#" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Privacy Policy</TextLink>.
                 </div>
 
                 <!-- Submit Button -->

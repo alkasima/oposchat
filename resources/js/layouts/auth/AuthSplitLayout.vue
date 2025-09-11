@@ -81,20 +81,20 @@ defineProps<{
         </div>
 
         <!-- Right Side - Form Section -->
-        <div class="flex items-center justify-center p-8 bg-gray-50">
+        <div class="flex items-center justify-center p-8 bg-gray-50 dark:bg-gray-900">
             <div class="mx-auto w-full max-w-md space-y-8">
                 <!-- Mobile Logo -->
                 <div class="flex justify-center lg:hidden">
                     <Link :href="route('home')" class="flex items-center space-x-2">
                         <AppLogoIcon class="size-8 fill-current text-blue-600" />
-                        <span class="text-xl font-bold text-gray-900">{{ name || 'OposChat' }}</span>
+                        <span class="text-xl font-bold text-gray-900 dark:text-white">{{ name || 'OposChat' }}</span>
                     </Link>
                 </div>
 
                 <!-- Form Header -->
                 <div class="text-center space-y-2">
-                    <h1 class="text-2xl font-bold text-gray-900" v-if="title">{{ title }}</h1>
-                    <p class="text-gray-600" v-if="description">{{ description }}</p>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white" v-if="title">{{ title }}</h1>
+                    <p class="text-gray-600 dark:text-gray-300" v-if="description">{{ description }}</p>
                 </div>
 
                 <!-- Form Content -->

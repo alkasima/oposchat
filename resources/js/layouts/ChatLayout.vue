@@ -14,7 +14,7 @@ import CourseSelector from '@/components/CourseSelector.vue';
 import { useSubscription } from '@/composables/useSubscription.js';
 import chatApi from '@/services/chatApi.js';
 import streamingChatService from '@/services/streamingChatService.js';
-import { Send, User, Bot, Paperclip, Settings, Menu, Download, BarChart3, Pencil, Sun, Moon, Home } from 'lucide-vue-next';
+import { Send, User, Bot, Paperclip, Settings, Menu, Download, BarChart3, Pencil, Sun, Moon } from 'lucide-vue-next';
 import { useAppearance } from '@/composables/useAppearance';
 
 interface Message {
@@ -742,31 +742,30 @@ const extractImageText = async (file: File): Promise<string> => {
                                 <Menu class="w-5 h-5" />
                             </Button>
                             
-                            <!-- Chat Title -->
+                            <!-- Chat Title / Brand -->
                             <div class="flex items-center space-x-3">
                                 <div class="flex items-center space-x-2">
-                                    <h1 class="text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
-                                        {{ currentChat?.title || 'OposChat' }}
-                                    </h1>
-                                    <button v-if="currentChat" @click="renameCurrentChat" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 group" title="Rename chat">
-                                        <Pencil class="w-4 h-4 text-gray-500 group-hover:text-blue-600 dark:text-gray-400 dark:group-hover:text-blue-400 transition-colors" />
-                                    </button>
+                                    <template v-if="currentChat">
+                                        <h1 class="text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
+                                            {{ currentChat.title }}
+                                        </h1>
+                                        <button @click="renameCurrentChat" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 group" title="Rename chat">
+                                            <Pencil class="w-4 h-4 text-gray-500 group-hover:text-blue-600 dark:text-gray-400 dark:group-hover:text-blue-400 transition-colors" />
+                                        </button>
+                                    </template>
+                                    <template v-else>
+                                        <Link :href="route('home')" class="hover:opacity-90 transition-opacity" title="Go to Home">
+                                            <h1 class="text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
+                                                OposChat
+                                            </h1>
+                                        </Link>
+                                    </template>
                                 </div>
                             </div>
                         </div>
                         
                         <!-- Right Section -->
                         <div class="flex items-center space-x-4">
-                            <!-- Home Button -->
-                            <Link 
-                                :href="route('home')"
-                                class="hidden sm:inline-flex items-center px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-xl hover:from-gray-200 hover:to-gray-300 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105"
-                                title="Go to Home"
-                            >
-                                <Home class="w-4 h-4 mr-2" />
-                                Home
-                            </Link>
-                            
                             <!-- Premium Features -->
                             <div v-if="currentChat" class="hidden md:flex items-center space-x-2">
                                 <!-- Export Chat Button -->
