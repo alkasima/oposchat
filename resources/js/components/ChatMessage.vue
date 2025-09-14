@@ -138,9 +138,22 @@ const escapeHtml = (text) => {
     return div.innerHTML;
 };
 
-// Auto-scroll to bottom when streaming content changes
+// Smart auto-scroll: only scroll if user is near the bottom
+const shouldAutoScroll = () => {
+    const chatContainer = document.querySelector('.chat-scrollbar');
+    if (!chatContainer) return false;
+    
+    const scrollTop = chatContainer.scrollTop;
+    const scrollHeight = chatContainer.scrollHeight;
+    const clientHeight = chatContainer.clientHeight;
+    
+    // Only auto-scroll if user is within 100px of the bottom
+    return (scrollHeight - scrollTop - clientHeight) < 100;
+};
+
+// Auto-scroll to bottom when streaming content changes (only if user is near bottom)
 watch(() => props.message.streamingContent, async () => {
-    if (isStreaming.value) {
+    if (isStreaming.value && shouldAutoScroll()) {
         await nextTick();
         const messageElement = document.querySelector(`[data-message-id="${props.message.id}"]`);
         if (messageElement) {
@@ -176,6 +189,10 @@ watch(() => props.message.streamingContent, async () => {
                 <!-- Streaming indicator -->
                 <span v-if="isStreaming" class="text-xs text-orange-500 animate-pulse">
                     {{ hasStreamingContent ? 'typing...' : 'thinking...' }}
+                </span>
+                <!-- Auto-scroll indicator -->
+                <span v-if="isStreaming && !shouldAutoScroll()" class="text-xs text-blue-500 ml-2">
+                    (scroll to see live updates)
                 </span>
             </div>
             

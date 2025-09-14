@@ -8,7 +8,6 @@ import ChatMessage from '@/components/ChatMessage.vue';
 import SettingsModal from '@/components/SettingsModal.vue';
 import SubscriptionPrompt from '@/components/SubscriptionPrompt.vue';
 import SubscriptionSuccessModal from '@/components/SubscriptionSuccessModal.vue';
-import UsageIndicator from '@/components/UsageIndicator.vue';
 import CourseSelector from '@/components/CourseSelector.vue';
 
 import { useSubscription } from '@/composables/useSubscription.js';
@@ -47,6 +46,7 @@ const currentCourse = ref<{ id: number; name: string } | null>(null);
 const showCourseRequired = ref(false);
 const showMobileSidebar = ref(false);
 const isExamSectionCollapsed = ref(true);
+const isSidebarCollapsed = ref(false);
 const showSettingsModal = ref(false);
 const showSubscriptionPrompt = ref(false);
 const subscriptionPromptData = ref({});
@@ -61,6 +61,7 @@ const isTranscribing = ref(false);
 // Check audio recording support on mount
 onMounted(() => {
     checkSupport();
+    window.addEventListener('resize', handleResize);
 });
 
 // Check for success parameter in URL or page props
@@ -81,9 +82,17 @@ const checkForSuccess = () => {
 // Check on mount and when page props change
 watch(() => page.props, checkForSuccess, { immediate: true });
 
+// Handle window resize to close mobile sidebar when switching to desktop
+const handleResize = () => {
+    if (window.innerWidth >= 1024) {
+        showMobileSidebar.value = false;
+    }
+};
+
 // Cleanup streaming connections when component unmounts
 onUnmounted(() => {
     streamingChatService.stopAllStreaming();
+    window.removeEventListener('resize', handleResize);
 });
 
 // Subscription management
@@ -747,6 +756,20 @@ const toggleExamSection = () => {
     localStorage.setItem('examSectionCollapsed', isExamSectionCollapsed.value.toString());
 };
 
+// Toggle sidebar collapse state
+const toggleSidebar = () => {
+    // Check if we're on mobile (screen width < 1024px)
+    if (window.innerWidth < 1024) {
+        // On mobile, toggle the mobile sidebar
+        showMobileSidebar.value = !showMobileSidebar.value;
+    } else {
+        // On desktop, toggle the sidebar collapse state
+        isSidebarCollapsed.value = !isSidebarCollapsed.value;
+        // Save preference to localStorage
+        localStorage.setItem('sidebarCollapsed', isSidebarCollapsed.value.toString());
+    }
+};
+
 // Initialize exam section collapse state from localStorage
 // Default to collapsed (true) unless user has previously expanded it
 const savedCollapseState = localStorage.getItem('examSectionCollapsed');
@@ -756,16 +779,27 @@ if (savedCollapseState === 'false') {
     // Default to collapsed state
     isExamSectionCollapsed.value = true;
 }
+
+// Initialize sidebar collapse state from localStorage
+// Default to collapsed (true) unless user has previously expanded it
+const savedSidebarState = localStorage.getItem('sidebarCollapsed');
+if (savedSidebarState === 'false') {
+    isSidebarCollapsed.value = false;
+} else {
+    // Default to collapsed state
+    isSidebarCollapsed.value = true;
+}
 </script>
 
 <template>
     <Head title="OposChat - Dashboard" />
     
     <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
-        <!-- Left Sidebar - Hidden on mobile, shown on desktop -->
+        <!-- Left Sidebar - Collapsible -->
         <div class="hidden lg:block">
             <ChatSidebar 
                 :current-chat-id="currentChat?.id"
+                :is-collapsed="isSidebarCollapsed"
                 @chat-selected="handleChatSelected" 
                 @new-chat-created="handleNewChatCreated" 
             />
@@ -803,107 +837,34 @@ if (savedCollapseState === 'false') {
         <div class="flex-1 flex flex-col">
             <!-- Chat Header -->
             <div class="bg-gradient-to-r from-white via-gray-50 to-white dark:from-gray-800 dark:via-gray-850 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-                <div class="px-6 py-5">
+                <div class="px-6 py-3">
                     <div class="flex items-center justify-between">
                         <!-- Left Section -->
                         <div class="flex items-center space-x-6">
-                            <!-- Mobile Menu Button -->
+                            <!-- Sidebar Toggle Button -->
                             <Button 
-                                @click="showMobileSidebar = true"
+                                @click="toggleSidebar"
                                 variant="ghost" 
                                 size="sm" 
-                                class="lg:hidden p-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-200"
+                                class="p-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-200"
+                                title="Toggle Sidebar"
                             >
                                 <Menu class="w-5 h-5" />
                             </Button>
                             
-                            <!-- Chat Title / Brand -->
-                            <div class="flex items-center space-x-3">
-                                <div class="flex items-center space-x-2">
-                                    <template v-if="currentChat">
-                                        <h1 class="text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
-                                            {{ currentChat.title }}
-                                        </h1>
-                                        <button @click="renameCurrentChat" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 group" title="Rename chat">
-                                            <Pencil class="w-4 h-4 text-gray-500 group-hover:text-blue-600 dark:text-gray-400 dark:group-hover:text-blue-400 transition-colors" />
-                                        </button>
-                                    </template>
-                                    <template v-else>
-                                        <Link :href="route('home')" class="hover:opacity-90 transition-opacity" title="Go to Home">
-                                            <h1 class="text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
-                                                OposChat
-                                            </h1>
-                                        </Link>
-                                    </template>
-                                </div>
+                            <!-- Select Exam Dropdown -->
+                            <div class="relative">
+                                <CourseSelector 
+                                    :chat-id="currentChat ? parseInt(currentChat.id) : undefined"
+                                    :initial-course-id="currentChat?.course_id"
+                                    @course-selected="handleCourseSelected"
+                                    class="transform transition-all duration-200 hover:scale-[1.01]"
+                                />
                             </div>
                         </div>
                         
                         <!-- Right Section -->
                         <div class="flex items-center space-x-4">
-                            <!-- Premium Features -->
-                            <div v-if="currentChat" class="hidden md:flex items-center space-x-2">
-                                
-                                <!-- Export Chat Button -->
-                                <Button 
-                                    @click="exportCurrentChat"
-                                    variant="ghost" 
-                                    size="sm" 
-                                    class="p-2.5 rounded-xl text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
-                                    :class="{ 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20': hasPremium }"
-                                    title="Export Chat"
-                                >
-                                    <Download class="w-4 h-4" />
-                                </Button>
-                                
-                                <!-- Analytics Button -->
-                                <Button 
-                                    @click="viewAnalytics"
-                                    variant="ghost" 
-                                    size="sm" 
-                                    class="p-2.5 rounded-xl text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
-                                    :class="{ 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20': hasPremium }"
-                                    title="View Analytics"
-                                >
-                                    <BarChart3 class="w-4 h-4" />
-                                </Button>
-                            </div>
-                            
-                            <!-- User Info -->
-                            <div class="hidden sm:flex items-center space-x-4">
-                                <div class="text-right">
-                                    <div class="text-sm font-semibold text-gray-900 dark:text-white">
-                                        {{ user?.name || 'User' }}
-                                    </div>
-                                    <div class="text-xs font-medium px-2 py-0.5 rounded-full"
-                                         :class="hasPremium ? 'text-yellow-700 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-900/30' : 'text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700'">
-                                        {{ hasPremium ? 'Premium' : 'Free' }}
-                                    </div>
-                                </div>
-                                
-                                <!-- Enhanced User Avatar -->
-                                <div class="relative">
-                                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110">
-                                        <span class="text-white text-sm font-bold">
-                                            {{ user?.name?.charAt(0)?.toUpperCase() || 'U' }}
-                                        </span>
-                                    </div>
-                                    <!-- Online indicator -->
-                                    <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>
-                                </div>
-                            </div>
-                            
-                            <!-- Settings Button -->
-                            <Button 
-                                @click="showSettingsModal = true"
-                                variant="ghost" 
-                                size="sm" 
-                                class="p-2.5 rounded-xl text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
-                                title="Settings"
-                            >
-                                <Settings class="w-4 h-4" />
-                            </Button>
-
                             <!-- Enhanced Theme Toggle -->
                             <Button 
                                 @click="cycleTheme" 
@@ -920,86 +881,7 @@ if (savedCollapseState === 'false') {
                 </div>
             </div>
 
-            <!-- Compact Exam Selection Section -->
-            <div v-if="user" class="mx-6 mt-4 mb-3 relative z-10">
-                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <!-- Compact Header -->
-                    <div class="flex items-center justify-between p-3">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-md flex items-center justify-center">
-                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Select Exam</h3>
-                                <p class="text-xs text-gray-600 dark:text-gray-400">Personalize your chat</p>
-                            </div>
-                        </div>
-                        
-                        <div class="flex items-center space-x-2">
-                            <!-- Current Course Badge (Compact) -->
-                            <div v-if="currentCourse" class="relative">
-                                <div class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 text-white shadow-sm">
-                                    <div class="flex items-center space-x-1">
-                                        <div class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
-                                        <span class="font-bold text-xs">{{ currentCourse.name }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Collapse Toggle Button -->
-                            <button 
-                                @click="toggleExamSection"
-                                class="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200"
-                            >
-                                <svg 
-                                    class="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 transition-transform duration-200"
-                                    :class="{ 'rotate-180': isExamSectionCollapsed }"
-                                    fill="none" 
-                                    stroke="currentColor" 
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Collapsible Content -->
-                    <Transition
-                        enter-active-class="transition-all duration-300 ease-out"
-                        leave-active-class="transition-all duration-300 ease-in"
-                        enter-from-class="opacity-0 max-h-0"
-                        enter-to-class="opacity-100 max-h-96"
-                        leave-from-class="opacity-100 max-h-96"
-                        leave-to-class="opacity-0 max-h-0"
-                    >
-                        <div v-if="!isExamSectionCollapsed" class="px-3 pb-3 border-t border-gray-100 dark:border-gray-700">
-                            <!-- Course Selector -->
-                            <div class="relative pt-3">
-                                <CourseSelector 
-                                    :chat-id="currentChat ? parseInt(currentChat.id) : undefined"
-                                    :initial-course-id="currentChat?.course_id"
-                                    @course-selected="handleCourseSelected"
-                                    class="transform transition-all duration-200 hover:scale-[1.01]"
-                                />
-                            </div>
-                        </div>
-                    </Transition>
-                </div>
-            </div>
 
-            <!-- Usage Indicator -->
-            <UsageIndicator
-                v-if="!hasPremium && usage.chat_messages"
-                feature="chat_messages"
-                feature-name="Chat Messages"
-                :usage="usage.chat_messages"
-                :has-premium="hasPremium"
-                @upgrade="handleUpgradeClick"
-                class="mx-4 mt-2"
-            />
 
             <!-- Chat Messages Area -->
             <div class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 chat-scrollbar">

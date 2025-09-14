@@ -7,9 +7,19 @@ import { usePage } from '@inertiajs/vue3';
 import { ChevronsUpDown } from 'lucide-vue-next';
 import UserMenuContent from './UserMenuContent.vue';
 
+interface Emits {
+    (e: 'upgrade'): void;
+}
+
+const emit = defineEmits<Emits>();
+
 const page = usePage();
 const user = page.props.auth.user as User;
 const { isMobile, state } = useSidebar();
+
+const handleUpgrade = () => {
+    emit('upgrade');
+};
 </script>
 
 <template>
@@ -28,7 +38,7 @@ const { isMobile, state } = useSidebar();
                     align="end"
                     :side-offset="4"
                 >
-                    <UserMenuContent :user="user" />
+                    <UserMenuContent :user="user" @upgrade="handleUpgrade" />
                 </DropdownMenuContent>
             </DropdownMenu>
         </SidebarMenuItem>

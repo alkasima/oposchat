@@ -1,14 +1,32 @@
 <script setup lang="ts">
 import UserInfo from '@/components/UserInfo.vue';
+import UsageIndicator from '@/components/UsageIndicator.vue';
 import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import type { User } from '@/types';
 import { Link, router } from '@inertiajs/vue3';
 import { LogOut, Settings } from 'lucide-vue-next';
 import { refreshCSRFToken, getCSRFToken } from '@/utils/csrf.js';
+import { useSubscription } from '@/composables/useSubscription.js';
 
 interface Props {
     user: User;
 }
+
+interface Emits {
+    (e: 'upgrade'): void;
+}
+
+const emit = defineEmits<Emits>();
+
+// Subscription management
+const {
+    hasPremium,
+    usage,
+    hasFeatureAccess,
+    getRemainingUsage,
+    getUsagePercentage,
+    fetchSubscriptionStatus
+} = useSubscription();
 
 const handleLogout = async () => {
     try {
@@ -87,6 +105,18 @@ defineProps<Props>();
             <UserInfo :user="user" :show-email="true" />
         </div>
     </DropdownMenuLabel>
+    
+    <!-- Usage Indicator -->
+    <div v-if="!hasPremium && usage.chat_messages" class="px-2 py-2">
+        <UsageIndicator
+            feature="chat_messages"
+            feature-name="Chat Messages"
+            :usage="usage.chat_messages"
+            :has-premium="hasPremium"
+            @upgrade="emit('upgrade')"
+        />
+    </div>
+    
     <DropdownMenuSeparator />
     <DropdownMenuGroup>
         <DropdownMenuItem :as-child="true">

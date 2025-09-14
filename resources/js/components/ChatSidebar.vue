@@ -21,6 +21,7 @@ import SubscriptionPrompt from '@/components/SubscriptionPrompt.vue';
 import { useSubscription } from '@/composables/useSubscription.js';
 import chatApi from '@/services/chatApi.js';
 import EditChatModal from '@/components/EditChatModal.vue';
+import { useAppearance } from '@/composables/useAppearance';
 
 interface Chat {
     id: string;
@@ -33,6 +34,7 @@ interface Chat {
 const props = defineProps<{
     isMobile?: boolean;
     currentChatId?: string | null;
+    isCollapsed?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -271,6 +273,11 @@ watch(() => props.currentChatId, (newChatId) => {
     });
 }, { immediate: true });
 
+// Theme management
+const { appearance } = useAppearance();
+const prefersDark = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+const isDark = computed(() => appearance.value === 'dark' || (appearance.value === 'system' && prefersDark()));
+
 // Load chats when component mounts
 onMounted(async () => {
     await loadChats();
@@ -279,15 +286,22 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div class="w-80 bg-gray-900 text-white flex flex-col h-full">
+    <div class="flex flex-col h-full transition-all duration-300" 
+         :class="{ 
+             'w-16': isCollapsed, 
+             'w-80': !isCollapsed,
+             'bg-gray-900 text-white': isDark,
+             'bg-white text-gray-900 border-r border-gray-200': !isDark
+         }">
         <!-- Header -->
-        <div class="p-4 border-b border-gray-700">
+        <div class="p-4 border-b" :class="isDark ? 'border-gray-700' : 'border-gray-200'">
             <div class="flex items-center justify-between mb-4">
                 <Link :href="route('home')" class="flex items-center space-x-2">
-                    <div class="w-14 h-14 bg-gradient-to-br from-white to-white rounded-full flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300 p-2">
-    <img src="/images/logo.png" alt="OposChat" class="w-full h-full rounded-full" />
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300 p-1" 
+                         :class="isDark ? 'bg-gradient-to-br from-white to-white' : 'bg-gradient-to-br from-orange-500 to-orange-600'">
+                        <img src="/images/logo.png" alt="OposChat" class="w-6 h-6 object-contain" />
 </div>
-                    <span class="font-semibold text-lg">OPOSCHAT</span>
+                    <span v-if="!isCollapsed" class="font-semibold text-lg" :class="isDark ? 'text-white' : 'text-gray-900'">OPOSCHAT</span>
                 </Link>
                 
                 <!-- Mobile Close Button -->
@@ -296,7 +310,8 @@ onMounted(async () => {
                     @click="emit('closeMobile')"
                     variant="ghost" 
                     size="sm" 
-                    class="p-2 text-gray-400 hover:text-white lg:hidden"
+                    class="p-2 lg:hidden"
+                    :class="isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'"
                 >
                     <X class="w-5 h-5" />
                 </Button>
@@ -305,60 +320,82 @@ onMounted(async () => {
             <!-- New Chat Button -->
             <Button 
                 @click="createNewChat"
-                class="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-600 justify-start mb-3"
+                class="mb-3"
+                :class="{ 
+                    'w-full justify-start': !isCollapsed, 
+                    'w-8 h-8 p-0': isCollapsed,
+                    'bg-gray-800 hover:bg-gray-700 text-white border-gray-600': isDark,
+                    'bg-gray-100 hover:bg-gray-200 text-gray-900 border-gray-300': !isDark
+                }"
                 variant="outline"
+                :title="isCollapsed ? 'New chat' : ''"
             >
-                <MessageSquarePlus class="w-4 h-4 mr-2" />
-                New chat
+                <MessageSquarePlus class="w-3 h-3" :class="{ 'mr-2': !isCollapsed }" />
+                <span v-if="!isCollapsed" :class="isDark ? 'text-white' : 'text-gray-900'">New chat</span>
             </Button>
 
             <!-- Search -->
-            <div class="relative">
-                <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <div v-if="!isCollapsed" class="relative">
+                <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" 
+                        :class="isDark ? 'text-gray-400' : 'text-gray-500'" />
                 <input
                     v-model="searchQuery"
                     type="text"
                     placeholder="Search chats..."
-                    class="w-full bg-gray-800 border border-gray-600 rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    class="w-full rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    :class="isDark 
+                        ? 'bg-gray-800 border border-gray-600 text-white placeholder-gray-400' 
+                        : 'bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-500'"
                 />
             </div>
         </div>
 
-        <!-- Usage Indicator -->
-        <div class="px-4 pb-2">
-            <UsageIndicator
-                :has-premium="hasPremium"
-                :usage="usage"
-                :usage-percentage="usagePercentage"
-                :is-near-limit="isNearLimit"
-                :has-reached-limit="hasReachedLimit"
-                @upgrade="handleUpgradeClick"
-            />
-        </div>
 
         <!-- Chat History -->
         <div class="flex-1 overflow-y-auto p-2 scrollbar-thin">
             <!-- Loading State -->
             <div v-if="isLoading" class="text-center py-8">
                 <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500 mx-auto"></div>
-                <p class="text-gray-400 text-sm mt-2">Loading chats...</p>
+                <p class="text-sm mt-2" :class="isDark ? 'text-gray-400' : 'text-gray-600'">Loading chats...</p>
             </div>
             
             <!-- Chat List -->
             <div v-else class="space-y-1">
                 <div v-for="chat in filteredChats" :key="chat.id" 
                      @click="selectChat(chat.id.toString())"
-                     class="group relative p-3 rounded-lg hover:bg-gray-800 cursor-pointer transition-colors"
-                     :class="{ 'bg-gray-800': chat.isActive }">
-                    <div class="flex items-start justify-between">
+                     class="group relative rounded-lg cursor-pointer transition-colors"
+                     :class="{ 
+                         'p-3': !isCollapsed,
+                         'p-2 flex justify-center': isCollapsed,
+                         'bg-gray-800 hover:bg-gray-700': isDark && chat.isActive,
+                         'bg-gray-100 hover:bg-gray-200': !isDark && chat.isActive,
+                         'hover:bg-gray-800': isDark && !chat.isActive,
+                         'hover:bg-gray-100': !isDark && !chat.isActive
+                     }"
+                     :title="isCollapsed ? (chat.title || 'New Chat') : ''">
+                    <!-- Collapsed View - Just Icon -->
+                    <div v-if="isCollapsed" class="w-6 h-6 rounded-lg flex items-center justify-center"
+                         :class="chat.isActive 
+                             ? (isDark ? 'bg-orange-500' : 'bg-orange-500')
+                             : (isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300')">
+                        <svg class="w-3 h-3" :class="chat.isActive ? 'text-white' : (isDark ? 'text-gray-300' : 'text-gray-600')" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                    </div>
+                    
+                    <!-- Expanded View - Full Chat Info -->
+                    <div v-else class="flex items-start justify-between">
                         <div class="flex-1 min-w-0">
-                            <h3 class="text-sm font-medium text-white truncate">
+                            <h3 class="text-sm font-medium truncate" 
+                                :class="isDark ? 'text-white' : 'text-gray-900'">
                                 {{ chat.title || 'New Chat' }}
                             </h3>
-                            <p v-if="chat.lastMessage" class="text-xs text-gray-400 truncate mt-1">
+                            <p v-if="chat.lastMessage" class="text-xs truncate mt-1"
+                               :class="isDark ? 'text-gray-400' : 'text-gray-600'">
                                 {{ chat.lastMessage }}
                             </p>
-                            <p v-if="chat.timestamp" class="text-xs text-gray-500 mt-1">
+                            <p v-if="chat.timestamp" class="text-xs mt-1"
+                               :class="isDark ? 'text-gray-500' : 'text-gray-500'">
                                 {{ chat.timestamp }}
                             </p>
                         </div>
@@ -366,20 +403,22 @@ onMounted(async () => {
                             <Button 
                                 size="sm" 
                                 variant="ghost" 
-                                class="h-6 w-6 p-0 text-gray-400 hover:text-blue-400"
+                                class="h-5 w-5 p-0"
+                                :class="isDark ? 'text-gray-400 hover:text-blue-400' : 'text-gray-500 hover:text-blue-600'"
                                 @click="openEditChat(chat, $event)"
                                 title="Rename chat"
                             >
-                                <Edit3 class="w-3 h-3" />
+                                <Edit3 class="w-2.5 h-2.5" />
                             </Button>
                             <Button 
                                 size="sm" 
                                 variant="ghost" 
-                                class="h-6 w-6 p-0 text-gray-400 hover:text-red-400"
+                                class="h-5 w-5 p-0"
+                                :class="isDark ? 'text-gray-400 hover:text-red-400' : 'text-gray-500 hover:text-red-600'"
                                 @click="deleteChat(chat.id.toString(), $event)"
                                 title="Delete chat"
                             >
-                                <Trash2 class="w-3 h-3" />
+                                <Trash2 class="w-2.5 h-2.5" />
                             </Button>
                         </div>
                     </div>
@@ -388,46 +427,75 @@ onMounted(async () => {
 
             <!-- Empty State -->
             <div v-if="!isLoading && filteredChats.length === 0" class="text-center py-8">
-                <MessageSquarePlus class="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                <p class="text-gray-400 text-sm mb-2">No chats yet</p>
-                <p class="text-gray-500 text-xs">Start a new conversation to get started</p>
+                <MessageSquarePlus class="w-12 h-12 mx-auto mb-3" 
+                                   :class="isDark ? 'text-gray-600' : 'text-gray-400'" />
+                <p class="text-sm mb-2" :class="isDark ? 'text-gray-400' : 'text-gray-600'">No chats yet</p>
+                <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-500'">Start a new conversation to get started</p>
             </div>
         </div>
 
         <!-- User Profile Section -->
-        <div class="p-4 border-t border-gray-700">
+        <div class="p-4 border-t" :class="isDark ? 'border-gray-700' : 'border-gray-200'">
             <div class="relative">
                 <Button 
                     @click="showUserMenu = !showUserMenu"
-                    class="w-full bg-gray-800 hover:bg-gray-700 text-white justify-start p-3"
+                    class=""
+                    :class="{ 
+                        'w-full justify-start p-3': !isCollapsed, 
+                        'w-10 h-10 p-0': isCollapsed,
+                        'bg-gray-800 hover:bg-gray-700 text-white': isDark,
+                        'bg-gray-100 hover:bg-gray-200 text-gray-900': !isDark
+                    }"
                     variant="ghost"
+                    :title="isCollapsed ? 'User Menu' : ''"
                 >
-                    <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center mr-3">
-                        <Crown v-if="hasPremium" class="w-4 h-4 text-yellow-400" />
-                        <User v-else class="w-4 h-4" />
+                    <div class="w-6 h-6 rounded-full flex items-center justify-center" :class="{ 'mr-3': !isCollapsed, 'bg-orange-500': isCollapsed }">
+                        <Crown v-if="hasPremium" class="w-3 h-3 text-yellow-400" />
+                        <User v-else class="w-3 h-3" :class="isCollapsed ? 'text-white' : (isDark ? 'text-white' : 'text-gray-600')" />
                     </div>
-                    <div class="flex-1 text-left">
-                        <div class="text-sm font-medium flex items-center">
+                    <div v-if="!isCollapsed" class="flex-1 text-left">
+                        <div class="text-sm font-medium flex items-center" :class="isDark ? 'text-white' : 'text-gray-900'">
                             {{ user?.name || 'User' }}
                             <span v-if="hasPremium" class="ml-2 px-2 py-0.5 text-xs bg-yellow-500 text-black rounded-full font-medium">
                                 PRO
                             </span>
                         </div>
-                        <div class="text-xs text-gray-400">{{ user?.email }}</div>
+                        <div class="text-xs" :class="isDark ? 'text-gray-400' : 'text-gray-500'">{{ user?.email }}</div>
                     </div>
                 </Button>
 
                 <!-- User Menu Dropdown -->
                 <div v-if="showUserMenu" 
-                     class="absolute bottom-full left-0 right-0 mb-2 bg-gray-800 rounded-lg shadow-lg border border-gray-700 py-2 z-50">
+                     class="absolute bottom-full left-0 right-0 mb-2 rounded-lg shadow-lg py-2 z-50"
+                     :class="isDark 
+                         ? 'bg-gray-800 border border-gray-700' 
+                         : 'bg-white border border-gray-200'">
+                    
+                    <!-- Usage Indicator -->
+                    <div v-if="!hasPremium && usage.chat_messages" class="px-3 py-2">
+                        <UsageIndicator
+                            feature="chat_messages"
+                            feature-name="Chat Messages"
+                            :usage="usage.chat_messages"
+                            :has-premium="hasPremium"
+                            @upgrade="handleUpgradeClick"
+                        />
+                    </div>
+                    
                     <button @click="openSettings"
-                            class="w-full flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white">
+                            class="w-full flex items-center px-4 py-2 text-sm transition-colors"
+                            :class="isDark 
+                                ? 'text-gray-300 hover:bg-gray-700 hover:text-white' 
+                                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'">
                         <Settings class="w-4 h-4 mr-3" />
                         Settings
                     </button>
-                    <Separator class="my-1 bg-gray-700" />
+                    <Separator class="my-1" :class="isDark ? 'bg-gray-700' : 'bg-gray-200'" />
                     <button @click="logout" 
-                            class="w-full flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white">
+                            class="w-full flex items-center px-4 py-2 text-sm transition-colors"
+                            :class="isDark 
+                                ? 'text-gray-300 hover:bg-gray-700 hover:text-white' 
+                                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'">
                         <LogOut class="w-4 h-4 mr-3" />
                         Sign out
                     </button>
