@@ -13,7 +13,7 @@ import CourseSelector from '@/components/CourseSelector.vue';
 import { useSubscription } from '@/composables/useSubscription.js';
 import chatApi from '@/services/chatApi.js';
 import streamingChatService from '@/services/streamingChatService.js';
-import { Send, User, Bot, Paperclip, Settings, Menu, Download, BarChart3, Pencil, Sun, Moon, Mic, Square } from 'lucide-vue-next';
+import { Send, User, Bot, Paperclip, Settings, Download, BarChart3, Pencil, Sun, Moon, Mic, Square, ChevronsRight } from 'lucide-vue-next';
 import { useAppearance } from '@/composables/useAppearance';
 import { useAudioRecording } from '@/composables/useAudioRecording';
 
@@ -801,7 +801,8 @@ if (savedSidebarState === 'false') {
                 :current-chat-id="currentChat?.id"
                 :is-collapsed="isSidebarCollapsed"
                 @chat-selected="handleChatSelected" 
-                @new-chat-created="handleNewChatCreated" 
+                @new-chat-created="handleNewChatCreated"
+                @toggle-collapse="toggleSidebar"
             />
         </div>
         
@@ -812,8 +813,8 @@ if (savedSidebarState === 'false') {
             enter-from-class="opacity-0"
             leave-to-class="opacity-0"
         >
-            <div v-if="showMobileSidebar" class="fixed inset-0 z-50 lg:hidden">
-                <div class="absolute inset-0 bg-white bg-opacity-20 backdrop-blur-sm" @click="showMobileSidebar = false"></div>
+            <div v-if="showMobileSidebar" class="fixed inset-0 z-[70] lg:hidden">
+                <div class="absolute inset-0 bg-transparent" @click="showMobileSidebar = false"></div>
                 <Transition
                     enter-active-class="transition-transform duration-300"
                     leave-active-class="transition-transform duration-300"
@@ -826,6 +827,7 @@ if (savedSidebarState === 'false') {
                             :current-chat-id="currentChat?.id"
                             @chat-selected="handleChatSelected" 
                             @new-chat-created="handleNewChatCreated"
+                            @toggle-collapse="toggleSidebar"
                             @close-mobile="showMobileSidebar = false"
                         />
                     </div>
@@ -841,19 +843,18 @@ if (savedSidebarState === 'false') {
                     <div class="flex items-center justify-between">
                         <!-- Left Section -->
                         <div class="flex items-center space-x-6">
-                            <!-- Sidebar Toggle Button -->
+                            <!-- Mobile Sidebar Open Button -->
                             <Button 
-                                @click="toggleSidebar"
+                                @click="showMobileSidebar = true"
                                 variant="ghost" 
                                 size="sm" 
-                                class="p-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-200"
-                                title="Toggle Sidebar"
+                                class="p-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-200 lg:hidden"
+                                title="Open Sidebar"
                             >
-                                <Menu class="w-5 h-5" />
+                                <ChevronsRight class="w-5 h-5" />
                             </Button>
-                            
                             <!-- Select Exam Dropdown -->
-                            <div class="relative">
+                            <div class="relative z-50">
                                 <CourseSelector 
                                     :chat-id="currentChat ? parseInt(currentChat.id) : undefined"
                                     :initial-course-id="currentChat?.course_id"

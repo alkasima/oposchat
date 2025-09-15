@@ -13,7 +13,11 @@ import {
     Trash2,
     Search,
     Crown,
-    X
+    X,
+    ChevronLeft,
+    ChevronRight,
+    ChevronsLeft,
+    ChevronsRight
 } from 'lucide-vue-next';
 import SettingsModal from '@/components/SettingsModal.vue';
 import UsageIndicator from '@/components/UsageIndicator.vue';
@@ -41,6 +45,7 @@ const emit = defineEmits<{
     chatSelected: [chatId: string | null];
     newChatCreated: [chat: any];
     closeMobile?: [];
+    toggleCollapse?: [];
 }>();
 
 const page = usePage();
@@ -288,7 +293,7 @@ onMounted(async () => {
 <template>
     <div class="flex flex-col h-full transition-all duration-300" 
          :class="{ 
-             'w-16': isCollapsed, 
+             'w-20': isCollapsed, 
              'w-80': !isCollapsed,
              'bg-gray-900 text-white': isDark,
              'bg-white text-gray-900 border-r border-gray-200': !isDark
@@ -303,18 +308,21 @@ onMounted(async () => {
 </div>
                     <span v-if="!isCollapsed" class="font-semibold text-lg" :class="isDark ? 'text-white' : 'text-gray-900'">OPOSCHAT</span>
                 </Link>
-                
-                <!-- Mobile Close Button -->
+
+                <!-- Collapse Toggle Button -->
                 <Button 
-                    v-if="isMobile"
-                    @click="emit('closeMobile')"
+                    @click="emit('toggleCollapse')"
                     variant="ghost" 
                     size="sm" 
-                    class="p-2 lg:hidden"
-                    :class="isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'"
+                    class="p-2.5 rounded-xl transition-all duration-200 inline-flex"
+                    :class="isDark ? 'text-gray-400 hover:bg-gray-700 hover:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'"
+                    :title="isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
                 >
-                    <X class="w-5 h-5" />
+                    <ChevronsRight v-if="isCollapsed" class="w-4 h-4" />
+                    <ChevronsLeft v-else class="w-4 h-4" />
                 </Button>
+                
+                
             </div>
             
             <!-- New Chat Button -->
