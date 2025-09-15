@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useAppearance } from '@/composables/useAppearance';
 import { Sun, Moon, User, Settings, LogOut, CreditCard, BarChart3 } from 'lucide-vue-next';
 
@@ -21,6 +21,33 @@ const cycleTheme = () => {
 const closeProfileDropdown = () => {
     isProfileOpen.value = false;
 };
+
+// Courses for header dropdown (public)
+type HeaderCourse = {
+    id: number;
+    name: string;
+    slug?: string;
+    namespace?: string;
+};
+const headerCourses = ref<HeaderCourse[]>([]);
+const loadingHeaderCourses = ref<boolean>(false);
+const headerCoursesError = ref<string | null>(null);
+
+onMounted(async () => {
+    try {
+        loadingHeaderCourses.value = true;
+        headerCoursesError.value = null;
+        const res = await fetch('/public/courses', { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) throw new Error('Failed to load courses');
+        const data = await res.json();
+        headerCourses.value = Array.isArray(data) ? data : [];
+    } catch (e: any) {
+        headerCoursesError.value = e?.message || 'Could not load courses';
+        headerCourses.value = [];
+    } finally {
+        loadingHeaderCourses.value = false;
+    }
+});
 </script>
 
 <template>
@@ -55,11 +82,21 @@ const closeProfileDropdown = () => {
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                             </svg>
                         </button>
-                        <div class="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
-                            <div class="py-2">
-                                <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">SAT Preparation</a>
-                                <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">GRE Preparation</a>
-                                <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">GMAT Preparation</a>
+                        <div class="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                            <div class="py-2 max-h-80 overflow-auto">
+                                <div v-if="loadingHeaderCourses" class="px-4 py-2 text-sm text-gray-500">Loading…</div>
+                                <div v-else-if="headerCoursesError" class="px-4 py-2 text-sm text-red-600">{{ headerCoursesError }}</div>
+                                <template v-else>
+                                    <Link 
+                                        v-for="c in headerCourses.slice(0, 4)" :key="c.id"
+                                        :href="route('exams.wiki.course', { slug: c.slug || c.namespace })"
+                                        class="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                    >
+                                        {{ c.name }}
+                                    </Link>
+                                </template>
+                                <div class="border-t border-gray-100 mt-2"></div>
+                                <Link :href="route('exams.wiki')" class="block px-4 py-2 text-sm text-blue-600 hover:bg-blue-50">View all exams →</Link>
                             </div>
                         </div>
                     </div>

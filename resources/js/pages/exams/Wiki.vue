@@ -19,7 +19,7 @@ const fetchCourses = async () => {
     loading.value = true;
     error.value = null;
     try {
-        const res = await fetch('/api/courses', { headers: { 'Accept': 'application/json' } });
+        const res = await fetch('/public/courses', { headers: { 'Accept': 'application/json' } });
         if (!res.ok) throw new Error('Failed to load courses');
         courses.value = await res.json();
     } catch (e: any) {
@@ -103,30 +103,56 @@ onMounted(() => {
                 <div id="sat-preparation" class="bg-white dark:bg-slate-800 rounded-2xl shadow p-6">
                     <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">SAT</h2>
                     <p class="text-gray-700 dark:text-gray-300">The SAT assesses reading, writing, and math. It is widely used for undergraduate admissions. Sections include Reading & Writing and Math. Scores range from 400–1600.</p>
-                    <div class="mt-4">
-                        <button @click="startChatFor('sat-preparation', 'SAT')" class="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm">Start Chat for SAT</button>
+                    <div class="mt-4 flex items-center gap-3">
+                        <button @click="startChatFor('sat-preparation', 'SAT')" class="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm">Start Chat</button>
+                        <Link :href="route('exams.wiki.course', { slug: 'sat-preparation' })" class="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm">View details</Link>
                     </div>
                 </div>
                 <div id="gre-preparation" class="bg-white dark:bg-slate-800 rounded-2xl shadow p-6">
                     <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">GRE</h2>
                     <p class="text-gray-700 dark:text-gray-300">The GRE General Test evaluates verbal reasoning, quantitative reasoning, and analytical writing. Used for many graduate programs worldwide.</p>
-                    <div class="mt-4">
-                        <button @click="startChatFor('gre-preparation', 'GRE')" class="inline-flex items-center px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 text-sm">Start Chat for GRE</button>
+                    <div class="mt-4 flex items-center gap-3">
+                        <button @click="startChatFor('gre-preparation', 'GRE')" class="inline-flex items-center px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 text-sm">Start Chat</button>
+                        <Link :href="route('exams.wiki.course', { slug: 'gre-preparation' })" class="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm">View details</Link>
                     </div>
                 </div>
                 <div id="gmat-preparation" class="bg-white dark:bg-slate-800 rounded-2xl shadow p-6">
                     <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">GMAT</h2>
                     <p class="text-gray-700 dark:text-gray-300">The GMAT measures reasoning and analytical skills for business school admissions. It includes Quantitative, Verbal, and Data Insights sections.</p>
-                    <div class="mt-4">
-                        <button @click="startChatFor('gmat-preparation', 'GMAT')" class="inline-flex items-center px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 text-sm">Start Chat for GMAT</button>
+                    <div class="mt-4 flex items-center gap-3">
+                        <button @click="startChatFor('gmat-preparation', 'GMAT')" class="inline-flex items-center px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 text-sm">Start Chat</button>
+                        <Link :href="route('exams.wiki.course', { slug: 'gmat-preparation' })" class="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm">View details</Link>
                     </div>
                 </div>
                 <div id="custom-preparation" class="bg-white dark:bg-slate-800 rounded-2xl shadow p-6">
                     <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Custom/Other Exams</h2>
                     <p class="text-gray-700 dark:text-gray-300">If your target exam is not listed, contact us. We can tailor content and guidance to your needs and add it to this wiki.</p>
-                    <div class="mt-4">
-                        <button @click="startChatFor('custom-preparation', 'Custom Exam')" class="inline-flex items-center px-4 py-2 rounded-lg bg-orange-600 text-white hover:bg-orange-700 text-sm">Start Chat for Custom Exam</button>
+                    <div class="mt-4 flex items-center gap-3">
+                        <button @click="startChatFor('custom-preparation', 'Custom Exam')" class="inline-flex items-center px-4 py-2 rounded-lg bg-orange-600 text-white hover:bg-orange-700 text-sm">Start Chat</button>
+                        <Link :href="route('exams.wiki.course', { slug: 'custom-preparation' })" class="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm">View details</Link>
                     </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Courses (always visible) -->
+            <div class="mt-12">
+                <h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Available Competitive Examinations</h2>
+                <div v-if="error" class="text-sm text-red-600 dark:text-red-400 mb-4">{{ error }}</div>
+                <div v-if="loading" class="text-gray-600 dark:text-gray-300">Loading courses…</div>
+                <div v-else class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <Link 
+                        v-for="c in courses" :key="c.id"
+                        :href="route('exams.wiki.course', { slug: c.slug || c.namespace })"
+                        class="group bg-white dark:bg-slate-800 rounded-xl shadow hover:shadow-md transition p-5 flex items-center gap-4"
+                    >
+                        <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-orange-500 to-orange-600 text-white font-semibold">
+                            {{ (c.name || '').substring(0,2).toUpperCase() }}
+                        </div>
+                        <div>
+                            <div class="font-semibold text-gray-900 dark:text-gray-100">{{ c.name }}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">View details</div>
+                        </div>
+                    </Link>
                 </div>
             </div>
         </div>

@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\StreamingChatController;
+use App\Models\Course;
 
 Route::get('/', function () {
     return Inertia::render('Welcome');
@@ -20,6 +21,25 @@ Route::get('/pricing', function () {
 Route::get('/exams/wiki', function () {
     return Inertia::render('exams/Wiki');
 })->name('exams.wiki');
+
+// Public courses endpoints (visible without auth)
+Route::get('/public/courses', function () {
+    return Course::active()->ordered()
+        ->get(['id','name','slug','namespace','description','icon','color','badge','badge_color']);
+})->name('public.courses.index');
+
+Route::get('/public/courses/{slug}', function (string $slug) {
+    $course = Course::active()
+        ->where('slug', $slug)
+        ->orWhere('namespace', $slug)
+        ->firstOrFail(['id','name','slug','namespace','description','full_description','icon','color','badge','badge_color']);
+    return response()->json($course);
+})->name('public.courses.show');
+
+// Course-specific wiki page
+Route::get('/exams/wiki/{slug}', function (string $slug) {
+    return Inertia::render('exams/Course', [ 'slug' => $slug ]);
+})->name('exams.wiki.course');
 
 // Legal pages
 Route::get('/privacy-policy', function () {

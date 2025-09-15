@@ -20,7 +20,7 @@ onMounted(async () => {
     try {
         loadingCourses.value = true;
         coursesError.value = null;
-        const res = await fetch('/api/courses', { headers: { 'Accept': 'application/json' } });
+        const res = await fetch('/public/courses', { headers: { 'Accept': 'application/json' } });
         if (!res.ok) throw new Error('Failed to load courses');
         const data = await res.json();
         // Expecting: id, name, slug, description, namespace, icon, color
@@ -166,12 +166,13 @@ const faqData = [
                             >
                                 Choose Your Exam
                             </a>
-                            <button 
+                            <Link 
                                 v-else
-                                class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
+                                :href="route('exams.wiki')"
+                                class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:-translate-y-1 inline-block text-center"
                             >
                                 Start Learning Free
-                            </button>
+                            </Link>
                             <Link 
                                 v-if="$page.props.auth.user"
                                 :href="route('dashboard')"
