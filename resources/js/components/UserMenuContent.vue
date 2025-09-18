@@ -107,12 +107,22 @@ defineProps<Props>();
         </div>
     </DropdownMenuLabel>
     
-    <!-- Usage Indicator -->
-    <div v-if="!hasPremium && usage.chat_messages" class="px-2 py-2">
+    <!-- Usage Indicators -->
+    <div v-if="usage.chat_messages && !usage.chat_messages.unlimited" class="px-2 py-2">
         <UsageIndicator
             feature="chat_messages"
             feature-name="Chat Messages"
             :usage="usage.chat_messages"
+            :has-premium="hasPremium"
+            @upgrade="emit('upgrade')"
+        />
+    </div>
+    
+    <div v-if="usage.file_uploads && !usage.file_uploads.unlimited" class="px-2 py-2">
+        <UsageIndicator
+            feature="file_uploads"
+            feature-name="File Uploads"
+            :usage="usage.file_uploads"
             :has-premium="hasPremium"
             @upgrade="emit('upgrade')"
         />

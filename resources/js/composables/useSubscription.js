@@ -115,6 +115,20 @@ export function useSubscription() {
         }
     }
 
+    const refreshSubscriptionData = async () => {
+        try {
+            loading.value = true;
+            
+            // Force a page reload to get fresh Inertia data
+            window.location.reload();
+        } catch (error) {
+            console.error('Error refreshing subscription data:', error);
+            error.value = error.message;
+        } finally {
+            loading.value = false;
+        }
+    }
+
     return {
         subscription,
         hasPremium,
@@ -131,6 +145,7 @@ export function useSubscription() {
         getRemainingUsage,
         fetchSubscriptionStatus,
         refresh,
-        fetchUsageData
+        fetchUsageData,
+        refreshSubscriptionData
     }
 }

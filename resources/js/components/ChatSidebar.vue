@@ -67,6 +67,7 @@ const {
     usage,
     fetchSubscriptionStatus,
     fetchUsageData,
+    refreshSubscriptionData,
     hasFeatureAccess,
     getUsagePercentage,
     getRemainingUsage
@@ -479,8 +480,17 @@ onMounted(async () => {
                             </span>
                         </div>
                         <div class="text-xs" :class="isDark ? 'text-gray-400' : 'text-gray-500'">{{ user?.email }}</div>
-                        <div class="text-xs mt-1" :class="isDark ? 'text-gray-500' : 'text-gray-600'">
-                            Plan: {{ currentPlanName }}
+                        <div class="text-xs mt-1 flex items-center justify-between" :class="isDark ? 'text-gray-500' : 'text-gray-600'">
+                            <span>Plan: {{ currentPlanName }}</span>
+                            <button 
+                                @click="refreshSubscriptionData"
+                                class="ml-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                                title="Refresh subscription status"
+                            >
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 </Button>
@@ -492,12 +502,22 @@ onMounted(async () => {
                          ? 'bg-gray-800 border border-gray-700' 
                          : 'bg-white border border-gray-200'">
                     
-                    <!-- Usage Indicator -->
-                    <div v-if="!hasPremium && usage.chat_messages" class="px-3 py-2">
+                    <!-- Usage Indicators -->
+                    <div v-if="usage.chat_messages && !usage.chat_messages.unlimited" class="px-3 py-2">
                         <UsageIndicator
                             feature="chat_messages"
                             feature-name="Chat Messages"
                             :usage="usage.chat_messages"
+                            :has-premium="hasPremium"
+                            @upgrade="handleUpgradeClick"
+                        />
+                    </div>
+                    
+                    <div v-if="usage.file_uploads && !usage.file_uploads.unlimited" class="px-3 py-2">
+                        <UsageIndicator
+                            feature="file_uploads"
+                            feature-name="File Uploads"
+                            :usage="usage.file_uploads"
                             :has-premium="hasPremium"
                             @upgrade="handleUpgradeClick"
                         />

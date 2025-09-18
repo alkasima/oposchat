@@ -1,5 +1,5 @@
 <template>
-  <div v-if="!hasPremium && usage" class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
+  <div v-if="usage && !usage.unlimited" class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
     <div class="flex items-center justify-between mb-2">
       <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
         {{ featureName }} Usage
@@ -31,7 +31,7 @@
         @click="$emit('upgrade')"
         class="text-blue-600 dark:text-blue-400 hover:underline font-medium"
       >
-        Upgrade for unlimited access
+        {{ hasPremium ? 'Upgrade to Plus for unlimited access' : 'Upgrade for unlimited access' }}
       </button>
     </div>
   </div>
