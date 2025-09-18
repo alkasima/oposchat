@@ -16,7 +16,7 @@ class SubscriptionService
     public function createSubscriptionFromStripe($stripeSubscription): Subscription
     {
         // Find user by Stripe customer ID
-        $user = User::where('stripe_id', $stripeSubscription->customer)->first();
+        $user = User::where('stripe_customer_id', $stripeSubscription->customer)->first();
         
         if (!$user) {
             throw new \Exception("User not found for Stripe customer ID: {$stripeSubscription->customer}");
@@ -58,6 +58,9 @@ class SubscriptionService
             'user_id' => $user->id
         ]);
 
+        // Clear usage cache for the user to ensure new limits take effect immediately
+        $this->clearUsageCache($user);
+
         return $subscription;
     }
 
@@ -95,6 +98,9 @@ class SubscriptionService
             'status' => $stripeSubscription->status
         ]);
 
+        // Clear usage cache for the user to ensure new limits take effect immediately
+        $this->clearUsageCache($subscription->user);
+
         return $subscription;
     }    /**
 
@@ -128,7 +134,7 @@ class SubscriptionService
     public function handleSuccessfulPayment($stripeInvoice): void
     {
         // Find user by customer ID
-        $user = User::where('stripe_id', $stripeInvoice->customer)->first();
+        $user = User::where('stripe_customer_id', $stripeInvoice->customer)->first();
         
         if (!$user) {
             Log::warning('User not found for invoice payment', [
@@ -161,6 +167,9 @@ class SubscriptionService
         // If this is a subscription payment, ensure subscription is active
         if ($subscription && $stripeInvoice->status === 'paid') {
             $subscription->update(['status' => 'active']);
+            
+            // Clear usage cache for the user to ensure new limits take effect immediately
+            $this->clearUsageCache($user);
         }
 
         Log::info('Payment processed from webhook', [
@@ -242,7 +251,7 @@ class SubscriptionService
     {
         try {
             // Find user by customer ID
-            $user = User::where('stripe_id', $stripeInvoice->customer)->first();
+            $user = User::where('stripe_customer_id', $stripeInvoice->customer)->first();
             
             if (!$user) {
                 Log::warning('User not found for failed invoice payment', [
@@ -346,6 +355,24 @@ class SubscriptionService
             'subscription_id' => $subscription->id,
             'stripe_subscription_id' => $stripeSubscription->id,
             'status' => $stripeSubscription->status
+        ]);
+    }
+
+    /**
+     * Clear usage cache for a user to ensure new subscription limits take effect immediately
+     */
+    private function clearUsageCache(User $user): void
+    {
+        $features = ['chat_messages', 'file_uploads', 'api_calls'];
+        
+        foreach ($features as $feature) {
+            $cacheKey = "usage_{$user->id}_{$feature}";
+            \Illuminate\Support\Facades\Cache::forget($cacheKey);
+        }
+
+        Log::info('Usage cache cleared for user', [
+            'user_id' => $user->id,
+            'features' => $features
         ]);
     }
 }

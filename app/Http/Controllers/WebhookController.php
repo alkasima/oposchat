@@ -44,6 +44,12 @@ class WebhookController extends Controller
 
         // Handle the event
         try {
+            Log::info('Webhook received', [
+                'event_type' => $event->type,
+                'event_id' => $event->id,
+                'should_process_async' => $this->shouldProcessAsync($event->type)
+            ]);
+
             // Check if this event should be processed asynchronously
             if ($this->shouldProcessAsync($event->type)) {
                 // Dispatch job for asynchronous processing
@@ -68,7 +74,8 @@ class WebhookController extends Controller
             Log::error('Failed to handle webhook event', [
                 'event_type' => $event->type,
                 'event_id' => $event->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
             return response('Webhook processing failed', 500);
@@ -80,12 +87,16 @@ class WebhookController extends Controller
      */
     private function shouldProcessAsync(string $eventType): bool
     {
-        // Process most events asynchronously to improve webhook response time
-        $asyncEvents = [
+        // Process critical payment events synchronously to ensure immediate updates
+        $syncEvents = [
             'customer.subscription.created',
             'customer.subscription.updated',
-            'customer.subscription.deleted',
             'invoice.payment_succeeded',
+        ];
+
+        // Process less critical events asynchronously
+        $asyncEvents = [
+            'customer.subscription.deleted',
             'invoice.payment_failed',
             'customer.subscription.trial_will_end'
         ];
