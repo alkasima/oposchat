@@ -7,6 +7,7 @@ use App\Models\Subscription;
 use App\Models\SubscriptionItem;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
+use Stripe\Subscription as StripeSubscription;
 
 class SubscriptionService
 {
@@ -374,5 +375,127 @@ class SubscriptionService
             'user_id' => $user->id,
             'features' => $features
         ]);
+    }
+
+    /**
+     * Handle immediate subscription update after successful payment
+     * This bypasses webhook processing for instant updates
+     */
+    public function handleImmediatePaymentSuccess($stripeSubscription, $stripeInvoice = null): void
+    {
+        try {
+            // Find user by Stripe customer ID
+            $user = User::where('stripe_customer_id', $stripeSubscription->customer)->first();
+            
+            if (!$user) {
+                throw new \Exception("User not found for Stripe customer ID: {$stripeSubscription->customer}");
+            }
+
+            // Create or update subscription
+            $existing = Subscription::where('stripe_subscription_id', $stripeSubscription->id)->first();
+            if ($existing) {
+                $subscription = $this->updateSubscriptionFromStripe($stripeSubscription);
+            } else {
+                $subscription = $this->createSubscriptionFromStripe($stripeSubscription);
+            }
+
+            // Handle invoice if provided
+            if ($stripeInvoice && $stripeInvoice->status === 'paid') {
+                $this->handleSuccessfulPayment($stripeInvoice);
+            }
+
+            // Clear usage cache to ensure new limits take effect immediately
+            $this->clearUsageCache($user);
+
+            Log::info('Immediate payment success handled', [
+                'user_id' => $user->id,
+                'subscription_id' => $subscription->id,
+                'stripe_subscription_id' => $stripeSubscription->id,
+                'plan_name' => $user->getCurrentPlanName()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to handle immediate payment success', [
+                'stripe_subscription_id' => $stripeSubscription->id,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Sync missing subscriptions for users who have Stripe customer IDs but no local subscriptions
+     */
+    public function syncMissingSubscriptions(): array
+    {
+        $results = [];
+        
+        // Find users with Stripe customer IDs but no subscriptions
+        $usersWithoutSubscriptions = User::whereNotNull('stripe_customer_id')
+            ->whereDoesntHave('subscriptions')
+            ->get();
+
+        foreach ($usersWithoutSubscriptions as $user) {
+            try {
+                $this->syncUserSubscriptionsFromStripe($user);
+                $results[] = [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'status' => 'synced',
+                    'plan' => $user->getCurrentPlanName()
+                ];
+            } catch (\Exception $e) {
+                $results[] = [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'status' => 'failed',
+                    'error' => $e->getMessage()
+                ];
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Sync subscriptions for a specific user from Stripe
+     */
+    public function syncUserSubscriptionsFromStripe(User $user): void
+    {
+        if (!$user->stripe_customer_id) {
+            throw new \Exception("User {$user->id} has no Stripe customer ID");
+        }
+
+        // Get customer from Stripe
+        $stripeService = app(\App\Services\StripeService::class);
+        $stripeCustomer = $stripeService->retrieveCustomer($user->stripe_customer_id);
+        
+        if (!$stripeCustomer) {
+            throw new \Exception("Could not retrieve Stripe customer for user {$user->id}");
+        }
+
+        // Get active subscriptions from Stripe using the subscription list API
+        $stripeSubscriptions = StripeSubscription::all([
+            'customer' => $user->stripe_customer_id,
+            'status' => 'all'
+        ])->data;
+        
+        foreach ($stripeSubscriptions as $stripeSubscription) {
+            if (in_array($stripeSubscription->status, ['active', 'trialing'])) {
+                // Check if we already have this subscription locally
+                $existing = Subscription::where('stripe_subscription_id', $stripeSubscription->id)->first();
+                
+                if (!$existing) {
+                    // Create the subscription
+                    $this->createSubscriptionFromStripe($stripeSubscription);
+                    
+                    Log::info('Synced missing subscription from Stripe', [
+                        'user_id' => $user->id,
+                        'stripe_subscription_id' => $stripeSubscription->id,
+                        'plan_name' => $user->getCurrentPlanName()
+                    ]);
+                }
+            }
+        }
     }
 }

@@ -302,14 +302,24 @@ class SubscriptionController extends Controller
 
             $stripeSubscription = $this->stripeService->retrieveSubscriptionById($session->subscription);
 
-            DB::transaction(function () use ($stripeSubscription, $user) {
-                // If user has no local subscription for this stripe sub, create it; else update
-                $existing = \App\Models\Subscription::where('stripe_subscription_id', $stripeSubscription->id)->first();
-                if ($existing) {
-                    app(\App\Services\SubscriptionService::class)->updateSubscriptionFromStripe($stripeSubscription);
-                } else {
-                    app(\App\Services\SubscriptionService::class)->createSubscriptionFromStripe($stripeSubscription);
+            DB::transaction(function () use ($stripeSubscription, $session) {
+                $subscriptionService = app(\App\Services\SubscriptionService::class);
+                
+                // Get invoice if it exists
+                $invoice = null;
+                if ($session->invoice) {
+                    try {
+                        $invoice = $this->stripeService->retrieveInvoiceById($session->invoice);
+                    } catch (\Exception $e) {
+                        Log::warning('Failed to retrieve invoice after checkout', [
+                            'invoice_id' => $session->invoice,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
                 }
+                
+                // Handle immediate payment success (bypasses webhook)
+                $subscriptionService->handleImmediatePaymentSuccess($stripeSubscription, $invoice);
             });
 
             return response()->json([
@@ -527,5 +537,114 @@ class SubscriptionController extends Controller
         }
 
         return 'An error occurred while processing your request. Please try again.';
+    }
+
+    /**
+     * Refresh subscription status immediately (bypass webhook)
+     */
+    public function refreshSubscriptionStatus(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user->stripe_customer_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No Stripe customer ID found'
+                ], 400);
+            }
+
+            // Get the latest subscription from Stripe
+            $stripeCustomer = $this->stripeService->retrieveCustomer($user->stripe_customer_id);
+            $subscriptions = $stripeCustomer->subscriptions->data;
+            
+            if (empty($subscriptions)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No active subscription found'
+                ], 404);
+            }
+
+            // Get the most recent active subscription
+            $latestSubscription = null;
+            foreach ($subscriptions as $subscription) {
+                if (in_array($subscription->status, ['active', 'trialing'])) {
+                    if (!$latestSubscription || $subscription->created > $latestSubscription->created) {
+                        $latestSubscription = $subscription;
+                    }
+                }
+            }
+
+            if (!$latestSubscription) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No active subscription found'
+                ], 404);
+            }
+
+            // Update subscription immediately
+            DB::transaction(function () use ($latestSubscription) {
+                $subscriptionService = app(\App\Services\SubscriptionService::class);
+                $subscriptionService->handleImmediatePaymentSuccess($latestSubscription);
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'status' => 'refreshed',
+                    'subscription_id' => $latestSubscription->id,
+                    'plan_name' => $user->getCurrentPlanName()
+                ]
+            ]);
+
+        } catch (Exception $e) {
+            Log::error('Failed to refresh subscription status', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to refresh subscription status'
+            ], 500);
+        }
+    }
+
+    /**
+     * Sync missing subscriptions for the current user
+     */
+    public function syncUserSubscriptions(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user->stripe_customer_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No Stripe customer ID found'
+                ], 400);
+            }
+
+            $subscriptionService = app(\App\Services\SubscriptionService::class);
+            $subscriptionService->syncUserSubscriptionsFromStripe($user);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'status' => 'synced',
+                    'plan_name' => $user->getCurrentPlanName(),
+                    'has_premium_access' => $user->hasPremiumAccess()
+                ]
+            ]);
+
+        } catch (Exception $e) {
+            Log::error('Failed to sync user subscriptions', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to sync subscriptions'
+            ], 500);
+        }
     }
 }

@@ -184,6 +184,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user has a Stripe customer ID
+     */
+    public function hasStripeId(): bool
+    {
+        return !empty($this->stripe_customer_id);
+    }
+
+    /**
      * Compatibility shim: map Cashier's expected `stripe_id` attribute
      * to our `stripe_customer_id` column so package code that reads/writes
      * $user->stripe_id will operate on the correct DB column.

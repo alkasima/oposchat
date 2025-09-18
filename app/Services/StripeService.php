@@ -5,6 +5,7 @@ namespace App\Services;
 use Stripe\Stripe;
 use Stripe\Customer;
 use Stripe\Subscription;
+use Stripe\Invoice;
 use Stripe\Checkout\Session;
 use Stripe\Checkout\Session as CheckoutSession;
 use Stripe\BillingPortal\Session as PortalSession;
@@ -91,7 +92,9 @@ class StripeService
     public function retrieveCustomer(string $customerId): Customer
     {
         try {
-            return Customer::retrieve($customerId);
+            return Customer::retrieve($customerId, [
+                'expand' => ['subscriptions']
+            ]);
         } catch (ApiErrorException $e) {
             Log::error('Stripe customer retrieval failed', [
                 'error' => $e->getMessage(),
@@ -359,5 +362,25 @@ class StripeService
         ];
 
         return in_array($code, $nonRetryableCodes);
+    }
+
+    /**
+     * Retrieve an invoice from Stripe
+     *
+     * @param string $invoiceId
+     * @return Invoice
+     * @throws ApiErrorException
+     */
+    public function retrieveInvoiceById(string $invoiceId): Invoice
+    {
+        try {
+            return Invoice::retrieve($invoiceId);
+        } catch (ApiErrorException $e) {
+            Log::error('Stripe invoice retrieval failed', [
+                'error' => $e->getMessage(),
+                'invoice_id' => $invoiceId
+            ]);
+            throw $e;
+        }
     }
 }

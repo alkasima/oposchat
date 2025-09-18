@@ -119,11 +119,53 @@ export function useSubscription() {
         try {
             loading.value = true;
             
-            // Force a page reload to get fresh Inertia data
+            // First try to sync missing subscriptions
+            const syncResponse = await fetch('/api/subscriptions/sync', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+                credentials: 'same-origin'
+            });
+
+            if (syncResponse.ok) {
+                const syncData = await syncResponse.json();
+                if (syncData.success) {
+                    console.log('Subscriptions synced successfully:', syncData.data);
+                }
+            }
+            
+            // Then try to refresh subscription status from Stripe
+            const response = await fetch('/api/subscriptions/refresh', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+                credentials: 'same-origin'
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    // Refresh usage data after subscription update
+                    await fetchUsageData();
+                    // Force a page reload to get fresh Inertia data
+                    window.location.reload();
+                    return;
+                }
+            }
+            
+            // Fallback to page reload if API call fails
             window.location.reload();
         } catch (error) {
             console.error('Error refreshing subscription data:', error);
             error.value = error.message;
+            // Fallback to page reload
+            window.location.reload();
         } finally {
             loading.value = false;
         }
