@@ -374,8 +374,9 @@ onMounted(() => {
                             <tr class="border-b border-gray-200 dark:border-gray-700">
                                 <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">Feature</th>
                                 <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">Free</th>
-                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">Pro</th>
-                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">Team</th>
+                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">Premium</th>
+                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">Plus</th>
+                                <th class="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">Academy</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -387,11 +388,14 @@ onMounted(() => {
                                 <td class="text-center py-3 px-4" :class="feature.free === '✗' ? 'text-gray-400' : 'text-gray-600 dark:text-gray-400'">
                                     {{ feature.free }}
                                 </td>
-                                <td class="text-center py-3 px-4" :class="feature.pro === '✗' ? 'text-gray-400' : 'text-green-600'">
-                                    {{ feature.pro }}
+                                <td class="text-center py-3 px-4" :class="feature.premium === '✗' ? 'text-gray-400' : 'text-green-600'">
+                                    {{ feature.premium }}
                                 </td>
-                                <td class="text-center py-3 px-4" :class="feature.team === '✗' ? 'text-gray-400' : 'text-green-600'">
-                                    {{ feature.team }}
+                                <td class="text-center py-3 px-4" :class="feature.plus === '✗' ? 'text-gray-400' : 'text-green-600'">
+                                    {{ feature.plus }}
+                                </td>
+                                <td class="text-center py-3 px-4" :class="feature.academy === '✗' ? 'text-gray-400' : 'text-green-600'">
+                                    {{ feature.academy }}
                                 </td>
                             </tr>
                         </tbody>

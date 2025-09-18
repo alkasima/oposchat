@@ -9,36 +9,45 @@ use Carbon\Carbon;
 class UsageService
 {
     /**
-     * Feature limits for free tier users
+     * Get feature limit for a user based on their subscription plan
      */
-    protected array $featureLimits = [
-        'chat_messages' => 50,
-        'file_uploads' => 10,
-        'api_calls' => 100,
-    ];
+    public function getFeatureLimit(User $user, string $feature): ?int
+    {
+        return $user->getFeatureLimit($feature);
+    }
 
     /**
      * Check if user can use a specific feature
      */
     public function canUseFeature(User $user, string $feature): bool
     {
-        // Premium users have unlimited access
-        if ($user->hasActiveSubscription()) {
+        $limit = $this->getFeatureLimit($user, $feature);
+        
+        // If limit is null, feature is unlimited
+        if ($limit === null) {
             return true;
         }
+        
+        // If limit is 0, feature is not allowed
+        if ($limit === 0) {
+            return false;
+        }
 
-        $limit = $this->getFeatureLimit($feature);
         $currentUsage = $this->getCurrentUsage($user, $feature);
-
         return $currentUsage < $limit;
     }
 
     /**
-     * Get the usage limit for a feature
+     * Get the usage limit for a feature (legacy method for backward compatibility)
      */
-    public function getFeatureLimit(string $feature): int
+    public function getFeatureLimitLegacy(string $feature): int
     {
-        return $this->featureLimits[$feature] ?? 0;
+        $featureLimits = [
+            'chat_messages' => 3, // Free plan: 3 messages per day
+            'file_uploads' => 0,  // Free plan: not allowed
+            'api_calls' => 100,
+        ];
+        return $featureLimits[$feature] ?? 0;
     }
 
     /**
@@ -55,17 +64,62 @@ class UsageService
      */
     public function incrementUsage(User $user, string $feature, int $amount = 1): void
     {
-        // Don't track usage for premium users
-        if ($user->hasActiveSubscription()) {
+        $limit = $this->getFeatureLimit($user, $feature);
+        
+        // Don't track usage for unlimited features
+        if ($limit === null) {
             return;
         }
 
         $cacheKey = $this->getUsageCacheKey($user->id, $feature);
         $currentUsage = Cache::get($cacheKey, 0);
         
-        // Cache until end of current month
-        $expiresAt = Carbon::now()->endOfMonth();
+        // For free plan (daily limits), cache until end of day
+        // For premium plan (monthly limits), cache until end of month
+        $planKey = $user->getCurrentPlanKey();
+        if ($planKey === 'free') {
+            $expiresAt = Carbon::now()->endOfDay();
+        } else {
+            $expiresAt = Carbon::now()->endOfMonth();
+        }
+        
         Cache::put($cacheKey, $currentUsage + $amount, $expiresAt);
+    }
+
+    /**
+     * Get usage summary for a user
+     */
+    public function getUsageSummary(User $user): array
+    {
+        $features = ['chat_messages', 'file_uploads', 'api_calls'];
+        $summary = [];
+        
+        foreach ($features as $feature) {
+            $limit = $this->getFeatureLimit($user, $feature);
+            $usage = $this->getCurrentUsage($user, $feature);
+            
+            $planKey = $user->getCurrentPlanKey();
+            $resetTime = null;
+            
+            // Calculate reset time based on plan
+            if ($planKey === 'free') {
+                $resetTime = Carbon::now()->endOfDay()->toISOString();
+            } elseif ($planKey === 'premium') {
+                $resetTime = Carbon::now()->endOfMonth()->toISOString();
+            }
+            
+            $summary[$feature] = [
+                'usage' => $usage,
+                'limit' => $limit,
+                'remaining' => $limit === null ? null : max(0, $limit - $usage),
+                'percentage' => $limit === null ? 0 : ($limit > 0 ? round(($usage / $limit) * 100) : 0),
+                'unlimited' => $limit === null,
+                'not_allowed' => $limit === 0,
+                'reset_time' => $resetTime,
+            ];
+        }
+        
+        return $summary;
     }
 
     /**

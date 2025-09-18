@@ -40,7 +40,24 @@ class StreamingChatController extends Controller
             'message' => 'required|string|max:10000',
         ]);
 
+        // Check if user can send messages based on their plan
+        $usageService = app(\App\Services\UsageService::class);
+        if (!$usageService->canUseFeature(Auth::user(), 'chat_messages')) {
+            $usage = $usageService->getUsageSummary(Auth::user());
+            $chatUsage = $usage['chat_messages'];
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'USAGE_LIMIT_EXCEEDED',
+                'message' => $this->getUsageLimitMessage(Auth::user(), 'chat_messages'),
+                'usage' => $chatUsage
+            ], 429);
+        }
+
         $userMessage = $request->input('message');
+
+        // Track usage for the message
+        $usageService->incrementUsage(Auth::user(), 'chat_messages');
 
         return new StreamedResponse(function () use ($chat, $userMessage) {
             $this->handleStreamingResponse($chat, $userMessage);
@@ -263,5 +280,31 @@ class StreamingChatController extends Controller
                 'message' => 'Failed to stop streaming: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Get appropriate message for usage limit exceeded
+     */
+    private function getUsageLimitMessage($user, string $feature): string
+    {
+        $planName = $user->getCurrentPlanName();
+        $planKey = $user->getCurrentPlanKey();
+        
+        switch ($feature) {
+            case 'chat_messages':
+                if ($planKey === 'free') {
+                    return 'You\'ve reached your daily limit of 3 messages. Upgrade to Premium for 200 messages per month or Plus for unlimited messages.';
+                } elseif ($planKey === 'premium') {
+                    return 'You\'ve reached your monthly limit of 200 messages. Upgrade to Plus for unlimited messages.';
+                }
+                break;
+            case 'file_uploads':
+                if ($planKey === 'free') {
+                    return 'You\'ve reached your daily limit of 5 file uploads. Upgrade to Premium, Plus, or Academy for unlimited file uploads.';
+                }
+                break;
+        }
+        
+        return 'You\'ve reached your usage limit for this feature. Please upgrade your plan for more access.';
     }
 }

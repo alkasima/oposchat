@@ -227,4 +227,88 @@ class User extends Authenticatable
 
         return $subscription->status;
     }
+
+    /**
+     * Get the user's current subscription plan name
+     */
+    public function getCurrentPlanName(): string
+    {
+        $subscription = $this->activeSubscription();
+        
+        if (!$subscription) {
+            return 'Free';
+        }
+
+        // Get plan name from config based on stripe_price_id
+        $plans = config('subscription.plans');
+        foreach ($plans as $key => $plan) {
+            if ($plan['stripe_price_id'] === $subscription->stripe_price_id) {
+                return $plan['name'];
+            }
+        }
+
+        return 'Unknown';
+    }
+
+    /**
+     * Get the user's current subscription plan key
+     */
+    public function getCurrentPlanKey(): string
+    {
+        $subscription = $this->activeSubscription();
+        
+        if (!$subscription) {
+            return 'free';
+        }
+
+        // Get plan key from config based on stripe_price_id
+        $plans = config('subscription.plans');
+        foreach ($plans as $key => $plan) {
+            if ($plan['stripe_price_id'] === $subscription->stripe_price_id) {
+                return $key;
+            }
+        }
+
+        return 'free';
+    }
+
+    /**
+     * Get the limit for a specific feature based on user's current plan
+     */
+    public function getFeatureLimit(string $feature): ?int
+    {
+        $planKey = $this->getCurrentPlanKey();
+        $features = config('subscription.features');
+        
+        if (!isset($features[$feature])) {
+            return null;
+        }
+
+        $featureConfig = $features[$feature];
+        $limitKey = $planKey . '_limit';
+        
+        return $featureConfig[$limitKey] ?? null;
+    }
+
+    /**
+     * Check if user has access to a specific feature
+     */
+    public function hasFeatureAccess(string $feature): bool
+    {
+        $limit = $this->getFeatureLimit($feature);
+        
+        // If limit is null, feature is unlimited
+        if ($limit === null) {
+            return true;
+        }
+        
+        // If limit is 0, feature is not allowed
+        if ($limit === 0) {
+            return false;
+        }
+        
+        // For now, we'll use the existing usage service logic
+        // This can be enhanced later with more sophisticated usage tracking
+        return true;
+    }
 }

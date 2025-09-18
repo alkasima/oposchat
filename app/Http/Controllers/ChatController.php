@@ -165,6 +165,19 @@ class ChatController extends Controller
             ], 422);
         }
 
+        // Check if user can send messages based on their plan
+        if (!$this->usageService->canUseFeature(Auth::user(), 'chat_messages')) {
+            $usage = $this->usageService->getUsageSummary(Auth::user());
+            $chatUsage = $usage['chat_messages'];
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'USAGE_LIMIT_EXCEEDED',
+                'message' => $this->getUsageLimitMessage(Auth::user(), 'chat_messages'),
+                'usage' => $chatUsage
+            ], 429);
+        }
+
         try {
             // Save user message
             $userMessage = $chat->messages()->create([
@@ -515,5 +528,46 @@ class ChatController extends Controller
             ->get(['id', 'name', 'slug', 'description', 'namespace', 'icon', 'color']);
 
         return response()->json($courses);
+    }
+
+    /**
+     * Get appropriate message for usage limit exceeded
+     */
+    private function getUsageLimitMessage($user, string $feature): string
+    {
+        $planName = $user->getCurrentPlanName();
+        $planKey = $user->getCurrentPlanKey();
+        
+        switch ($feature) {
+            case 'chat_messages':
+                if ($planKey === 'free') {
+                    return 'You\'ve reached your daily limit of 3 messages. Upgrade to Premium for 200 messages per month or Plus for unlimited messages.';
+                } elseif ($planKey === 'premium') {
+                    return 'You\'ve reached your monthly limit of 200 messages. Upgrade to Plus for unlimited messages.';
+                }
+                break;
+            case 'file_uploads':
+                if ($planKey === 'free') {
+                    return 'You\'ve reached your daily limit of 5 file uploads. Upgrade to Premium, Plus, or Academy for unlimited file uploads.';
+                }
+                break;
+        }
+        
+        return 'You\'ve reached your usage limit for this feature. Please upgrade your plan for more access.';
+    }
+
+    /**
+     * Get current usage for the authenticated user
+     */
+    public function getUsage(): JsonResponse
+    {
+        $user = Auth::user();
+        $usageService = app(\App\Services\UsageService::class);
+        $usage = $usageService->getUsageSummary($user);
+
+        return response()->json([
+            'success' => true,
+            'usage' => $usage
+        ]);
     }
 }

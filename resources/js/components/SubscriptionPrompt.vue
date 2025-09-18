@@ -29,11 +29,14 @@
               {{ usageInfo.usage }} / {{ usageInfo.limit }}
             </span>
           </div>
-          <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+          <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 mb-2">
             <div
               class="bg-red-500 h-2 rounded-full"
               :style="{ width: `${usageInfo.percentage}%` }"
             ></div>
+          </div>
+          <div v-if="usageInfo.reset_time" class="text-xs text-gray-500 dark:text-gray-400 text-center">
+            Limit resets: {{ formatResetTime(usageInfo.reset_time) }}
           </div>
         </div>
 
@@ -67,6 +70,13 @@
           Upgrade to Premium
         </button>
         <button
+          v-if="showWaitOption"
+          @click="$emit('wait')"
+          class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+        >
+          Wait Until Tomorrow
+        </button>
+        <button
           @click="$emit('close')"
           class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors"
         >
@@ -94,8 +104,27 @@ defineProps({
   usageInfo: {
     type: Object,
     default: null
+  },
+  showWaitOption: {
+    type: Boolean,
+    default: false
   }
 })
 
-defineEmits(['close', 'upgrade'])
+defineEmits(['close', 'upgrade', 'wait'])
+
+const formatResetTime = (resetTime) => {
+  if (!resetTime) return '';
+  
+  const date = new Date(resetTime);
+  const now = new Date();
+  const diffMs = date - now;
+  const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
+  
+  if (diffHours <= 24) {
+    return `in ${diffHours} hours`;
+  } else {
+    return date.toLocaleDateString() + ' at ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  }
+}
 </script>

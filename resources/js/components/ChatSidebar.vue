@@ -63,8 +63,10 @@ const editTargetTitle = ref('');
 // Subscription management
 const {
     hasPremium,
+    currentPlanName,
     usage,
     fetchSubscriptionStatus,
+    fetchUsageData,
     hasFeatureAccess,
     getUsagePercentage,
     getRemainingUsage
@@ -156,8 +158,9 @@ const createNewChat = async () => {
         subscriptionPromptData.value = {
             type: 'usage_limit_exceeded',
             title: 'Daily Limit Reached',
-            message: `You've reached your daily limit of ${chatUsage?.limit || 0} conversations. Upgrade to premium for unlimited access.`,
-            resetTime: chatUsage?.reset_time
+            message: `You've reached your daily limit of ${chatUsage?.limit || 0} conversations. You can either upgrade to Premium for 200 messages per month or wait until tomorrow for your limit to reset.`,
+            resetTime: chatUsage?.reset_time,
+            showWaitOption: currentPlanName.value === 'Free'
         };
         showSubscriptionPrompt.value = true;
         return;
@@ -184,8 +187,8 @@ const createNewChat = async () => {
         emit('newChatCreated', newChat);
         emit('chatSelected', newChat.id.toString());
         
-        // Refresh subscription status to update usage
-        await fetchSubscriptionStatus();
+        // Refresh usage data to update immediately
+        await fetchUsageData();
     } catch (error) {
         const errorInfo = handleSubscriptionError(error);
         if (errorInfo.type === 'usage_limit_exceeded' || errorInfo.type === 'subscription_required') {
@@ -193,7 +196,8 @@ const createNewChat = async () => {
                 type: errorInfo.type,
                 title: errorInfo.type === 'usage_limit_exceeded' ? 'Daily Limit Reached' : 'Premium Feature',
                 message: errorInfo.message,
-                resetTime: errorInfo.resetTime
+                resetTime: errorInfo.resetTime,
+                showWaitOption: currentPlanName.value === 'Free' && errorInfo.type === 'usage_limit_exceeded'
             };
             showSubscriptionPrompt.value = true;
         } else {
@@ -267,6 +271,12 @@ const openSettings = () => {
 const handleUpgradeClick = () => {
     showSubscriptionPrompt.value = false;
     showSettingsModal.value = true;
+};
+
+const handleWaitClick = () => {
+    showSubscriptionPrompt.value = false;
+    // Show a toast or notification that the limit will reset tomorrow
+    // For now, just close the modal
 };
 
 // Watch for currentChatId changes to update active state
@@ -465,10 +475,13 @@ onMounted(async () => {
                         <div class="text-sm font-medium flex items-center" :class="isDark ? 'text-white' : 'text-gray-900'">
                             {{ user?.name || 'User' }}
                             <span v-if="hasPremium" class="ml-2 px-2 py-0.5 text-xs bg-yellow-500 text-black rounded-full font-medium">
-                                PRO
+                                {{ currentPlanName }}
                             </span>
                         </div>
                         <div class="text-xs" :class="isDark ? 'text-gray-400' : 'text-gray-500'">{{ user?.email }}</div>
+                        <div class="text-xs mt-1" :class="isDark ? 'text-gray-500' : 'text-gray-600'">
+                            Plan: {{ currentPlanName }}
+                        </div>
                     </div>
                 </Button>
 
@@ -533,8 +546,11 @@ onMounted(async () => {
             :title="subscriptionPromptData.title"
             :message="subscriptionPromptData.message"
             :reset-time="subscriptionPromptData.resetTime"
+            :show-wait-option="subscriptionPromptData.showWaitOption"
+            :usage-info="subscriptionPromptData.usageInfo"
             @close="showSubscriptionPrompt = false"
             @upgrade="handleUpgradeClick"
+            @wait="handleWaitClick"
         />
     </div>
 </template>

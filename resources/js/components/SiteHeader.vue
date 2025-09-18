@@ -2,11 +2,13 @@
 import { Link } from '@inertiajs/vue3';
 import { ref, computed, onMounted } from 'vue';
 import { useAppearance } from '@/composables/useAppearance';
+import { useSubscription } from '@/composables/useSubscription.js';
 import { Sun, Moon, User, Settings, LogOut, CreditCard, BarChart3 } from 'lucide-vue-next';
 
 const isMenuOpen = ref(false);
 const isProfileOpen = ref(false);
 const { appearance, updateAppearance } = useAppearance();
+const { currentPlanName, hasPremium } = useSubscription();
 const prefersDark = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 const isDark = computed(() => appearance.value === 'dark' || (appearance.value === 'system' && prefersDark()));
 
@@ -136,6 +138,9 @@ onMounted(async () => {
                                     <div class="px-4 py-3 border-b border-gray-100">
                                         <p class="text-sm font-medium text-gray-900">{{ $page.props.auth.user.name || 'User' }}</p>
                                         <p class="text-sm text-gray-500">{{ $page.props.auth.user.email }}</p>
+                                        <p class="text-xs text-gray-600 mt-1">
+                                            Plan: <span class="font-medium" :class="hasPremium ? 'text-yellow-600' : 'text-gray-500'">{{ currentPlanName }}</span>
+                                        </p>
                                     </div>
                                     
                                     <!-- Menu Items -->
@@ -224,6 +229,9 @@ onMounted(async () => {
                         <div class="px-4 py-2 border-b border-blue-800 mb-2">
                             <p class="text-sm font-medium text-white">{{ $page.props.auth.user.name || 'User' }}</p>
                             <p class="text-xs text-blue-200">{{ $page.props.auth.user.email }}</p>
+                            <p class="text-xs text-blue-300 mt-1">
+                                Plan: <span class="font-medium" :class="hasPremium ? 'text-yellow-300' : 'text-blue-200'">{{ currentPlanName }}</span>
+                            </p>
                         </div>
                         <Link 
                             :href="route('dashboard')"

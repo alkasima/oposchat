@@ -102,7 +102,9 @@ const {
     hasFeatureAccess,
     getRemainingUsage,
     getUsagePercentage,
-    fetchSubscriptionStatus
+    currentPlanName,
+    fetchSubscriptionStatus,
+    fetchUsageData
 } = useSubscription();
 
 // Handle chat selection from sidebar
@@ -176,9 +178,23 @@ const sendMessage = async () => {
     // Check if user has exceeded usage limits
     if (!hasFeatureAccess('chat_messages')) {
         const chatUsage = usage.value.chat_messages;
+        const planName = currentPlanName.value;
+        
+        let title = 'Usage Limit Reached';
+        let message = 'You\'ve reached your usage limit. Please upgrade your plan for more access.';
+        
+        if (planName === 'Free') {
+            title = 'Daily Limit Reached';
+            message = 'You\'ve reached your daily limit of 3 messages. You can either upgrade to Premium for 200 messages per month or wait until tomorrow for your limit to reset.';
+        } else if (planName === 'Premium') {
+            title = 'Monthly Limit Reached';
+            message = 'You\'ve reached your monthly limit of 200 messages. Upgrade to Plus for unlimited messages.';
+        }
+        
         subscriptionPromptData.value = {
-            title: 'Daily Limit Reached',
-            message: 'You\'ve reached your daily message limit. Upgrade to premium for unlimited messages.',
+            title,
+            message,
+            showWaitOption: planName === 'Free',
             usageInfo: {
                 feature_name: 'Chat Messages',
                 usage: chatUsage?.usage || 0,
@@ -260,7 +276,7 @@ const sendMessage = async () => {
                 }
             },
             // onComplete callback
-            (messageId, finalContent) => {
+            async (messageId, finalContent) => {
                 // Update the message with final content and remove streaming state
                 const messageIndex = messages.value.findIndex(m => m.id === assistantMessage.id);
                 if (messageIndex !== -1) {
@@ -273,6 +289,13 @@ const sendMessage = async () => {
                     messages.value[messageIndex].sessionId = '';
                 }
                 isTyping.value = false;
+                
+                // Refresh usage data after message completion
+                try {
+                    await fetchUsageData();
+                } catch (error) {
+                    console.error('Failed to refresh usage data:', error);
+                }
             },
             // onError callback
             (error) => {
@@ -355,6 +378,13 @@ const fallbackToRegularChat = async (messageContent: string, streamingMessageId:
         currentMessage.value = messageContent;
     } finally {
         isTyping.value = false;
+        
+        // Refresh usage data after fallback completion
+        try {
+            await fetchUsageData();
+        } catch (error) {
+            console.error('Failed to refresh usage data after fallback:', error);
+        }
     }
 };
 
@@ -461,6 +491,12 @@ const handleUpgradeClick = () => {
     showSettingsModal.value = true;
 };
 
+const handleWaitClick = () => {
+    showSubscriptionPrompt.value = false;
+    // Show a toast or notification that the limit will reset tomorrow
+    // For now, just close the modal
+};
+
 // Rename chat
 const renameCurrentChat = async () => {
     if (!currentChat.value) return;
@@ -544,10 +580,37 @@ const triggerFileUpload = () => {
     fileInput.value?.click();
 };
 
-const handleFileSelect = (event: Event) => {
+const handleFileSelect = async (event: Event) => {
     const target = event.target as HTMLInputElement;
     const file = target.files?.[0];
     if (file) {
+        // Check if user has access to file uploads
+        if (!hasFeatureAccess('file_uploads')) {
+            const planName = currentPlanName.value;
+            let title = 'File Upload Limit Reached';
+            let message = 'You\'ve reached your file upload limit. Please upgrade to upload more files.';
+            
+            if (planName === 'Free') {
+                title = 'Daily File Upload Limit Reached';
+                message = 'You\'ve reached your daily limit of 5 file uploads. Upgrade to Premium, Plus, or Academy for unlimited file uploads.';
+            }
+            
+            subscriptionPromptData.value = {
+                title,
+                message,
+                showWaitOption: planName === 'Free',
+                usageInfo: {
+                    feature_name: 'File Uploads',
+                    usage: 0,
+                    limit: 0,
+                    percentage: 100
+                }
+            };
+            showSubscriptionPrompt.value = true;
+            target.value = '';
+            return;
+        }
+        
         // File size validation (5MB limit)
         const maxSize = 5 * 1024 * 1024; // 5MB
         if (file.size > maxSize) {
@@ -570,6 +633,13 @@ const handleFileSelect = (event: Event) => {
         }
         
         console.log('File selected:', file.name, file.size, file.type);
+        
+        // Refresh usage data after file selection (since file upload counts as usage)
+        try {
+            await fetchUsageData();
+        } catch (error) {
+            console.error('Failed to refresh usage data after file selection:', error);
+        }
     }
 };
 
@@ -1003,8 +1073,14 @@ if (savedSidebarState === 'false') {
                             @click="triggerFileUpload"
                             variant="ghost" 
                             size="sm" 
-                            class="text-gray-500 hover:text-gray-700 p-2 flex-shrink-0"
-                            title="Attach file"
+                            :class="[
+                                'p-2 flex-shrink-0',
+                                hasFeatureAccess('file_uploads') 
+                                    ? 'text-gray-500 hover:text-gray-700' 
+                                    : 'text-gray-300 cursor-not-allowed'
+                            ]"
+                            :title="hasFeatureAccess('file_uploads') ? 'Attach file' : 'File uploads not available on your plan'"
+                            :disabled="!hasFeatureAccess('file_uploads')"
                         >
                             <Paperclip class="w-5 h-5" />
                         </Button>
@@ -1091,8 +1167,11 @@ if (savedSidebarState === 'false') {
             :title="subscriptionPromptData.title"
             :message="subscriptionPromptData.message"
             :reset-time="subscriptionPromptData.resetTime"
+            :show-wait-option="subscriptionPromptData.showWaitOption"
+            :usage-info="subscriptionPromptData.usageInfo"
             @close="showSubscriptionPrompt = false"
             @upgrade="handleUpgradeClick"
+            @wait="handleWaitClick"
         />
 
         <!-- Subscription Success Modal -->

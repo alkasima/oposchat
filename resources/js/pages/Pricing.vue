@@ -21,7 +21,7 @@ import SiteFooter from '@/components/SiteFooter.vue';
                     </p>
                 </div>
                 
-                <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
                     <!-- Free Plan -->
                     <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 hover:border-blue-300 transition-all duration-300 transform hover:-translate-y-2">
                         <div class="p-8">
@@ -29,7 +29,7 @@ import SiteFooter from '@/components/SiteFooter.vue';
                                 <h3 class="text-2xl font-bold text-gray-900 mb-2">Free</h3>
                                 <p class="text-gray-600 mb-4">Get started with basic features</p>
                                 <div class="text-4xl font-bold text-gray-900 mb-2">
-                                    $0
+                                    €0
                                     <span class="text-lg font-normal text-gray-600">/month</span>
                                 </div>
                             </div>
@@ -39,14 +39,14 @@ import SiteFooter from '@/components/SiteFooter.vue';
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">50 chat messages per month</span>
+                                    <span class="text-gray-700">3 messages per day</span>
                                 </li>
-                                <li class="flex items-center">
-                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                                    </svg>
-                                    <span class="text-gray-700">10 file uploads per month</span>
-                                </li>
+                    <li class="flex items-center">
+                        <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-gray-700">5 file uploads per day</span>
+                    </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
@@ -72,17 +72,17 @@ import SiteFooter from '@/components/SiteFooter.vue';
                         </div>
                     </div>
                     
-                    <!-- Pro Plan -->
+                    <!-- Premium Plan -->
                     <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-blue-500 relative transform hover:-translate-y-2 transition-all duration-300">
                         <div class="absolute top-0 left-0 right-0 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-center py-2 text-sm font-semibold">
-                            MOST POPULAR
+                            POPULAR
                         </div>
                         <div class="p-8 pt-12">
                             <div class="text-center mb-8">
-                                <h3 class="text-2xl font-bold text-gray-900 mb-2">Pro</h3>
+                                <h3 class="text-2xl font-bold text-gray-900 mb-2">Premium</h3>
                                 <p class="text-gray-600 mb-4">Perfect for individuals and small teams</p>
                                 <div class="text-4xl font-bold text-blue-600 mb-2">
-                                    $9.99
+                                    €9.99
                                     <span class="text-lg font-normal text-gray-600">/month</span>
                                 </div>
                             </div>
@@ -92,97 +92,159 @@ import SiteFooter from '@/components/SiteFooter.vue';
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Unlimited chat messages</span>
+                                    <span class="text-gray-700">200 messages per month</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Unlimited file uploads</span>
+                                    <span class="text-gray-700">Upload files</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Priority support</span>
+                                    <span class="text-gray-700">Access to exams</span>
                                 </li>
+                                <li class="flex items-center">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <span class="text-gray-700">Priority technical support</span>
+                                </li>
+                            </ul>
+                            
+                            <Link 
+                                v-if="!$page.props.auth.user"
+                                :href="route('register')"
+                                class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-blue-600 hover:to-purple-700 transition-all duration-300 block"
+                            >
+                                Start Free Trial
+                            </Link>
+                            <Link 
+                                v-else
+                                :href="route('subscription', { plan: 'premium' })"
+                                class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-blue-600 hover:to-purple-700 transition-all duration-300 block"
+                            >
+                                Upgrade to Premium
+                            </Link>
+                        </div>
+                    </div>
+                    
+                    <!-- Plus Plan -->
+                    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 hover:border-purple-300 transition-all duration-300 transform hover:-translate-y-2">
+                        <div class="p-8">
+                            <div class="text-center mb-8">
+                                <h3 class="text-2xl font-bold text-gray-900 mb-2">Plus</h3>
+                                <p class="text-gray-600 mb-4">For growing teams and businesses</p>
+                                <div class="text-4xl font-bold text-purple-600 mb-2">
+                                    €14.99
+                                    <span class="text-lg font-normal text-gray-600">/month</span>
+                                </div>
+                            </div>
+                            
+                            <ul class="space-y-4 mb-8">
+                                <li class="flex items-center">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <span class="text-gray-700">Unlimited messages</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <span class="text-gray-700">Upload files</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <span class="text-gray-700">Access to exams</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <span class="text-gray-700">Priority technical support</span>
+                                </li>
+                            </ul>
+                            
+                            <Link 
+                                v-if="!$page.props.auth.user"
+                                :href="route('register')"
+                                class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block"
+                            >
+                                Start Free Trial
+                            </Link>
+                            <Link 
+                                v-else
+                                :href="route('subscription', { plan: 'plus' })"
+                                class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block"
+                            >
+                                Upgrade to Plus
+                            </Link>
+                        </div>
+                    </div>
+                    
+                    <!-- Academy Plan -->
+                    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 hover:border-orange-300 transition-all duration-300 transform hover:-translate-y-2">
+                        <div class="p-8">
+                            <div class="text-center mb-8">
+                                <h3 class="text-2xl font-bold text-gray-900 mb-2">Academy</h3>
+                                <p class="text-gray-600 mb-4">For institutions and large organizations</p>
+                                <div class="text-4xl font-bold text-orange-600 mb-2">
+                                    €500
+                                    <span class="text-lg font-normal text-gray-600">/month</span>
+                                </div>
+                            </div>
+                            
+                            <ul class="space-y-4 mb-8">
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
                                     <span class="text-gray-700">Advanced analytics</span>
                                 </li>
-                            </ul>
-                            
-                            <Link 
-                                v-if="!$page.props.auth.user"
-                                :href="route('register')"
-                                class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-blue-600 hover:to-purple-700 transition-all duration-300 block"
-                            >
-                                Start Free Trial
-                            </Link>
-                            <Link 
-                                v-else
-                                :href="route('subscription', { plan: 'pro' })"
-                                class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-blue-600 hover:to-purple-700 transition-all duration-300 block"
-                            >
-                                Upgrade to Pro
-                            </Link>
-                        </div>
-                    </div>
-                    
-                    <!-- Team Plan -->
-                    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 hover:border-purple-300 transition-all duration-300 transform hover:-translate-y-2">
-                        <div class="p-8">
-                            <div class="text-center mb-8">
-                                <h3 class="text-2xl font-bold text-gray-900 mb-2">Team</h3>
-                                <p class="text-gray-600 mb-4">For growing teams and businesses</p>
-                                <div class="text-4xl font-bold text-purple-600 mb-2">
-                                    $19.99
-                                    <span class="text-lg font-normal text-gray-600">/month</span>
-                                </div>
-                            </div>
-                            
-                            <ul class="space-y-4 mb-8">
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Everything in Pro</span>
+                                    <span class="text-gray-700">Unlimited messages</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Team collaboration</span>
+                                    <span class="text-gray-700">Upload files</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Custom themes</span>
+                                    <span class="text-gray-700">Access to exams</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Dedicated support</span>
+                                    <span class="text-gray-700">Priority technical support</span>
                                 </li>
                             </ul>
                             
                             <Link 
                                 v-if="!$page.props.auth.user"
                                 :href="route('register')"
-                                class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block"
+                                class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-orange-600 hover:to-red-700 transition-all duration-300 block"
                             >
-                                Start Free Trial
+                                Contact Sales
                             </Link>
                             <Link 
                                 v-else
-                                :href="route('subscription', { plan: 'team' })"
-                                class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block"
+                                :href="route('subscription', { plan: 'academy' })"
+                                class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-orange-600 hover:to-red-700 transition-all duration-300 block"
                             >
-                                Upgrade to Team
+                                Upgrade to Academy
                             </Link>
                         </div>
                     </div>

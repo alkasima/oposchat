@@ -51,6 +51,8 @@ class HandleInertiaRequests extends Middleware
                 'subscription_status' => $request->user()->subscriptionStatus(),
                 'on_trial' => $request->user()->onTrial(),
                 'on_grace_period' => $request->user()->onGracePeriod(),
+                'current_plan_name' => $request->user()->getCurrentPlanName(),
+                'usage' => app(\App\Services\UsageService::class)->getUsageSummary($request->user()),
             ] : null,
             'ziggy' => [
                 ...(new Ziggy)->toArray(),

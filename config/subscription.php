@@ -14,20 +14,26 @@ return [
         'chat_messages' => [
             'name' => 'Chat Messages',
             'description' => 'Send messages in chat',
-            'free_limit' => 50,
-            'premium_limit' => null, // unlimited
+            'free_limit' => 3, // 3 messages per day
+            'premium_limit' => 200, // 200 messages per month
+            'plus_limit' => null, // unlimited
+            'academy_limit' => null, // unlimited
         ],
         'file_uploads' => [
             'name' => 'File Uploads',
             'description' => 'Upload files to chat',
-            'free_limit' => 10,
+            'free_limit' => 5, // 5 files per day for free users
             'premium_limit' => null, // unlimited
+            'plus_limit' => null, // unlimited
+            'academy_limit' => null, // unlimited
         ],
         'api_calls' => [
             'name' => 'API Calls',
             'description' => 'Make API requests',
             'free_limit' => 100,
             'premium_limit' => null, // unlimited
+            'plus_limit' => null, // unlimited
+            'academy_limit' => null, // unlimited
         ],
     ],
 
@@ -44,33 +50,47 @@ return [
     ],
 
     'plans' => [
-        'pro' => [
-            'name' => 'Pro',
+        'premium' => [
+            'name' => 'Premium',
             'description' => 'Perfect for individuals and small teams',
             'price' => 9.99,
-            'currency' => 'USD',
+            'currency' => 'EUR',
             'interval' => 'month',
-            'stripe_price_id' => env('STRIPE_PRO_PRICE_ID', 'price_1RuE5gAVc1w1yLTUdkry1i2o'),
+            'stripe_price_id' => env('STRIPE_PREMIUM_PRICE_ID', 'price_1RuE5gAVc1w1yLTUdkry1i2o'),
             'features' => [
-                'Unlimited chat messages',
-                'File uploads',
-                'Priority support',
-                'Advanced analytics',
+                '200 messages per month',
+                'Upload files',
+                'Access to exams',
+                'Priority technical support',
             ],
         ],
-        'team' => [
-            'name' => 'Team',
+        'plus' => [
+            'name' => 'Plus',
             'description' => 'For growing teams and businesses',
-            'price' => 19.99,
-            'currency' => 'USD',
+            'price' => 14.99,
+            'currency' => 'EUR',
             'interval' => 'month',
-            'stripe_price_id' => env('STRIPE_TEAM_PRICE_ID', 'price_1RuE5gAVc1w1yLTUopmMCnBb'),
+            'stripe_price_id' => env('STRIPE_PLUS_PRICE_ID', 'price_1RuE5gAVc1w1yLTUopmMCnBb'),
             'features' => [
-                'Everything in Pro',
-                'Team collaboration',
-                'Custom themes',
-                'Export data',
-                'Dedicated support',
+                'Unlimited messages',
+                'Upload files',
+                'Access to exams',
+                'Priority technical support',
+            ],
+        ],
+        'academy' => [
+            'name' => 'Academy',
+            'description' => 'For institutions and large organizations',
+            'price' => 500,
+            'currency' => 'EUR',
+            'interval' => 'month',
+            'stripe_price_id' => env('STRIPE_ACADEMY_PRICE_ID', 'price_1RuE5gAVc1w1yLTUacademy'),
+            'features' => [
+                'Unlimited messages',
+                'Upload files',
+                'Access to exams',
+                'Priority technical support',
+                'Advanced analytics',
             ],
         ],
     ],
@@ -80,32 +100,36 @@ return [
         'description' => 'Get started with basic features',
         'price' => 0,
         'features' => [
-            '50 chat messages per month',
-            '10 file uploads per month',
-            'Basic support',
+            '3 messages per day',
+            '5 file uploads per day',
+            'Community support',
         ],
     ],
 
-    'feature_comparison' => [
-        'chat_messages' => [
-            'free' => '50/month',
-            'pro' => 'Unlimited',
-            'team' => 'Unlimited',
-        ],
-        'file_uploads' => [
-            'free' => '10/month',
-            'pro' => 'Unlimited',
-            'team' => 'Unlimited',
+        'feature_comparison' => [
+            'chat_messages' => [
+                'free' => '3/day',
+                'premium' => '200/month',
+                'plus' => 'Unlimited',
+                'academy' => 'Unlimited',
+            ],
+            'file_uploads' => [
+                'free' => '5/day',
+                'premium' => 'Unlimited',
+                'plus' => 'Unlimited',
+                'academy' => 'Unlimited',
+            ],
+        'exams' => [
+            'free' => false,
+            'premium' => true,
+            'plus' => true,
+            'academy' => true,
         ],
         'support' => [
             'free' => 'Community',
-            'pro' => 'Priority',
-            'team' => 'Dedicated',
-        ],
-        'analytics' => [
-            'free' => false,
-            'pro' => true,
-            'team' => true,
+            'premium' => 'Priority technical',
+            'plus' => 'Priority technical',
+            'academy' => 'Priority technical',
         ],
     ],
 ];

@@ -11,6 +11,9 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
+// Usage endpoint
+Route::get('/usage', [ChatController::class, 'getUsage'])->middleware('auth:sanctum');
+
 // Keep only external API routes here
 
 // Audio transcription route moved to web.php for session-based authentication

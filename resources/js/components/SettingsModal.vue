@@ -104,12 +104,11 @@ const currentPlan = computed(() => {
             name: 'Free',
             price: '$0',
             period: 'forever',
-            features: [
-                'Up to 10 conversations per day',
-                'Basic AI responses',
-                'Standard support',
-                'Web access only'
-            ]
+                features: [
+                    '3 messages per day',
+                    '5 file uploads per day',
+                    'Community support'
+                ]
         };
     }
 
@@ -183,34 +182,49 @@ const loadSubscriptionData = async () => {
         // Set some basic plans for MVP
         availablePlans.value = [
             {
-                key: 'pro',
-                name: 'Pro',
+                key: 'premium',
+                name: 'Premium',
                 description: 'Perfect for individuals and small teams',
                 price: 9.99,
-                currency: 'USD',
+                currency: 'EUR',
                 interval: 'month',
-                stripe_price_id: 'price_1RuE5gAVc1w1yLTUdkry1i2o', // Pro plan $9.99/month
+                stripe_price_id: 'price_1RuE5gAVc1w1yLTUdkry1i2o', // Premium plan €9.99/month
                 features: [
-                    'Unlimited chat messages',
-                    'File uploads',
-                    'Priority support',
-                    'Advanced analytics'
+                    '200 messages per month',
+                    'Upload files',
+                    'Access to exams',
+                    'Priority technical support'
                 ]
             },
             {
-                key: 'team',
-                name: 'Team',
+                key: 'plus',
+                name: 'Plus',
                 description: 'For growing teams and businesses',
-                price: 19.99,
-                currency: 'USD',
+                price: 14.99,
+                currency: 'EUR',
                 interval: 'month',
-                stripe_price_id: 'price_1RuE5gAVc1w1yLTUopmMCnBb', // Team plan $19.99/month
+                stripe_price_id: 'price_1RuE5gAVc1w1yLTUopmMCnBb', // Plus plan €14.99/month
                 features: [
-                    'Everything in Pro',
-                    'Team collaboration',
-                    'Custom themes',
-                    'Export data',
-                    'Dedicated support'
+                    'Unlimited messages',
+                    'Upload files',
+                    'Access to exams',
+                    'Priority technical support'
+                ]
+            },
+            {
+                key: 'academy',
+                name: 'Academy',
+                description: 'For institutions and large organizations',
+                price: 500,
+                currency: 'EUR',
+                interval: 'month',
+                stripe_price_id: 'price_1RuE5gAVc1w1yLTUacademy', // Academy plan €500/month
+                features: [
+                    'Unlimited messages',
+                    'Upload files',
+                    'Access to exams',
+                    'Priority technical support',
+                    'Advanced analytics'
                 ]
             }
         ];
