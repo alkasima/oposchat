@@ -185,7 +185,7 @@ const sendMessage = async () => {
         
         if (planName === 'Free') {
             title = 'Daily Limit Reached';
-            message = 'You\'ve reached your daily limit of 3 messages. You can either upgrade to Premium for 200 messages per month or wait until tomorrow for your limit to reset.';
+            message = 'You\'ve reached your daily limit of 3 messages. Upgrade to Premium for 200 messages per month or Plus for unlimited messages.';
         } else if (planName === 'Premium') {
             title = 'Monthly Limit Reached';
             message = 'You\'ve reached your monthly limit of 200 messages. Upgrade to Plus for unlimited messages.';
@@ -194,7 +194,7 @@ const sendMessage = async () => {
         subscriptionPromptData.value = {
             title,
             message,
-            showWaitOption: planName === 'Free',
+            showWaitOption: false, // Remove wait option
             usageInfo: {
                 feature_name: 'Chat Messages',
                 usage: chatUsage?.usage || 0,
@@ -249,6 +249,7 @@ const sendMessage = async () => {
         currentChat.value!.title = 'New Chat';
     }
 
+
     // Create a temporary assistant message for streaming
     const assistantMessage = {
         id: `streaming-${Date.now()}`,
@@ -301,7 +302,38 @@ const sendMessage = async () => {
             (error) => {
                 console.error('Streaming error:', error);
                 
-                // Try fallback to regular chat API
+                // Check if this is a usage limit error
+                if (error && typeof error === 'object' && error.type === 'USAGE_LIMIT_EXCEEDED') {
+                    // Show subscription prompt for usage limit
+                    const chatUsage = error.usage?.chat_messages;
+                    const planName = currentPlanName.value;
+                    
+                    let title = 'Usage Limit Reached';
+                    let message = error.message || 'You\'ve reached your usage limit. Please upgrade your plan for more access.';
+                    
+                    subscriptionPromptData.value = {
+                        title,
+                        message,
+                        showWaitOption: false, // Remove wait option
+                        usageInfo: {
+                            feature_name: 'Chat Messages',
+                            usage: chatUsage?.usage || 0,
+                            limit: chatUsage?.limit || 0,
+                            percentage: chatUsage?.percentage || 0
+                        }
+                    };
+                    showSubscriptionPrompt.value = true;
+                    
+                    // Remove the streaming message
+                    const messageIndex = messages.value.findIndex(m => m.id === assistantMessage.id);
+                    if (messageIndex !== -1) {
+                        messages.value.splice(messageIndex, 1);
+                    }
+                    isTyping.value = false;
+                    return;
+                }
+                
+                // Try fallback to regular chat API for other errors
                 fallbackToRegularChat(fullMessageForAI, assistantMessage.id);
             }
         );
@@ -556,18 +588,16 @@ const handleCourseSelected = async (course: any) => {
 // Theme toggle
 const { appearance, updateAppearance } = useAppearance();
 const prefersDark = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-const isDark = computed(() => appearance.value === 'dark' || (appearance.value === 'system' && prefersDark()));
+const isDark = computed(() => appearance.value === 'dark');
 const cycleTheme = () => {
     // Get the current theme from the DOM to ensure accuracy
     const isCurrentlyDark = document.documentElement.classList.contains('dark');
-    const current = appearance.value || 'system';
+    const current = appearance.value || 'light';
     
     // Determine next theme based on current state
-    let next: 'light' | 'dark' | 'system';
+    let next: 'light' | 'dark';
     if (current === 'light') {
         next = 'dark';
-    } else if (current === 'dark') {
-        next = 'system';
     } else {
         next = 'light';
     }
@@ -591,14 +621,14 @@ const handleFileSelect = async (event: Event) => {
             let message = 'You\'ve reached your file upload limit. Please upgrade to upload more files.';
             
             if (planName === 'Free') {
-                title = 'Daily File Upload Limit Reached';
-                message = 'You\'ve reached your daily limit of 5 file uploads. Upgrade to Premium, Plus, or Academy for unlimited file uploads.';
+                title = 'File Uploads Not Available';
+                message = 'File uploads are not available on the free plan. Upgrade to Premium, Plus, or Academy to upload files.';
             }
             
             subscriptionPromptData.value = {
                 title,
                 message,
-                showWaitOption: planName === 'Free',
+                showWaitOption: false, // Remove wait option
                 usageInfo: {
                     feature_name: 'File Uploads',
                     usage: 0,

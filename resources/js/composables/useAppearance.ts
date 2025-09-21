@@ -1,21 +1,14 @@
 import { onMounted, ref } from 'vue';
 
-type Appearance = 'light' | 'dark' | 'system';
+type Appearance = 'light' | 'dark';
 
 export function updateTheme(value: Appearance) {
     if (typeof window === 'undefined') {
         return;
     }
 
-    if (value === 'system') {
-        const mediaQueryList = window.matchMedia('(prefers-color-scheme: dark)');
-        const systemTheme = mediaQueryList.matches ? 'dark' : 'light';
-        document.documentElement.classList.toggle('dark', systemTheme === 'dark');
-        document.documentElement.style.colorScheme = systemTheme;
-    } else {
-        document.documentElement.classList.toggle('dark', value === 'dark');
-        document.documentElement.style.colorScheme = value;
-    }
+    document.documentElement.classList.toggle('dark', value === 'dark');
+    document.documentElement.style.colorScheme = value;
 }
 
 const setCookie = (name: string, value: string, days = 365) => {
@@ -47,7 +40,7 @@ const getStoredAppearance = () => {
 const handleSystemThemeChange = () => {
     const currentAppearance = getStoredAppearance();
 
-    updateTheme(currentAppearance || 'system');
+    updateTheme(currentAppearance || 'light');
 };
 
 export function initializeTheme() {
@@ -55,18 +48,15 @@ export function initializeTheme() {
         return;
     }
 
-    // Initialize theme from saved preference or default to system...
+    // Initialize theme from saved preference or default to light...
     const savedAppearance = getStoredAppearance();
-    updateTheme(savedAppearance || 'system');
-
-    // Set up system theme change listener...
-    mediaQuery()?.addEventListener('change', handleSystemThemeChange);
+    updateTheme(savedAppearance || 'light');
 }
 
 // Initialize the shared appearance ref from localStorage (if available)
 // This ensures reactive state matches the actual theme applied to the document
 // so the first click on the toggle behaves as expected.
-const appearance = ref<Appearance>(getStoredAppearance() || 'system');
+const appearance = ref<Appearance>(getStoredAppearance() || 'light');
 
 export function useAppearance() {
     onMounted(() => {

@@ -59,6 +59,15 @@ Route::get('/about', function () {
     return Inertia::render('About');
 })->name('about');
 
+// Contact page
+Route::get('/contact', function () {
+    return Inertia::render('Contact');
+})->name('contact');
+
+// Contact form submissions
+Route::post('/contact/submit', [App\Http\Controllers\ContactController::class, 'submitContact'])->name('contact.submit');
+Route::post('/contact/oppositions', [App\Http\Controllers\ContactController::class, 'submitOppositionsRequest'])->name('contact.oppositions');
+
 // CSRF token refresh endpoint
 Route::get('/csrf-token', function () {
     return response()->json([

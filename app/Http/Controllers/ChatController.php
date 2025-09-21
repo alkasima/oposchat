@@ -548,7 +548,7 @@ class ChatController extends Controller
                 break;
             case 'file_uploads':
                 if ($planKey === 'free') {
-                    return 'You\'ve reached your daily limit of 5 file uploads. Upgrade to Premium, Plus, or Academy for unlimited file uploads.';
+                    return 'File uploads are not available on the free plan. Upgrade to Premium, Plus, or Academy to upload files.';
                 }
                 break;
         }

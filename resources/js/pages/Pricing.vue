@@ -41,12 +41,6 @@ import SiteFooter from '@/components/SiteFooter.vue';
                                     </svg>
                                     <span class="text-gray-700">3 messages per day</span>
                                 </li>
-                    <li class="flex items-center">
-                        <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                        </svg>
-                        <span class="text-gray-700">5 file uploads per day</span>
-                    </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
@@ -193,10 +187,10 @@ import SiteFooter from '@/components/SiteFooter.vue';
                             <div class="text-center mb-8">
                                 <h3 class="text-2xl font-bold text-gray-900 mb-2">Academy</h3>
                                 <p class="text-gray-600 mb-4">For institutions and large organizations</p>
-                                <div class="text-4xl font-bold text-orange-600 mb-2">
-                                    €500
-                                    <span class="text-lg font-normal text-gray-600">/month</span>
+                                <div class="text-2xl font-bold text-orange-600 mb-2">
+                                    Custom Pricing
                                 </div>
+                                <p class="text-sm text-gray-500">Tailored to your institution's needs</p>
                             </div>
                             
                             <ul class="space-y-4 mb-8">
@@ -233,18 +227,10 @@ import SiteFooter from '@/components/SiteFooter.vue';
                             </ul>
                             
                             <Link 
-                                v-if="!$page.props.auth.user"
-                                :href="route('register')"
+                                href="/contact"
                                 class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-orange-600 hover:to-red-700 transition-all duration-300 block"
                             >
                                 Contact Sales
-                            </Link>
-                            <Link 
-                                v-else
-                                :href="route('subscription', { plan: 'academy' })"
-                                class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-orange-600 hover:to-red-700 transition-all duration-300 block"
-                            >
-                                Upgrade to Academy
                             </Link>
                         </div>
                     </div>

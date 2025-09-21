@@ -46,12 +46,24 @@ class StreamingChatController extends Controller
             $usage = $usageService->getUsageSummary(Auth::user());
             $chatUsage = $usage['chat_messages'];
             
-            return response()->json([
-                'success' => false,
-                'error' => 'USAGE_LIMIT_EXCEEDED',
-                'message' => $this->getUsageLimitMessage(Auth::user(), 'chat_messages'),
-                'usage' => $chatUsage
-            ], 429);
+            // Send usage limit error as Server-Sent Event
+            return new StreamedResponse(function () use ($chatUsage) {
+                $errorData = [
+                    'error' => 'USAGE_LIMIT_EXCEEDED',
+                    'message' => 'You\'ve reached your daily limit of 3 messages. Upgrade to Premium for 200 messages per month or Plus for unlimited messages.',
+                    'usage' => $chatUsage
+                ];
+                
+                echo "event: usage_limit_exceeded\n";
+                echo "data: " . json_encode($errorData) . "\n\n";
+                echo "event: close\n";
+                echo "data: {}\n\n";
+            }, 200, [
+                'Content-Type' => 'text/event-stream',
+                'Cache-Control' => 'no-cache',
+                'Connection' => 'keep-alive',
+                'X-Accel-Buffering' => 'no',
+            ]);
         }
 
         $userMessage = $request->input('message');
@@ -59,8 +71,11 @@ class StreamingChatController extends Controller
         // Track usage for the message
         $usageService->incrementUsage(Auth::user(), 'chat_messages');
 
-        return new StreamedResponse(function () use ($chat, $userMessage) {
-            $this->handleStreamingResponse($chat, $userMessage);
+        // Get updated usage data after incrementing
+        $updatedUsage = $usageService->getUsageSummary(Auth::user());
+
+        return new StreamedResponse(function () use ($chat, $userMessage, $updatedUsage) {
+            $this->handleStreamingResponse($chat, $userMessage, $updatedUsage);
         }, 200, [
             'Content-Type' => 'text/event-stream',
             'Cache-Control' => 'no-cache',
@@ -72,16 +87,17 @@ class StreamingChatController extends Controller
     /**
      * Handle the streaming response generation
      */
-    private function handleStreamingResponse(Chat $chat, string $userMessage): void
+    private function handleStreamingResponse(Chat $chat, string $userMessage, array $updatedUsage = null): void
     {
         try {
             // Create streaming session
             $sessionId = $this->streamingMessageService->createStreamingSession($chat, $userMessage);
 
-            // Send session started event
+            // Send session started event with updated usage data
             $this->sendSSEEvent('session_started', [
                 'session_id' => $sessionId,
-                'message' => 'Streaming session initialized'
+                'message' => 'Streaming session initialized',
+                'usage' => $updatedUsage
             ]);
 
             // Get chat messages for context
@@ -300,7 +316,7 @@ class StreamingChatController extends Controller
                 break;
             case 'file_uploads':
                 if ($planKey === 'free') {
-                    return 'You\'ve reached your daily limit of 5 file uploads. Upgrade to Premium, Plus, or Academy for unlimited file uploads.';
+                    return 'File uploads are not available on the free plan. Upgrade to Premium, Plus, or Academy to upload files.';
                 }
                 break;
         }

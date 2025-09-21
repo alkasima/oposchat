@@ -1,15 +1,37 @@
 import { ref, computed } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 
+// Shared reactive state across all components
+const globalSubscriptionData = ref(null)
+const globalLoading = ref(false)
+const globalError = ref(null)
+
 export function useSubscription() {
     const page = usePage()
-    const subscriptionData = ref(null)
-    const loading = ref(false)
-    const error = ref(null)
+    const subscriptionData = globalSubscriptionData
+    const loading = globalLoading
+    const error = globalError
 
-    // Get subscription status from page props (no API calls needed for MVP)
+    // Initialize global state with page props if not already set
+    if (!globalSubscriptionData.value && page.props.subscription) {
+        globalSubscriptionData.value = page.props.subscription
+    }
+
+    // Listen for usage updates from streaming service
+    if (typeof window !== 'undefined') {
+        window.addEventListener('usage-updated', (event) => {
+            if (event.detail && event.detail.usage) {
+                globalSubscriptionData.value = {
+                    ...globalSubscriptionData.value,
+                    usage: event.detail.usage
+                };
+            }
+        });
+    }
+
+    // Get subscription status from page props or global state
     const subscription = computed(() => {
-        return page.props.subscription || {
+        return globalSubscriptionData.value || page.props.subscription || {
             has_premium: false,
             subscription_status: 'none',
             on_trial: false,
@@ -97,8 +119,8 @@ export function useSubscription() {
             const data = await response.json();
             
             if (data.success && data.usage) {
-                // Update the subscription data with fresh usage
-                subscription.value = {
+                // Update the global subscription data with fresh usage
+                globalSubscriptionData.value = {
                     ...subscription.value,
                     usage: data.usage
                 };

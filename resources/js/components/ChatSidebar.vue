@@ -159,9 +159,9 @@ const createNewChat = async () => {
         subscriptionPromptData.value = {
             type: 'usage_limit_exceeded',
             title: 'Daily Limit Reached',
-            message: `You've reached your daily limit of ${chatUsage?.limit || 0} conversations. You can either upgrade to Premium for 200 messages per month or wait until tomorrow for your limit to reset.`,
+            message: `You've reached your daily limit of ${chatUsage?.limit || 0} conversations. Upgrade to Premium for 200 messages per month or Plus for unlimited messages.`,
             resetTime: chatUsage?.reset_time,
-            showWaitOption: currentPlanName.value === 'Free'
+            showWaitOption: false // Remove wait option
         };
         showSubscriptionPrompt.value = true;
         return;
@@ -198,7 +198,7 @@ const createNewChat = async () => {
                 title: errorInfo.type === 'usage_limit_exceeded' ? 'Daily Limit Reached' : 'Premium Feature',
                 message: errorInfo.message,
                 resetTime: errorInfo.resetTime,
-                showWaitOption: currentPlanName.value === 'Free' && errorInfo.type === 'usage_limit_exceeded'
+                showWaitOption: false // Remove wait option && errorInfo.type === 'usage_limit_exceeded'
             };
             showSubscriptionPrompt.value = true;
         } else {
@@ -292,7 +292,7 @@ watch(() => props.currentChatId, (newChatId) => {
 // Theme management
 const { appearance } = useAppearance();
 const prefersDark = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-const isDark = computed(() => appearance.value === 'dark' || (appearance.value === 'system' && prefersDark()));
+const isDark = computed(() => appearance.value === 'dark');
 
 // Load chats when component mounts
 onMounted(async () => {
@@ -418,26 +418,26 @@ onMounted(async () => {
                                 {{ chat.timestamp }}
                             </p>
                         </div>
-                        <div class="opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
+                        <div class="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex space-x-1">
                             <Button 
                                 size="sm" 
                                 variant="ghost" 
-                                class="h-5 w-5 p-0"
+                                class="h-6 w-6 p-0 md:h-5 md:w-5"
                                 :class="isDark ? 'text-gray-400 hover:text-blue-400' : 'text-gray-500 hover:text-blue-600'"
                                 @click="openEditChat(chat, $event)"
                                 title="Rename chat"
                             >
-                                <Edit3 class="w-2.5 h-2.5" />
+                                <Edit3 class="w-3 h-3 md:w-2.5 md:h-2.5" />
                             </Button>
                             <Button 
                                 size="sm" 
                                 variant="ghost" 
-                                class="h-5 w-5 p-0"
+                                class="h-6 w-6 p-0 md:h-5 md:w-5"
                                 :class="isDark ? 'text-gray-400 hover:text-red-400' : 'text-gray-500 hover:text-red-600'"
                                 @click="deleteChat(chat.id.toString(), $event)"
                                 title="Delete chat"
                             >
-                                <Trash2 class="w-2.5 h-2.5" />
+                                <Trash2 class="w-3 h-3 md:w-2.5 md:h-2.5" />
                             </Button>
                         </div>
                     </div>

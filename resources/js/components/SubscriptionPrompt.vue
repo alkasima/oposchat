@@ -70,13 +70,6 @@
           Upgrade to Premium
         </button>
         <button
-          v-if="showWaitOption"
-          @click="$emit('wait')"
-          class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-        >
-          Wait Until Tomorrow
-        </button>
-        <button
           @click="$emit('close')"
           class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors"
         >

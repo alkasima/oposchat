@@ -22,7 +22,7 @@ return [
         'file_uploads' => [
             'name' => 'File Uploads',
             'description' => 'Upload files to chat',
-            'free_limit' => 5, // 5 files per day for free users
+            'free_limit' => 0, // No file uploads for free users
             'premium_limit' => null, // unlimited
             'plus_limit' => null, // unlimited
             'academy_limit' => null, // unlimited
@@ -81,10 +81,11 @@ return [
         'academy' => [
             'name' => 'Academy',
             'description' => 'For institutions and large organizations',
-            'price' => 500,
+            'price' => null, // Variable pricing - contact for quote
             'currency' => 'EUR',
             'interval' => 'month',
-            'stripe_price_id' => env('STRIPE_ACADEMY_PRICE_ID', 'price_1RuE5gAVc1w1yLTUacademy'),
+            'stripe_price_id' => null, // No fixed price - contact sales
+            'contact_sales' => true, // Flag to show contact sales instead of price
             'features' => [
                 'Unlimited messages',
                 'Upload files',
@@ -101,7 +102,6 @@ return [
         'price' => 0,
         'features' => [
             '3 messages per day',
-            '5 file uploads per day',
             'Community support',
         ],
     ],
@@ -114,7 +114,7 @@ return [
                 'academy' => 'Unlimited',
             ],
             'file_uploads' => [
-                'free' => '5/day',
+                'free' => 'Not available',
                 'premium' => 'Unlimited',
                 'plus' => 'Unlimited',
                 'academy' => 'Unlimited',

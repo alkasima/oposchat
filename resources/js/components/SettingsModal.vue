@@ -106,7 +106,6 @@ const currentPlan = computed(() => {
             period: 'forever',
                 features: [
                     '3 messages per day',
-                    '5 file uploads per day',
                     'Community support'
                 ]
         };

@@ -7,15 +7,15 @@ import { Link } from '@inertiajs/vue3';
         <div class="container mx-auto px-4">
             <div class="grid md:grid-cols-4 gap-8 mb-12">
                 <div class="col-span-2 md:col-span-1">
-                    <div class="flex items-center space-x-4 mb-6">
+                    <Link :href="route('home')" class="flex items-center space-x-4 mb-6 hover:opacity-90 transition-opacity duration-300">
                         <div class="w-14 h-14 bg-gradient-to-br from-white to-white rounded-full flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300 p-2">
                             <img src="/images/logo.png" alt="OposChat" class="w-full h-full rounded-full" />
                         </div>
                         <div>
-                            <h3 class="text-2xl font-bold">StudyChat</h3>
+                            <h3 class="text-2xl font-bold">OposChat</h3>
                             <p class="text-blue-200 text-sm">AI-Powered Learning</p>
                         </div>
-                    </div>
+                    </Link>
                     <p class="text-gray-300 leading-relaxed">
                         Empowering students worldwide with AI-driven exam preparation and personalized learning experiences.
                     </p>
@@ -26,7 +26,7 @@ import { Link } from '@inertiajs/vue3';
                     <ul class="space-y-3 text-gray-300">
                         <li><Link :href="route('about')" class="hover:text-yellow-400 transition-colors duration-300 flex items-center"><span class="mr-2">→</span>Our Story</Link></li>
                         <li><a href="#" class="hover:text-yellow-400 transition-colors duration-300 flex items-center"><span class="mr-2">→</span>Mission & Vision</a></li>
-                        
+                        <li><Link :href="route('contact')" class="hover:text-yellow-400 transition-colors duration-300 flex items-center"><span class="mr-2">→</span>Contact Us</Link></li>
                     </ul>
                 </div>
 

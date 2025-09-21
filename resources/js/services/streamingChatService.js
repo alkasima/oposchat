@@ -59,6 +59,16 @@ class StreamingChatService {
             if (connection) {
                 connection.sessionId = sessionId;
             }
+
+            // Update usage data if provided in the event
+            if (data.usage) {
+                window.dispatchEvent(new CustomEvent('usage-updated', { 
+                    detail: { usage: data.usage } 
+                }));
+            } else {
+                // Fallback: refresh usage data if not provided
+                this.refreshUsageData();
+            }
         });
 
         // Handle incoming chunks
@@ -80,6 +90,18 @@ class StreamingChatService {
             isComplete = true;
             console.log('Streaming completed:', data.message_id);
             onComplete(data.message_id, accumulatedContent);
+            this.cleanup(chatId);
+        });
+
+        // Handle usage limit exceeded
+        this.eventSource.addEventListener('usage_limit_exceeded', (event) => {
+            const data = JSON.parse(event.data);
+            console.log('Usage limit exceeded:', data);
+            onError({
+                type: 'USAGE_LIMIT_EXCEEDED',
+                message: data.message,
+                usage: data.usage
+            });
             this.cleanup(chatId);
         });
 
@@ -292,6 +314,36 @@ class StreamingChatService {
         const connection = this.activeConnections.get(chatId);
         return connection ? connection.sessionId : null;
     }
+
+    /**
+     * Refresh usage data from the API
+     */
+    async refreshUsageData() {
+        try {
+            const response = await fetch('/api/usage', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+                credentials: 'same-origin'
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.usage) {
+                    // Dispatch a custom event to notify components of usage update
+                    window.dispatchEvent(new CustomEvent('usage-updated', { 
+                        detail: { usage: data.usage } 
+                    }));
+                }
+            }
+        } catch (error) {
+            console.error('Failed to refresh usage data:', error);
+        }
+    }
+
 }
 
 export default new StreamingChatService(); 

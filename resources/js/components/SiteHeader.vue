@@ -9,13 +9,12 @@ const isMenuOpen = ref(false);
 const isProfileOpen = ref(false);
 const { appearance, updateAppearance } = useAppearance();
 const { currentPlanName, hasPremium } = useSubscription();
-const prefersDark = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-const isDark = computed(() => appearance.value === 'dark' || (appearance.value === 'system' && prefersDark()));
+const isDark = computed(() => appearance.value === 'dark');
 
 const cycleTheme = () => {
-    // Cycle through light -> dark -> system -> light ...
-    const current = appearance.value || 'system';
-    const next = current === 'light' ? 'dark' : current === 'dark' ? 'system' : 'light';
+    // Cycle through light -> dark -> light ...
+    const current = appearance.value || 'light';
+    const next = current === 'light' ? 'dark' : 'light';
     updateAppearance(next);
 };
 
@@ -56,7 +55,7 @@ onMounted(async () => {
     <header class="bg-gradient-to-r from-indigo-900 via-blue-900 to-purple-900 shadow-2xl sticky top-0 z-50 backdrop-blur-sm" @click="closeProfileDropdown">
         <div class="container mx-auto px-4 py-4">
             <nav class="flex items-center justify-between">
-                <div class="flex items-center space-x-4">
+                <Link :href="route('home')" class="flex items-center space-x-4 hover:opacity-90 transition-opacity duration-300">
                     <div class="relative">
                         <div class="w-14 h-14 bg-gradient-to-br from-white to-white rounded-full flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300 p-2">
                             <img src="/images/logo.png" alt="OposChat" class="w-full h-full rounded-full" />
@@ -69,7 +68,7 @@ onMounted(async () => {
                         </h1>
                         <p class="text-blue-200 text-xs">AI-Powered Learning</p>
                     </div>
-                </div>
+                </Link>
 
                 <!-- Desktop Navigation -->
                 <div class="hidden md:flex items-center space-x-8">
@@ -104,6 +103,10 @@ onMounted(async () => {
                     </div>
                     <Link :href="route('about')" class="text-white hover:text-yellow-300 transition-all duration-300 font-medium relative group">
                         About
+                        <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-yellow-300 transition-all duration-300 group-hover:w-full"></span>
+                    </Link>
+                    <Link :href="route('contact')" class="text-white hover:text-yellow-300 transition-all duration-300 font-medium relative group">
+                        Contact
                         <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-yellow-300 transition-all duration-300 group-hover:w-full"></span>
                     </Link>
                     <Link :href="route('pricing')" class="text-white hover:text-yellow-300 transition-all duration-300 font-medium relative group">
@@ -224,6 +227,7 @@ onMounted(async () => {
                     <Link :href="route('home')" class="text-white hover:text-yellow-300 transition-colors">Home</Link>
                     <Link href="#courses" class="text-white hover:text-yellow-300 transition-colors">Exams</Link>
                     <Link :href="route('about')" class="text-white hover:text-yellow-300 transition-colors">About</Link>
+                    <Link :href="route('contact')" class="text-white hover:text-yellow-300 transition-colors">Contact</Link>
                     <Link :href="route('pricing')" class="text-white hover:text-yellow-300 transition-colors">Pricing</Link>
                     <div v-if="$page.props.auth.user" class="space-y-2">
                         <div class="px-4 py-2 border-b border-blue-800 mb-2">
@@ -285,8 +289,7 @@ onMounted(async () => {
                     </Link>
                     <button @click="cycleTheme" class="text-white border border-white/30 rounded-lg px-4 py-2">
                         <span v-if="appearance === 'light'">Light mode</span>
-                        <span v-else-if="appearance === 'dark'">Dark mode</span>
-                        <span v-else>System</span>
+                        <span v-else>Dark mode</span>
                     </button>
                 </div>
             </div>
