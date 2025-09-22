@@ -23,8 +23,8 @@ import SiteFooter from '@/components/SiteFooter.vue';
                 
                 <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
                     <!-- Free Plan -->
-                    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 hover:border-blue-300 transition-all duration-300 transform hover:-translate-y-2">
-                        <div class="p-8">
+                    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 hover:border-blue-300 transition-all duration-300 transform hover:-translate-y-2 flex flex-col">
+                        <div class="p-8 flex flex-col flex-grow">
                             <div class="text-center mb-8">
                                 <h3 class="text-2xl font-bold text-gray-900 mb-2">Free</h3>
                                 <p class="text-gray-600 mb-4">Get started with basic features</p>
@@ -49,29 +49,31 @@ import SiteFooter from '@/components/SiteFooter.vue';
                                 </li>
                             </ul>
                             
-                            <Link 
-                                v-if="!$page.props.auth.user"
-                                :href="route('register')"
-                                class="w-full bg-gray-200 text-gray-800 py-3 px-6 rounded-xl font-semibold text-center hover:bg-gray-300 transition-colors duration-300 block"
-                            >
-                                Get Started Free
-                            </Link>
-                            <Link 
-                                v-else
-                                :href="route('subscription', { plan: 'free' })"
-                                class="w-full bg-gray-200 text-gray-800 py-3 px-6 rounded-xl font-semibold text-center hover:bg-gray-300 transition-colors duration-300 block"
-                            >
-                                Manage Plan
-                            </Link>
+                            <div class="mt-auto">
+                                <Link 
+                                    v-if="!$page.props.auth.user"
+                                    :href="route('register')"
+                                    class="w-full bg-gray-200 text-gray-800 py-3 px-6 rounded-xl font-semibold text-center hover:bg-gray-300 transition-colors duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
+                                >
+                                    Get Started Free
+                                </Link>
+                                <Link 
+                                    v-else
+                                    :href="route('subscription', { plan: 'free' })"
+                                    class="w-full bg-gray-200 text-gray-800 py-3 px-6 rounded-xl font-semibold text-center hover:bg-gray-300 transition-colors duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
+                                >
+                                    Manage Plan
+                                </Link>
+                            </div>
                         </div>
                     </div>
                     
                     <!-- Premium Plan -->
-                    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-blue-500 relative transform hover:-translate-y-2 transition-all duration-300">
+                    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-blue-500 relative transform hover:-translate-y-2 transition-all duration-300 flex flex-col">
                         <div class="absolute top-0 left-0 right-0 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-center py-2 text-sm font-semibold">
                             POPULAR
                         </div>
-                        <div class="p-8 pt-12">
+                        <div class="p-8 pt-12 flex flex-col flex-grow">
                             <div class="text-center mb-8">
                                 <h3 class="text-2xl font-bold text-gray-900 mb-2">Premium</h3>
                                 <p class="text-gray-600 mb-4">Perfect for individuals and small teams</p>
@@ -108,26 +110,28 @@ import SiteFooter from '@/components/SiteFooter.vue';
                                 </li>
                             </ul>
                             
-                            <Link 
-                                v-if="!$page.props.auth.user"
-                                :href="route('register')"
-                                class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-blue-600 hover:to-purple-700 transition-all duration-300 block"
-                            >
-                                Start Free Trial
-                            </Link>
-                            <Link 
-                                v-else
-                                :href="route('subscription', { plan: 'premium' })"
-                                class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-blue-600 hover:to-purple-700 transition-all duration-300 block"
-                            >
-                                Upgrade to Premium
-                            </Link>
+                            <div class="mt-auto">
+                                <Link 
+                                    v-if="!$page.props.auth.user"
+                                    :href="route('register')"
+                                    class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-blue-600 hover:to-purple-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
+                                >
+                                    Start Free Trial
+                                </Link>
+                                <Link 
+                                    v-else
+                                    :href="route('subscription', { plan: 'premium' })"
+                                    class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-blue-600 hover:to-purple-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
+                                >
+                                    Upgrade to Premium
+                                </Link>
+                            </div>
                         </div>
                     </div>
                     
                     <!-- Plus Plan -->
-                    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 hover:border-purple-300 transition-all duration-300 transform hover:-translate-y-2">
-                        <div class="p-8">
+                    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 hover:border-purple-300 transition-all duration-300 transform hover:-translate-y-2 flex flex-col">
+                        <div class="p-8 flex flex-col flex-grow">
                             <div class="text-center mb-8">
                                 <h3 class="text-2xl font-bold text-gray-900 mb-2">Plus</h3>
                                 <p class="text-gray-600 mb-4">For growing teams and businesses</p>
@@ -164,26 +168,28 @@ import SiteFooter from '@/components/SiteFooter.vue';
                                 </li>
                             </ul>
                             
-                            <Link 
-                                v-if="!$page.props.auth.user"
-                                :href="route('register')"
-                                class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block"
-                            >
-                                Start Free Trial
-                            </Link>
-                            <Link 
-                                v-else
-                                :href="route('subscription', { plan: 'plus' })"
-                                class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block"
-                            >
-                                Upgrade to Plus
-                            </Link>
+                            <div class="mt-auto">
+                                <Link 
+                                    v-if="!$page.props.auth.user"
+                                    :href="route('register')"
+                                    class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
+                                >
+                                    Start Free Trial
+                                </Link>
+                                <Link 
+                                    v-else
+                                    :href="route('subscription', { plan: 'plus' })"
+                                    class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
+                                >
+                                    Upgrade to Plus
+                                </Link>
+                            </div>
                         </div>
                     </div>
                     
                     <!-- Academy Plan -->
-                    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 hover:border-orange-300 transition-all duration-300 transform hover:-translate-y-2">
-                        <div class="p-8">
+                    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 hover:border-orange-300 transition-all duration-300 transform hover:-translate-y-2 flex flex-col">
+                        <div class="p-8 flex flex-col flex-grow">
                             <div class="text-center mb-8">
                                 <h3 class="text-2xl font-bold text-gray-900 mb-2">Academy</h3>
                                 <p class="text-gray-600 mb-4">For institutions and large organizations</p>
@@ -226,12 +232,14 @@ import SiteFooter from '@/components/SiteFooter.vue';
                                 </li>
                             </ul>
                             
-                            <Link 
-                                :href="route('academy.contact')"
-                                class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-orange-600 hover:to-red-700 transition-all duration-300 block"
-                            >
-                                Contact Sales
-                            </Link>
+                            <div class="mt-auto">
+                                <Link 
+                                    :href="route('academy.contact')"
+                                    class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-orange-600 hover:to-red-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
+                                >
+                                    Contact Sales
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </div>
