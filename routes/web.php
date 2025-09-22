@@ -17,6 +17,10 @@ Route::get('/pricing', function () {
     return Inertia::render('Pricing');
 })->name('pricing');
 
+Route::get('/academy-contact', function () {
+    return Inertia::render('AcademyContact');
+})->name('academy.contact');
+
 // Exams Wiki page
 Route::get('/exams/wiki', function () {
     return Inertia::render('exams/Wiki');

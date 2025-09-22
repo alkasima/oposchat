@@ -271,7 +271,7 @@ const openSettings = () => {
 
 const handleUpgradeClick = () => {
     showSubscriptionPrompt.value = false;
-    showSettingsModal.value = true;
+    router.visit(route('pricing'));
 };
 
 const handleWaitClick = () => {

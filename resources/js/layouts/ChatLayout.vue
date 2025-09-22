@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { Head, usePage, Link } from '@inertiajs/vue3';
+import { Head, usePage, Link, router } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ChatSidebar from '@/components/ChatSidebar.vue';
@@ -520,7 +520,7 @@ const viewAnalytics = async () => {
 
 const handleUpgradeClick = () => {
     showSubscriptionPrompt.value = false;
-    showSettingsModal.value = true;
+    router.visit(route('pricing'));
 };
 
 const handleWaitClick = () => {
@@ -607,6 +607,32 @@ const cycleTheme = () => {
 
 // File upload methods
 const triggerFileUpload = () => {
+    // Check if user has access to file uploads before opening file dialog
+    if (!hasFeatureAccess('file_uploads')) {
+        const planName = currentPlanName.value;
+        let title = 'File Upload Limit Reached';
+        let message = 'You\'ve reached your file upload limit. Please upgrade to upload more files.';
+        
+        if (planName === 'Free') {
+            title = 'File Uploads Not Available';
+            message = 'File uploads are not available on the free plan. Upgrade to Premium, Plus, or Academy to upload files.';
+        }
+        
+        subscriptionPromptData.value = {
+            title,
+            message,
+            showWaitOption: false, // Remove wait option
+            usageInfo: {
+                feature_name: 'File Uploads',
+                usage: 0,
+                limit: 0,
+                percentage: 100
+            }
+        };
+        showSubscriptionPrompt.value = true;
+        return;
+    }
+    
     fileInput.value?.click();
 };
 
@@ -614,32 +640,6 @@ const handleFileSelect = async (event: Event) => {
     const target = event.target as HTMLInputElement;
     const file = target.files?.[0];
     if (file) {
-        // Check if user has access to file uploads
-        if (!hasFeatureAccess('file_uploads')) {
-            const planName = currentPlanName.value;
-            let title = 'File Upload Limit Reached';
-            let message = 'You\'ve reached your file upload limit. Please upgrade to upload more files.';
-            
-            if (planName === 'Free') {
-                title = 'File Uploads Not Available';
-                message = 'File uploads are not available on the free plan. Upgrade to Premium, Plus, or Academy to upload files.';
-            }
-            
-            subscriptionPromptData.value = {
-                title,
-                message,
-                showWaitOption: false, // Remove wait option
-                usageInfo: {
-                    feature_name: 'File Uploads',
-                    usage: 0,
-                    limit: 0,
-                    percentage: 100
-                }
-            };
-            showSubscriptionPrompt.value = true;
-            target.value = '';
-            return;
-        }
         
         // File size validation (5MB limit)
         const maxSize = 5 * 1024 * 1024; // 5MB
@@ -1103,14 +1103,8 @@ if (savedSidebarState === 'false') {
                             @click="triggerFileUpload"
                             variant="ghost" 
                             size="sm" 
-                            :class="[
-                                'p-2 flex-shrink-0',
-                                hasFeatureAccess('file_uploads') 
-                                    ? 'text-gray-500 hover:text-gray-700' 
-                                    : 'text-gray-300 cursor-not-allowed'
-                            ]"
-                            :title="hasFeatureAccess('file_uploads') ? 'Attach file' : 'File uploads not available on your plan'"
-                            :disabled="!hasFeatureAccess('file_uploads')"
+                            class="p-2 flex-shrink-0 text-gray-500 hover:text-gray-700"
+                            :title="hasFeatureAccess('file_uploads') ? 'Attach file' : 'Click to see upgrade options'"
                         >
                             <Paperclip class="w-5 h-5" />
                         </Button>

@@ -123,7 +123,7 @@ const submitOppositionsForm = async () => {
 <template>
     <Head title="Contact Us - OposChat" />
     
-    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
         <SiteHeader />
         
         <!-- Header -->
@@ -140,13 +140,13 @@ const submitOppositionsForm = async () => {
         <div class="container mx-auto px-4 py-16">
             <div class="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
                 <!-- Contact Form -->
-                <Card class="shadow-lg">
+                <Card class="shadow-lg dark:bg-gray-800 dark:border-gray-700">
                     <CardHeader class="bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-t-lg">
                         <CardTitle class="text-center text-lg font-semibold">
                             In case of doubt, contact us
                         </CardTitle>
                     </CardHeader>
-                    <CardContent class="p-6">
+                    <CardContent class="p-6 dark:bg-gray-800">
                         <form @submit.prevent="submitContactForm" class="space-y-4">
                             <!-- Subject -->
                             <div>
@@ -154,7 +154,7 @@ const submitOppositionsForm = async () => {
                                     v-model="contactForm.subject"
                                     placeholder="SUBJECT"
                                     required
-                                    class="text-center border-2 border-gray-300 focus:border-orange-500"
+                                    class="text-center border-2 border-gray-300 focus:border-orange-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                                 />
                             </div>
 
@@ -164,7 +164,7 @@ const submitOppositionsForm = async () => {
                                     v-model="contactForm.name"
                                     placeholder="NAME"
                                     required
-                                    class="text-center border-2 border-gray-300 focus:border-orange-500"
+                                    class="text-center border-2 border-gray-300 focus:border-orange-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                                 />
                             </div>
 
@@ -175,7 +175,7 @@ const submitOppositionsForm = async () => {
                                     type="email"
                                     placeholder="EMAIL"
                                     required
-                                    class="text-center border-2 border-gray-300 focus:border-orange-500"
+                                    class="text-center border-2 border-gray-300 focus:border-orange-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                                 />
                             </div>
 
@@ -186,7 +186,7 @@ const submitOppositionsForm = async () => {
                                     placeholder="WRITE YOUR MESSAGE"
                                     rows="4"
                                     required
-                                    class="text-center border-2 border-gray-300 focus:border-orange-500 resize-none"
+                                    class="text-center border-2 border-gray-300 focus:border-orange-500 resize-none dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                                 />
                             </div>
 
@@ -197,7 +197,7 @@ const submitOppositionsForm = async () => {
                                         v-model:checked="contactForm.termsAccepted"
                                         id="contact-terms"
                                     />
-                                    <label for="contact-terms" class="text-sm text-gray-600">
+                                    <label for="contact-terms" class="text-sm text-gray-600 dark:text-gray-300">
                                         I have read the terms and conditions
                                     </label>
                                 </div>
@@ -220,13 +220,13 @@ const submitOppositionsForm = async () => {
                 </Card>
 
                 <!-- New Oppositions Request Form -->
-                <Card class="shadow-lg">
+                <Card class="shadow-lg dark:bg-gray-800 dark:border-gray-700">
                     <CardHeader class="bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-t-lg">
                         <CardTitle class="text-center text-lg font-semibold">
                             What other exams should we incorporate?
                         </CardTitle>
                     </CardHeader>
-                    <CardContent class="p-6">
+                    <CardContent class="p-6 dark:bg-gray-800">
                         <form @submit.prevent="submitOppositionsForm" class="space-y-4">
                             <!-- Request -->
                             <div>
@@ -235,7 +235,7 @@ const submitOppositionsForm = async () => {
                                     placeholder="REQUEST NEW EXAMS"
                                     rows="6"
                                     required
-                                    class="text-center border-2 border-gray-300 focus:border-orange-500 resize-none"
+                                    class="text-center border-2 border-gray-300 focus:border-orange-500 resize-none dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                                 />
                             </div>
 
@@ -246,7 +246,7 @@ const submitOppositionsForm = async () => {
                                         v-model:checked="oppositionsForm.termsAccepted"
                                         id="oppositions-terms"
                                     />
-                                    <label for="oppositions-terms" class="text-sm text-gray-600">
+                                    <label for="oppositions-terms" class="text-sm text-gray-600 dark:text-gray-300">
                                         I have read the terms and conditions
                                     </label>
                                 </div>
@@ -272,30 +272,16 @@ const submitOppositionsForm = async () => {
             <!-- Additional Info -->
             <div class="mt-16 text-center">
                 <div class="max-w-3xl mx-auto">
-                    <h2 class="text-2xl font-bold mb-4 text-gray-900">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
                         Other ways to contact us
                     </h2>
-                    <div class="grid md:grid-cols-3 gap-6 mt-8">
+                    <div class="flex justify-center mt-8">
                         <div class="text-center">
-                            <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <div class="w-16 h-16 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <span class="text-2xl">📧</span>
                             </div>
-                            <h3 class="font-semibold mb-2 text-gray-900">Email</h3>
-                            <p class="text-gray-600">contact@oposchat.com</p>
-                        </div>
-                        <div class="text-center">
-                            <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <span class="text-2xl">📱</span>
-                            </div>
-                            <h3 class="font-semibold mb-2 text-gray-900">Phone</h3>
-                            <p class="text-gray-600">+34 900 123 456</p>
-                        </div>
-                        <div class="text-center">
-                            <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <span class="text-2xl">⏰</span>
-                            </div>
-                            <h3 class="font-semibold mb-2 text-gray-900">Hours</h3>
-                            <p class="text-gray-600">Monday to Friday<br>9:00 - 18:00</p>
+                            <h3 class="font-semibold mb-2 text-gray-900 dark:text-white">Email</h3>
+                            <p class="text-gray-600 dark:text-gray-300">contact@oposchat.com</p>
                         </div>
                     </div>
                 </div>
