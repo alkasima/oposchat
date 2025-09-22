@@ -4,16 +4,13 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use App\Services\DocumentProcessingService;
 use Exception;
 
 class AIProviderService
 {
     private string $provider;
     private array $config;
-    private ?DocumentProcessingService $documentProcessor;
-
-    public function __construct(?DocumentProcessingService $documentProcessor = null)
+    public function __construct()
     {
         $this->provider = config('ai.provider', 'openai');
         $this->config = config('ai.providers.' . $this->provider);
@@ -46,7 +43,6 @@ class AIProviderService
         } catch (\Throwable $e) {
             // If settings service fails (e.g., during migration), keep config fallback
         }
-        $this->documentProcessor = $documentProcessor;
     }
 
     /**
@@ -456,17 +452,61 @@ class AIProviderService
     }
 
     /**
+     * Generate embedding for text using OpenAI
+     */
+    public function generateEmbedding(string $text): ?array
+    {
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->config['api_key'],
+                'Content-Type' => 'application/json',
+            ])->post('https://api.openai.com/v1/embeddings', [
+                'model' => 'text-embedding-ada-002',
+                'input' => $text,
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['data'][0]['embedding'] ?? null;
+            }
+
+            Log::error('Failed to generate embedding', [
+                'status' => $response->status(),
+                'response' => $response->body()
+            ]);
+
+            return null;
+        } catch (\Exception $e) {
+            Log::error('Exception generating embedding', [
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
+    }
+
+    /**
      * Get relevant context based on course namespaces using vector search
      */
     public function getRelevantContext(string $query, array $namespaces = []): array
     {
-        if (empty($namespaces) || !$this->documentProcessor) {
+        if (empty($namespaces)) {
             return [];
         }
 
         try {
+            // Generate embedding for the query
+            $embedding = $this->generateEmbedding($query);
+            
+            if (!$embedding) {
+                Log::warning('Failed to generate embedding for query', [
+                    'query' => $query
+                ]);
+                return [];
+            }
+
             // Search for relevant content using vector database
-            $searchResults = $this->documentProcessor->searchRelevantContent($query, $namespaces, 3);
+            $vectorStore = app(\App\Services\VectorStoreService::class);
+            $searchResults = $vectorStore->searchWithEmbedding($embedding, $namespaces, 5);
             
             if (!$searchResults['success'] || empty($searchResults['results'])) {
                 Log::warning('No relevant context found', [
@@ -476,21 +516,36 @@ class AIProviderService
                 return [];
             }
 
-            // Extract and format relevant content
+            // Extract and format relevant content with relevance scores
             $context = [];
+            $relevanceScores = [];
+            
             foreach ($searchResults['results'] as $result) {
                 if (isset($result['metadata']['content'])) {
                     $context[] = $result['metadata']['content'];
+                    // Store relevance score if available
+                    $relevanceScores[] = $result['score'] ?? 0;
                 }
             }
+
+            // Check if we have sufficient relevant content
+            $avgRelevance = !empty($relevanceScores) ? array_sum($relevanceScores) / count($relevanceScores) : 0;
+            $minRelevanceThreshold = 0.7; // Adjust this threshold as needed
 
             Log::info('Retrieved relevant context', [
                 'query' => $query,
                 'namespaces' => $namespaces,
-                'context_chunks' => count($context)
+                'context_chunks' => count($context),
+                'avg_relevance' => $avgRelevance,
+                'is_relevant' => $avgRelevance >= $minRelevanceThreshold
             ]);
 
-            return $context;
+            return [
+                'context' => $context,
+                'relevance_scores' => $relevanceScores,
+                'avg_relevance' => $avgRelevance,
+                'is_relevant' => $avgRelevance >= $minRelevanceThreshold
+            ];
 
         } catch (Exception $e) {
             Log::error('Failed to retrieve relevant context', [
@@ -499,12 +554,12 @@ class AIProviderService
                 'error' => $e->getMessage()
             ]);
             
-            // Fallback to simple context
-            $context = [];
-            foreach ($namespaces as $namespace) {
-                $context[] = "This response is based on {$namespace} course materials.";
-            }
-            return $context;
+            return [
+                'context' => [],
+                'relevance_scores' => [],
+                'avg_relevance' => 0,
+                'is_relevant' => false
+            ];
         }
     }
 
@@ -514,11 +569,14 @@ class AIProviderService
     public function chatCompletionWithContext(array $messages, array $namespaces = [], array $options = []): array
     {
         // Get relevant context if namespaces are provided
-        $context = [];
+        $contextData = [];
+        $isRelevant = true;
+        
         if (!empty($namespaces)) {
             $lastUserMessage = end($messages);
             if ($lastUserMessage && $lastUserMessage['role'] === 'user') {
-                $context = $this->getRelevantContext($lastUserMessage['content'], $namespaces);
+                $contextData = $this->getRelevantContext($lastUserMessage['content'], $namespaces);
+                $isRelevant = $contextData['is_relevant'] ?? true;
             }
         }
 
@@ -530,10 +588,13 @@ class AIProviderService
         $providerName = $this->getProvider();
         $systemMessageContent .= "\n\nModel disclosure policy: You are running on {$providerName} model {$modelName}. If a user asks which model you are, reply exactly '{$modelName}'. Do not claim older models (e.g., GPT-3 or GPT-3.5).";
 
-        // Add context to system message if available
-        if (!empty($context)) {
-            $contextText = implode(' ', $context);
-            $systemMessageContent .= "\n\nRelevant context: " . $contextText;
+        // Add context to system message if available and relevant
+        if (!empty($contextData['context']) && $isRelevant) {
+            $contextText = implode(' ', $contextData['context']);
+            $systemMessageContent .= "\n\nRelevant context from course materials: " . $contextText;
+        } elseif (!empty($namespaces) && !$isRelevant) {
+            // Add instruction for out-of-scope responses
+            $systemMessageContent .= "\n\nIMPORTANT: The user's question appears to be outside the scope of the uploaded course materials. You should respond that the information is not available in the syllabus or course materials, and suggest they refer to the uploaded documents or contact their instructor for topics not covered in the course materials.";
         }
 
         $systemMessage = [
@@ -553,11 +614,14 @@ class AIProviderService
     public function streamChatCompletionWithContext(array $messages, callable $callback, array $namespaces = [], array $options = []): array
     {
         // Get relevant context if namespaces are provided
-        $context = [];
+        $contextData = [];
+        $isRelevant = true;
+        
         if (!empty($namespaces)) {
             $lastUserMessage = end($messages);
             if ($lastUserMessage && $lastUserMessage['role'] === 'user') {
-                $context = $this->getRelevantContext($lastUserMessage['content'], $namespaces);
+                $contextData = $this->getRelevantContext($lastUserMessage['content'], $namespaces);
+                $isRelevant = $contextData['is_relevant'] ?? true;
             }
         }
 
@@ -569,10 +633,13 @@ class AIProviderService
         $providerName = $this->getProvider();
         $systemMessageContent .= "\n\nModel disclosure policy: You are running on {$providerName} model {$modelName}. If a user asks which model you are, reply exactly '{$modelName}'. Do not claim older models (e.g., GPT-3 or GPT-3.5).";
 
-        // Add context to system message if available
-        if (!empty($context)) {
-            $contextText = implode(' ', $context);
-            $systemMessageContent .= "\n\nRelevant context: " . $contextText;
+        // Add context to system message if available and relevant
+        if (!empty($contextData['context']) && $isRelevant) {
+            $contextText = implode(' ', $contextData['context']);
+            $systemMessageContent .= "\n\nRelevant context from course materials: " . $contextText;
+        } elseif (!empty($namespaces) && !$isRelevant) {
+            // Add instruction for out-of-scope responses
+            $systemMessageContent .= "\n\nIMPORTANT: The user's question appears to be outside the scope of the uploaded course materials. You should respond that the information is not available in the syllabus or course materials, and suggest they refer to the uploaded documents or contact their instructor for topics not covered in the course materials.";
         }
 
         $systemMessage = [

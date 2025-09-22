@@ -1,0 +1,36 @@
+SAT Math Study Guide
+
+Chapter 1: Algebra Fundamentals
+- Linear equations and inequalities: Solve for x in equations like 2x + 5 = 13
+- Quadratic equations: Use factoring, completing the square, or quadratic formula
+- Systems of equations: Solve using substitution or elimination methods
+- Polynomial operations: Add, subtract, multiply, and divide polynomials
+
+Chapter 2: Geometry
+- Area and perimeter calculations: Rectangle = length × width, Circle = π × radius²
+- Pythagorean theorem: a² + b² = c² for right triangles
+- Circle properties: Circumference = 2πr, Area = πr²
+- Volume and surface area: Cube, cylinder, sphere formulas
+
+Chapter 3: Data Analysis
+- Mean, median, and mode: Central tendency measures
+- Standard deviation: Measure of data spread
+- Probability basics: P(A) = favorable outcomes / total outcomes
+- Statistical interpretation: Reading graphs and charts
+
+Practice Problems:
+1. Solve for x: 2x + 5 = 13
+2. Find the area of a circle with radius 7
+3. Calculate the mean of: 85, 90, 78, 92, 88
+
+Answer Key:
+1. x = 4
+2. Area = 49π ≈ 153.94
+3. Mean = 86.6
+
+Test Strategies:
+- Read questions carefully and identify what's being asked
+- Use the process of elimination for multiple choice
+- Show your work for grid-in questions
+- Manage your time: about 1.5 minutes per question
+- Check your answers if time permits

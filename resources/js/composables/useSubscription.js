@@ -102,7 +102,7 @@ export function useSubscription() {
         try {
             loading.value = true;
             
-            const response = await fetch('/api/usage', {
+            const response = await fetch('/usage', {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',

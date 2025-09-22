@@ -56,4 +56,24 @@ class Course extends Model
     {
         return $this->hasMany(Chat::class);
     }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(CourseDocument::class);
+    }
+
+    public function getEmbeddingNamespaces(): array
+    {
+        return [$this->namespace];
+    }
+
+    public function getProcessedDocumentsCount(): int
+    {
+        return $this->documents()->processed()->count();
+    }
+
+    public function getTotalChunksCount(): int
+    {
+        return $this->documents()->processed()->sum('chunks_count');
+    }
 }

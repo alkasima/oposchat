@@ -320,7 +320,7 @@ class StreamingChatService {
      */
     async refreshUsageData() {
         try {
-            const response = await fetch('/api/usage', {
+            const response = await fetch('/usage', {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',

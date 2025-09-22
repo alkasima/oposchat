@@ -212,11 +212,12 @@ class DocumentProcessingService
     /**
      * Generate unique vector ID
      */
-    private function generateVectorId(string $courseNamespace, int $chunkIndex): string
+    private function generateVectorId(string $courseNamespace, int $chunkIndex, ?int $documentId = null): string
     {
         $timestamp = now()->format('YmdHis');
         $random = Str::random(8);
-        return "{$courseNamespace}_{$timestamp}_{$chunkIndex}_{$random}";
+        $docId = $documentId ? "doc{$documentId}_" : '';
+        return "{$courseNamespace}_{$docId}{$timestamp}_{$chunkIndex}_{$random}";
     }
 
     /**
@@ -250,7 +251,102 @@ class DocumentProcessingService
     }
 
     /**
-     * Search for relevant content
+     * Process a document with enhanced metadata for course documents
+     */
+    public function processCourseDocument(string $content, string $courseNamespace, array $documentMetadata = []): array
+    {
+        try {
+            // Chunk the document
+            $chunks = $this->chunkDocument($content);
+            
+            $vectors = [];
+            $processedChunks = 0;
+
+            foreach ($chunks as $index => $chunk) {
+                try {
+                    // Generate embedding for the chunk
+                    $embedding = $this->generateEmbedding($chunk);
+                    
+                    // Create vector with enhanced metadata
+                    $vectorId = $this->generateVectorId($courseNamespace, $index, $documentMetadata['document_id'] ?? null);
+                    
+                    $vector = [
+                        'id' => $vectorId,
+                        'values' => $embedding,
+                        'metadata' => array_merge($documentMetadata, [
+                            'content' => $chunk,
+                            'course_namespace' => $courseNamespace,
+                            'chunk_index' => $index,
+                            'chunk_count' => count($chunks),
+                            'processed_at' => now()->toISOString(),
+                            'document_title' => $documentMetadata['title'] ?? 'Unknown',
+                            'document_type' => $documentMetadata['document_type'] ?? 'study_material',
+                        ])
+                    ];
+
+                    $vectors[] = $vector;
+                    $processedChunks++;
+
+                } catch (Exception $e) {
+                    Log::error('Failed to process chunk', [
+                        'chunk_index' => $index,
+                        'course_namespace' => $courseNamespace,
+                        'error' => $e->getMessage()
+                    ]);
+                    continue;
+                }
+            }
+
+            if (empty($vectors)) {
+                return [
+                    'success' => false,
+                    'error' => 'No chunks were successfully processed',
+                    'chunks_processed' => 0
+                ];
+            }
+
+            // Store vectors in vector database
+            $storeResult = $this->vectorStore->upsertVectors($vectors, $courseNamespace);
+            
+            if (!$storeResult['success']) {
+                return [
+                    'success' => false,
+                    'error' => 'Failed to store vectors: ' . $storeResult['error'],
+                    'chunks_processed' => 0
+                ];
+            }
+
+            Log::info('Course document processed successfully', [
+                'course_namespace' => $courseNamespace,
+                'chunks_processed' => $processedChunks,
+                'document_title' => $documentMetadata['title'] ?? 'Unknown',
+                'document_type' => $documentMetadata['document_type'] ?? 'study_material'
+            ]);
+
+            return [
+                'success' => true,
+                'chunks_processed' => $processedChunks,
+                'total_chunks' => count($chunks),
+                'document_metadata' => $documentMetadata
+            ];
+
+        } catch (Exception $e) {
+            Log::error('Failed to process course document', [
+                'course_namespace' => $courseNamespace,
+                'error' => $e->getMessage(),
+                'document_metadata' => $documentMetadata
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'chunks_processed' => 0
+            ];
+        }
+    }
+
+    /**
+     * Search for relevant content with enhanced filtering
      */
     public function searchRelevantContent(string $query, array $courseNamespaces = [], int $topK = 5): array
     {

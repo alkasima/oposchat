@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-vue-next';
+import { Plus, Edit, Trash2, Eye, EyeOff, FileText } from 'lucide-vue-next';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 
 interface Course {
@@ -137,6 +137,14 @@ const toggleActive = (course: Course) => {
                         
                         <!-- Actions -->
                         <div class="flex items-center space-x-2">
+                            <Link
+                                :href="route('admin.courses.documents.page', course.id)"
+                                title="Manage Documents"
+                                class="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                            >
+                                <FileText class="w-4 h-4" />
+                            </Link>
+                            
                             <button
                                 @click="toggleActive(course)"
                                 :title="course.is_active ? 'Deactivate' : 'Activate'"

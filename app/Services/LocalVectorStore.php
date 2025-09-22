@@ -72,6 +72,7 @@ class LocalVectorStore
         $this->saveVectors();
 
         return [
+            'success' => true,
             'upsertedCount' => count($vectors)
         ];
     }

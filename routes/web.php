@@ -175,11 +175,25 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::post('/course-content/upload-file', [App\Http\Controllers\Admin\CourseContentController::class, 'uploadFile'])->name('admin.course-content.upload-file');
     Route::post('/course-content/delete', [App\Http\Controllers\Admin\CourseContentController::class, 'deleteContent'])->name('admin.course-content.delete');
     Route::get('/course-content/stats', [App\Http\Controllers\Admin\CourseContentController::class, 'getContentStats'])->name('admin.course-content.stats');
+    
+    // Course document management routes
+    Route::get('/courses/{course}/documents', function (Course $course) {
+        return Inertia::render('Admin/Courses/Documents', [
+            'course' => $course
+        ]);
+    })->name('admin.courses.documents.page');
+    Route::get('/courses/{course}/documents/api', [App\Http\Controllers\Admin\CourseDocumentController::class, 'index'])->name('admin.courses.documents.index');
+    Route::post('/courses/{course}/documents', [App\Http\Controllers\Admin\CourseDocumentController::class, 'store'])->name('admin.courses.documents.store');
+    Route::delete('/course-documents/{document}', [App\Http\Controllers\Admin\CourseDocumentController::class, 'destroy'])->name('admin.course-documents.destroy');
+    Route::get('/courses/{course}/documents/stats', [App\Http\Controllers\Admin\CourseDocumentController::class, 'stats'])->name('admin.courses.documents.stats');
 
     // Settings
     Route::get('/settings', [App\Http\Controllers\Admin\SettingsController::class, 'index'])->name('admin.settings.index');
     Route::post('/settings/keys', [App\Http\Controllers\Admin\SettingsController::class, 'updateKeys'])->name('admin.settings.update-keys');
     Route::post('/settings/password', [App\Http\Controllers\Admin\SettingsController::class, 'updatePassword'])->name('admin.settings.update-password');
+    
+    // Usage endpoint for frontend
+    Route::get('/usage', [App\Http\Controllers\ChatController::class, 'getUsage'])->name('usage');
 });
 
 require __DIR__.'/settings.php';

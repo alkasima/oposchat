@@ -1,0 +1,29 @@
+SAT Math Study Guide
+
+Chapter 1: Algebra Fundamentals
+- Linear equations and inequalities
+- Quadratic equations
+- Systems of equations
+- Polynomial operations
+
+Chapter 2: Geometry
+- Area and perimeter calculations
+- Pythagorean theorem
+- Circle properties
+- Volume and surface area
+
+Chapter 3: Data Analysis
+- Mean, median, and mode
+- Standard deviation
+- Probability basics
+- Statistical interpretation
+
+Practice Problems:
+1. Solve for x: 2x + 5 = 13
+2. Find the area of a circle with radius 7
+3. Calculate the mean of: 85, 90, 78, 92, 88
+
+Answer Key:
+1. x = 4
+2. Area = 49π ≈ 153.94
+3. Mean = 86.6

@@ -12,7 +12,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Register RAG services
+        $this->app->singleton(\App\Services\VectorStoreService::class);
+        $this->app->singleton(\App\Services\DocumentProcessingService::class);
     }
 
     /**

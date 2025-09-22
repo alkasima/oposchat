@@ -166,6 +166,47 @@ class VectorStoreService
     }
 
     /**
+     * Search for relevant content using embedding vector
+     */
+    public function searchWithEmbedding(array $embedding, array $namespaces = [], int $topK = 5): array
+    {
+        try {
+            // Prepare query options
+            $options = [
+                'top_k' => $topK,
+                'includeMetadata' => true
+            ];
+
+            // Add namespace filter if provided
+            if (!empty($namespaces)) {
+                $options['filter'] = [
+                    'course_namespace' => ['$in' => $namespaces]
+                ];
+            }
+
+            // Query vectors
+            $results = $this->queryVectors($embedding, $options);
+            
+            return [
+                'success' => true,
+                'results' => is_array($results) ? $results : [],
+                'namespaces' => $namespaces
+            ];
+        } catch (Exception $e) {
+            Log::error('Vector search failed', [
+                'namespaces' => $namespaces,
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'results' => []
+            ];
+        }
+    }
+
+    /**
      * Test connection to current storage
      */
     public function testConnection(): array

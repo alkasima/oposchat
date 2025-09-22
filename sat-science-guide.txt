@@ -1,0 +1,73 @@
+SAT Science Study Guide
+
+Chapter 1: Scientific Method and Data Analysis
+- Hypothesis Formation: Develop testable predictions based on observations
+- Experimental Design: Control variables, use proper sample sizes, and ensure reproducibility
+- Data Collection: Use appropriate measurement tools and record accurate observations
+- Statistical Analysis: Calculate means, medians, modes, and standard deviations
+- Graph Interpretation: Read line graphs, bar charts, scatter plots, and pie charts
+
+Chapter 2: Biology Fundamentals
+- Cell Structure: Understand organelles and their functions (nucleus, mitochondria, ribosomes)
+- Genetics: Mendelian inheritance, DNA structure, and protein synthesis
+- Evolution: Natural selection, adaptation, and speciation
+- Ecology: Food webs, energy flow, and ecosystem interactions
+- Human Body Systems: Circulatory, respiratory, digestive, and nervous systems
+
+Chapter 3: Chemistry Concepts
+- Atomic Structure: Protons, neutrons, electrons, and electron configuration
+- Chemical Bonds: Ionic, covalent, and metallic bonding
+- Chemical Reactions: Balancing equations, types of reactions, and energy changes
+- Acids and Bases: pH scale, indicators, and neutralization reactions
+- Solutions: Concentration, solubility, and colligative properties
+
+Chapter 4: Physics Principles
+- Motion: Velocity, acceleration, and Newton's laws of motion
+- Forces: Gravity, friction, and applied forces
+- Energy: Kinetic, potential, and conservation of energy
+- Waves: Frequency, wavelength, amplitude, and wave properties
+- Electricity: Current, voltage, resistance, and Ohm's law
+
+Chapter 5: Earth and Space Science
+- Earth's Structure: Crust, mantle, and core composition
+- Plate Tectonics: Continental drift, earthquakes, and volcanic activity
+- Weather and Climate: Atmospheric pressure, temperature, and precipitation patterns
+- Solar System: Planetary motion, gravity, and celestial bodies
+- Environmental Science: Pollution, conservation, and sustainability
+
+Chapter 6: Scientific Reading and Analysis
+- Research Studies: Understanding experimental design and methodology
+- Data Interpretation: Analyzing tables, graphs, and statistical results
+- Scientific Arguments: Evaluating evidence and drawing conclusions
+- Experimental Controls: Identifying variables and control groups
+- Peer Review: Understanding the scientific publication process
+
+Practice Problems:
+1. A scientist wants to test the effect of temperature on plant growth. What would be the independent variable?
+2. If a car accelerates from 0 to 60 mph in 10 seconds, what is its acceleration?
+3. What type of bond forms between sodium (Na) and chlorine (Cl)?
+
+Answer Key:
+1. Temperature (the variable being manipulated)
+2. 6 mph/s (60 mph ÷ 10 seconds)
+3. Ionic bond (Na+ and Cl- ions)
+
+Laboratory Safety:
+- Always wear safety goggles and lab coats
+- Never taste or smell chemicals directly
+- Keep work areas clean and organized
+- Follow proper disposal procedures
+- Report accidents immediately to instructors
+
+Scientific Notation and Units:
+- Use metric system (meters, grams, liters)
+- Convert between units using conversion factors
+- Express large and small numbers in scientific notation
+- Understand prefixes: kilo (10³), milli (10⁻³), micro (10⁻⁶)
+
+Test Strategies:
+- Read questions carefully and identify what's being asked
+- Look for key scientific terms and concepts
+- Use process of elimination for multiple choice questions
+- Show your work for calculation problems
+- Manage time effectively across all science sections
