@@ -530,21 +530,38 @@ class AIProviderService
 
             // Check if we have sufficient relevant content
             $avgRelevance = !empty($relevanceScores) ? array_sum($relevanceScores) / count($relevanceScores) : 0;
-            $minRelevanceThreshold = 0.7; // Adjust this threshold as needed
+            $minRelevanceThreshold = 0.70; // Adjusted threshold for better coverage
+            $minContextChunks = 2; // Require at least 2 relevant chunks for reliable answers
+            $minHighRelevanceChunks = 1; // Require at least 1 highly relevant chunk (>= 0.75)
+
+            // Count highly relevant chunks
+            $highRelevanceChunks = array_filter($relevanceScores, function($score) {
+                return $score >= 0.75;
+            });
+
+            // Determine if content is relevant enough for strict grounding
+            // Either: good average relevance OR at least one highly relevant chunk
+            $isRelevant = (count($context) >= $minContextChunks) && 
+                         (($avgRelevance >= $minRelevanceThreshold) || 
+                          (count($highRelevanceChunks) >= $minHighRelevanceChunks));
 
             Log::info('Retrieved relevant context', [
                 'query' => $query,
                 'namespaces' => $namespaces,
                 'context_chunks' => count($context),
                 'avg_relevance' => $avgRelevance,
-                'is_relevant' => $avgRelevance >= $minRelevanceThreshold
+                'min_relevance_threshold' => $minRelevanceThreshold,
+                'min_context_chunks' => $minContextChunks,
+                'high_relevance_chunks' => count($highRelevanceChunks),
+                'min_high_relevance_chunks' => $minHighRelevanceChunks,
+                'is_relevant' => $isRelevant
             ]);
 
             return [
                 'context' => $context,
                 'relevance_scores' => $relevanceScores,
                 'avg_relevance' => $avgRelevance,
-                'is_relevant' => $avgRelevance >= $minRelevanceThreshold
+                'is_relevant' => $isRelevant
             ];
 
         } catch (Exception $e) {
@@ -580,21 +597,36 @@ class AIProviderService
             }
         }
 
-        // Use custom system message if provided in options, otherwise use default
-        $systemMessageContent = $options['system_message'] ?? config('ai.defaults.system_message');
+        // Create strict grounding system message for syllabus-based responses
+        if (!empty($namespaces)) {
+            // Strict syllabus-only system message
+            $systemMessageContent = "You are a syllabus-based AI assistant for exam preparation. You MUST ONLY use information from the provided course materials/syllabus. You are NOT allowed to use any general knowledge, external information, or training data beyond what is explicitly provided in the course materials.
 
-        // Ensure accurate model disclosure if the user asks about model/version
-        $modelName = $this->getModel();
-        $providerName = $this->getProvider();
-        $systemMessageContent .= "\n\nModel disclosure policy: You are running on {$providerName} model {$modelName}. If a user asks which model you are, reply exactly '{$modelName}'. Do not claim older models (e.g., GPT-3 or GPT-3.5).";
+STRICT GROUNDING RULES:
+1. ONLY answer questions using information from the provided course materials
+2. If the course materials do not contain the answer, respond with: 'This information is not included in the syllabus.'
+3. Do NOT supplement answers with general knowledge
+4. Do NOT provide examples or explanations not found in the course materials
+5. If asked about topics not covered in the syllabus, explicitly state they are not included
 
-        // Add context to system message if available and relevant
-        if (!empty($contextData['context']) && $isRelevant) {
-            $contextText = implode(' ', $contextData['context']);
-            $systemMessageContent .= "\n\nRelevant context from course materials: " . $contextText;
-        } elseif (!empty($namespaces) && !$isRelevant) {
-            // Add instruction for out-of-scope responses
-            $systemMessageContent .= "\n\nIMPORTANT: The user's question appears to be outside the scope of the uploaded course materials. You should respond that the information is not available in the syllabus or course materials, and suggest they refer to the uploaded documents or contact their instructor for topics not covered in the course materials.";
+Model disclosure: You are running on {$this->getProvider()} model {$this->getModel()}.";
+
+            // Add context to system message if available and relevant
+            if (!empty($contextData['context']) && $isRelevant) {
+                $contextText = implode(' ', $contextData['context']);
+                $systemMessageContent .= "\n\nRELEVANT SYLLABUS CONTENT:\n" . $contextText;
+            } elseif (!empty($namespaces) && !$isRelevant) {
+                // Strict out-of-scope instruction
+                $systemMessageContent .= "\n\nIMPORTANT: The user's question is outside the scope of the uploaded course materials. You MUST respond with: 'This information is not included in the syllabus.' Do NOT provide any general knowledge or external information.";
+            }
+        } else {
+            // Use custom system message if provided in options, otherwise use default
+            $systemMessageContent = $options['system_message'] ?? config('ai.defaults.system_message');
+
+            // Ensure accurate model disclosure if the user asks about model/version
+            $modelName = $this->getModel();
+            $providerName = $this->getProvider();
+            $systemMessageContent .= "\n\nModel disclosure policy: You are running on {$providerName} model {$modelName}. If a user asks which model you are, reply exactly '{$modelName}'. Do not claim older models (e.g., GPT-3 or GPT-3.5).";
         }
 
         $systemMessage = [
@@ -625,21 +657,36 @@ class AIProviderService
             }
         }
 
-        // Use custom system message if provided in options, otherwise use default
-        $systemMessageContent = $options['system_message'] ?? config('ai.defaults.system_message');
+        // Create strict grounding system message for syllabus-based responses
+        if (!empty($namespaces)) {
+            // Strict syllabus-only system message
+            $systemMessageContent = "You are a syllabus-based AI assistant for exam preparation. You MUST ONLY use information from the provided course materials/syllabus. You are NOT allowed to use any general knowledge, external information, or training data beyond what is explicitly provided in the course materials.
 
-        // Ensure accurate model disclosure if the user asks about model/version
-        $modelName = $this->getModel();
-        $providerName = $this->getProvider();
-        $systemMessageContent .= "\n\nModel disclosure policy: You are running on {$providerName} model {$modelName}. If a user asks which model you are, reply exactly '{$modelName}'. Do not claim older models (e.g., GPT-3 or GPT-3.5).";
+STRICT GROUNDING RULES:
+1. ONLY answer questions using information from the provided course materials
+2. If the course materials do not contain the answer, respond with: 'This information is not included in the syllabus.'
+3. Do NOT supplement answers with general knowledge
+4. Do NOT provide examples or explanations not found in the course materials
+5. If asked about topics not covered in the syllabus, explicitly state they are not included
 
-        // Add context to system message if available and relevant
-        if (!empty($contextData['context']) && $isRelevant) {
-            $contextText = implode(' ', $contextData['context']);
-            $systemMessageContent .= "\n\nRelevant context from course materials: " . $contextText;
-        } elseif (!empty($namespaces) && !$isRelevant) {
-            // Add instruction for out-of-scope responses
-            $systemMessageContent .= "\n\nIMPORTANT: The user's question appears to be outside the scope of the uploaded course materials. You should respond that the information is not available in the syllabus or course materials, and suggest they refer to the uploaded documents or contact their instructor for topics not covered in the course materials.";
+Model disclosure: You are running on {$this->getProvider()} model {$this->getModel()}.";
+
+            // Add context to system message if available and relevant
+            if (!empty($contextData['context']) && $isRelevant) {
+                $contextText = implode(' ', $contextData['context']);
+                $systemMessageContent .= "\n\nRELEVANT SYLLABUS CONTENT:\n" . $contextText;
+            } elseif (!empty($namespaces) && !$isRelevant) {
+                // Strict out-of-scope instruction
+                $systemMessageContent .= "\n\nIMPORTANT: The user's question is outside the scope of the uploaded course materials. You MUST respond with: 'This information is not included in the syllabus.' Do NOT provide any general knowledge or external information.";
+            }
+        } else {
+            // Use custom system message if provided in options, otherwise use default
+            $systemMessageContent = $options['system_message'] ?? config('ai.defaults.system_message');
+
+            // Ensure accurate model disclosure if the user asks about model/version
+            $modelName = $this->getModel();
+            $providerName = $this->getProvider();
+            $systemMessageContent .= "\n\nModel disclosure policy: You are running on {$providerName} model {$modelName}. If a user asks which model you are, reply exactly '{$modelName}'. Do not claim older models (e.g., GPT-3 or GPT-3.5).";
         }
 
         $systemMessage = [
