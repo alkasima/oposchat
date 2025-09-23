@@ -168,6 +168,8 @@ class SubscriptionController extends Controller
             // Ensure user has a Stripe customer ID
             if (!$user->hasStripeId()) {
                 $customer = $user->createOrGetStripeCustomer();
+                // Refresh user to get the updated stripe_customer_id
+                $user->refresh();
             }
 
             $session = $this->stripeService->createCheckoutSession([
@@ -302,7 +304,7 @@ class SubscriptionController extends Controller
 
             $stripeSubscription = $this->stripeService->retrieveSubscriptionById($session->subscription);
 
-            DB::transaction(function () use ($stripeSubscription, $session) {
+            $result = DB::transaction(function () use ($stripeSubscription, $session) {
                 $subscriptionService = app(\App\Services\SubscriptionService::class);
                 
                 // Get invoice if it exists
@@ -319,7 +321,7 @@ class SubscriptionController extends Controller
                 }
                 
                 // Handle immediate payment success (bypasses webhook)
-                $subscriptionService->handleImmediatePaymentSuccess($stripeSubscription, $invoice);
+                return $subscriptionService->handleImmediatePaymentSuccess($stripeSubscription, $invoice);
             });
 
             return response()->json([
@@ -327,6 +329,10 @@ class SubscriptionController extends Controller
                 'data' => [
                     'status' => 'updated',
                     'subscription_id' => $stripeSubscription->id,
+                    'plan_name' => $result['plan_name'],
+                    'plan_key' => $result['plan_key'],
+                    'subscription_status' => $result['subscription_status'],
+                    'has_active_subscription' => $result['has_active_subscription']
                 ]
             ]);
         } catch (Exception $e) {
@@ -583,9 +589,9 @@ class SubscriptionController extends Controller
             }
 
             // Update subscription immediately
-            DB::transaction(function () use ($latestSubscription) {
+            $result = DB::transaction(function () use ($latestSubscription) {
                 $subscriptionService = app(\App\Services\SubscriptionService::class);
-                $subscriptionService->handleImmediatePaymentSuccess($latestSubscription);
+                return $subscriptionService->handleImmediatePaymentSuccess($latestSubscription);
             });
 
             return response()->json([
@@ -593,7 +599,10 @@ class SubscriptionController extends Controller
                 'data' => [
                     'status' => 'refreshed',
                     'subscription_id' => $latestSubscription->id,
-                    'plan_name' => $user->getCurrentPlanName()
+                    'plan_name' => $result['plan_name'],
+                    'plan_key' => $result['plan_key'],
+                    'subscription_status' => $result['subscription_status'],
+                    'has_active_subscription' => $result['has_active_subscription']
                 ]
             ]);
 
@@ -605,6 +614,60 @@ class SubscriptionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to refresh subscription status'
+            ], 500);
+        }
+    }
+
+    /**
+     * Force refresh the current user's subscription status
+     */
+    public function refreshUserPlan(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            
+            // Clear usage cache first
+            $features = ['chat_messages', 'file_uploads', 'api_calls'];
+            foreach ($features as $feature) {
+                $cacheKey = "usage_{$user->id}_{$feature}";
+                \Illuminate\Support\Facades\Cache::forget($cacheKey);
+            }
+            
+            // Refresh user model
+            $user->refresh();
+            
+            // Get current plan info
+            $planName = $user->getCurrentPlanName();
+            $planKey = $user->getCurrentPlanKey();
+            $hasActiveSubscription = $user->hasActiveSubscription();
+            $subscriptionStatus = $user->subscriptionStatus();
+            
+            Log::info('User plan refreshed manually', [
+                'user_id' => $user->id,
+                'plan_name' => $planName,
+                'plan_key' => $planKey,
+                'has_active_subscription' => $hasActiveSubscription,
+                'subscription_status' => $subscriptionStatus
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'plan_name' => $planName,
+                    'plan_key' => $planKey,
+                    'has_active_subscription' => $hasActiveSubscription,
+                    'subscription_status' => $subscriptionStatus
+                ]
+            ]);
+            
+        } catch (Exception $e) {
+            Log::error('Failed to refresh user plan', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to refresh user plan'
             ], 500);
         }
     }

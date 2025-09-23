@@ -259,7 +259,7 @@ class StreamingChatService {
                     inList = true;
                     listType = 'ul';
                 }
-                processedLines.push(`<li class="ml-4">${bulletMatch[1]}</li>`);
+                processedLines.push(`<li class="ml-2">${bulletMatch[1]}</li>`);
             } else if (numberedMatch) {
                 if (!inList || listType !== 'ol') {
                     if (inList) processedLines.push(`</${listType}>`);
@@ -267,7 +267,7 @@ class StreamingChatService {
                     inList = true;
                     listType = 'ol';
                 }
-                processedLines.push(`<li class="ml-4">${numberedMatch[2]}</li>`);
+                processedLines.push(`<li class="ml-2" value="${numberedMatch[1]}">${numberedMatch[2]}</li>`);
             } else {
                 if (inList) {
                     processedLines.push(`</${listType}>`);
@@ -285,8 +285,15 @@ class StreamingChatService {
         
         content = processedLines.join('\n');
         
-        // Line breaks
-        content = content.replace(/\n/g, '<br>');
+        // Process line breaks more intelligently - only add breaks between paragraphs, not every line
+        content = content
+            .replace(/\n\n+/g, '</p><p class="mb-3">')  // Multiple newlines = paragraph breaks
+            .replace(/\n/g, ' ')                        // Single newlines = spaces
+            .replace(/^/, '<p class="mb-3">')           // Start with paragraph
+            .replace(/$/, '</p>');                      // End with paragraph
+        
+        // Clean up empty paragraphs
+        content = content.replace(/<p class="mb-3"><\/p>/g, '');
         
         return content;
     }

@@ -381,7 +381,7 @@ class SubscriptionService
      * Handle immediate subscription update after successful payment
      * This bypasses webhook processing for instant updates
      */
-    public function handleImmediatePaymentSuccess($stripeSubscription, $stripeInvoice = null): void
+    public function handleImmediatePaymentSuccess($stripeSubscription, $stripeInvoice = null): array
     {
         try {
             // Find user by Stripe customer ID
@@ -391,12 +391,38 @@ class SubscriptionService
                 throw new \Exception("User not found for Stripe customer ID: {$stripeSubscription->customer}");
             }
 
+            Log::info('Processing immediate payment success', [
+                'user_id' => $user->id,
+                'stripe_subscription_id' => $stripeSubscription->id,
+                'stripe_status' => $stripeSubscription->status,
+                'stripe_customer_id' => $stripeSubscription->customer
+            ]);
+
             // Create or update subscription
             $existing = Subscription::where('stripe_subscription_id', $stripeSubscription->id)->first();
             if ($existing) {
                 $subscription = $this->updateSubscriptionFromStripe($stripeSubscription);
+                Log::info('Updated existing subscription', [
+                    'subscription_id' => $subscription->id,
+                    'old_status' => $existing->status,
+                    'new_status' => $subscription->status
+                ]);
             } else {
                 $subscription = $this->createSubscriptionFromStripe($stripeSubscription);
+                Log::info('Created new subscription', [
+                    'subscription_id' => $subscription->id,
+                    'status' => $subscription->status
+                ]);
+            }
+
+            // Force subscription to active status if payment was successful
+            if ($stripeSubscription->status === 'active' || ($stripeInvoice && $stripeInvoice->status === 'paid')) {
+                $subscription->update(['status' => 'active']);
+                Log::info('Forced subscription to active status', [
+                    'subscription_id' => $subscription->id,
+                    'stripe_status' => $stripeSubscription->status,
+                    'invoice_status' => $stripeInvoice?->status
+                ]);
             }
 
             // Handle invoice if provided
@@ -407,17 +433,38 @@ class SubscriptionService
             // Clear usage cache to ensure new limits take effect immediately
             $this->clearUsageCache($user);
 
-            Log::info('Immediate payment success handled', [
+            // Refresh user model to get latest data
+            $user->refresh();
+            $subscription->refresh();
+
+            $planName = $user->getCurrentPlanName();
+            $planKey = $user->getCurrentPlanKey();
+
+            Log::info('Immediate payment success handled successfully', [
                 'user_id' => $user->id,
                 'subscription_id' => $subscription->id,
                 'stripe_subscription_id' => $stripeSubscription->id,
-                'plan_name' => $user->getCurrentPlanName()
+                'plan_name' => $planName,
+                'plan_key' => $planKey,
+                'subscription_status' => $subscription->status,
+                'has_active_subscription' => $user->hasActiveSubscription()
             ]);
+
+            return [
+                'success' => true,
+                'user_id' => $user->id,
+                'subscription_id' => $subscription->id,
+                'plan_name' => $planName,
+                'plan_key' => $planKey,
+                'subscription_status' => $subscription->status,
+                'has_active_subscription' => $user->hasActiveSubscription()
+            ];
 
         } catch (\Exception $e) {
             Log::error('Failed to handle immediate payment success', [
                 'stripe_subscription_id' => $stripeSubscription->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             throw $e;
         }

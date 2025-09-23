@@ -172,6 +172,9 @@ class User extends Authenticatable
             'email' => $this->email,
         ], $options));
 
+        // Save the Stripe customer ID to the user record
+        $this->update(['stripe_customer_id' => $customer->id]);
+
         return $customer;
     }
 

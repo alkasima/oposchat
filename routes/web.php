@@ -124,6 +124,7 @@ Route::middleware(['auth', 'verified'])->prefix('api')->group(function () {
         Route::post('/checkout', [App\Http\Controllers\SubscriptionController::class, 'createCheckoutSession']);
         Route::post('/confirm', [App\Http\Controllers\SubscriptionController::class, 'confirmCheckout']);
         Route::post('/refresh', [App\Http\Controllers\SubscriptionController::class, 'refreshSubscriptionStatus']);
+        Route::post('/refresh-plan', [App\Http\Controllers\SubscriptionController::class, 'refreshUserPlan']);
         Route::post('/sync', [App\Http\Controllers\SubscriptionController::class, 'syncUserSubscriptions']);
         Route::post('/manage', [App\Http\Controllers\SubscriptionController::class, 'manageSubscription']);
         Route::delete('/cancel', [App\Http\Controllers\SubscriptionController::class, 'cancelSubscription']);

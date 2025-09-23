@@ -37,7 +37,6 @@ const stopStreaming = () => {
 const formatContent = (content) => {
     if (!content) return '';
     
-    console.log('Original content:', content); // Debug log
     
     // First, let's clean up any existing $ artifacts from regex replacements
     let formattedContent = content
@@ -91,7 +90,7 @@ const formatContent = (content) => {
                 listType = 'ul';
             }
             const listContent = bulletMatch[1];
-            processedLines.push(`<li class="ml-4">${listContent}</li>`);
+            processedLines.push(`<li class="ml-2">${listContent}</li>`);
         } else if (numberedMatch) {
             if (!inList || listType !== 'ol') {
                 if (inList) processedLines.push(`</${listType}>`);
@@ -100,7 +99,7 @@ const formatContent = (content) => {
                 listType = 'ol';
             }
             const listContent = numberedMatch[2];
-            processedLines.push(`<li class="ml-4">${listContent}</li>`);
+            processedLines.push(`<li class="ml-2" value="${numberedMatch[1]}">${listContent}</li>`);
         } else {
             if (inList) {
                 processedLines.push(`</${listType}>`);
@@ -118,15 +117,21 @@ const formatContent = (content) => {
     
     formattedContent = processedLines.join('\n');
     
-    // Process line breaks
-    formattedContent = formattedContent.replace(/\n/g, '<br>');
+    // Process line breaks more intelligently - only add breaks between paragraphs, not every line
+    formattedContent = formattedContent
+        .replace(/\n\n+/g, '</p><p class="mb-3">')  // Multiple newlines = paragraph breaks
+        .replace(/\n/g, ' ')                        // Single newlines = spaces
+        .replace(/^/, '<p class="mb-3">')           // Start with paragraph
+        .replace(/$/, '</p>');                      // End with paragraph
+    
+    // Clean up empty paragraphs
+    formattedContent = formattedContent.replace(/<p class="mb-3"><\/p>/g, '');
     
     // Restore code blocks
     for (let i = 0; i < codeBlocks.length; i++) {
         formattedContent = formattedContent.replace(`__CODE_BLOCK_${i}__`, codeBlocks[i]);
     }
     
-    console.log('Formatted content:', formattedContent); // Debug log
     
     return formattedContent;
 };
