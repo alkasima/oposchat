@@ -9,7 +9,8 @@ import {
     Settings,
     Plus,
     Edit,
-    BarChart3
+    BarChart3,
+    UserCheck
 } from 'lucide-vue-next';
 
 const isActive = (routeName: string) => {
@@ -99,6 +100,19 @@ const isActive = (routeName: string) => {
                 >
                     <Users class="w-5 h-5 mr-3" />
                     All Users
+                </Link>
+
+                <Link 
+                    :href="route('admin.user-plans.index')"
+                    :class="[
+                        'flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors',
+                        isActive('admin.user-plans.index') 
+                            ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' 
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    ]"
+                >
+                    <UserCheck class="w-5 h-5 mr-3" />
+                    Manage Plans
                 </Link>
             </div>
 

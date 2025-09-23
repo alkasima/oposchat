@@ -188,6 +188,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::delete('/course-documents/{document}', [App\Http\Controllers\Admin\CourseDocumentController::class, 'destroy'])->name('admin.course-documents.destroy');
     Route::get('/courses/{course}/documents/stats', [App\Http\Controllers\Admin\CourseDocumentController::class, 'stats'])->name('admin.courses.documents.stats');
 
+    // User plan management routes
+    Route::get('/user-plans', [App\Http\Controllers\Admin\UserPlanController::class, 'index'])->name('admin.user-plans.index');
+    Route::get('/user-plans/search', [App\Http\Controllers\Admin\UserPlanController::class, 'search'])->name('admin.user-plans.search');
+    Route::get('/user-plans/{user}', [App\Http\Controllers\Admin\UserPlanController::class, 'show'])->name('admin.user-plans.show');
+    Route::post('/user-plans/{user}/update-plan', [App\Http\Controllers\Admin\UserPlanController::class, 'updatePlan'])->name('admin.user-plans.update-plan');
+
     // Settings
     Route::get('/settings', [App\Http\Controllers\Admin\SettingsController::class, 'index'])->name('admin.settings.index');
     Route::post('/settings/keys', [App\Http\Controllers\Admin\SettingsController::class, 'updateKeys'])->name('admin.settings.update-keys');
