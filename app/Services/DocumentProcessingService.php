@@ -90,20 +90,74 @@ class DocumentProcessingService
     }
 
     /**
-     * Chunk a document into smaller pieces
+     * Chunk a document into smaller pieces with improved strategy
      */
-    private function chunkDocument(string $content, int $chunkSize = 1000, int $overlap = 200): array
+    private function chunkDocument(string $content, int $chunkSize = 500, int $overlap = 100): array
     {
         // Clean the content
         $content = $this->cleanContent($content);
         
-        // Split into sentences first
-        $sentences = $this->splitIntoSentences($content);
+        // First, try to identify logical sections (headers, topics, etc.)
+        $sections = $this->identifyLogicalSections($content);
+        
+        $chunks = [];
+        
+        foreach ($sections as $section) {
+            $sectionChunks = $this->chunkSection($section, $chunkSize, $overlap);
+            $chunks = array_merge($chunks, $sectionChunks);
+        }
+        
+        // If no sections were identified, fall back to sentence-based chunking
+        if (empty($chunks)) {
+            $chunks = $this->chunkBySentences($content, $chunkSize, $overlap);
+        }
+        
+        return $chunks;
+    }
+
+    /**
+     * Identify logical sections in the content
+     */
+    private function identifyLogicalSections(string $content): array
+    {
+        $sections = [];
+        
+        // Split by common section markers
+        $sectionPatterns = [
+            '/\n\s*(Chapter \d+[:\-].*?)(?=\n\s*(?:Chapter \d+[:\-]|$))/is',
+            '/\n\s*(\d+\.\s+.*?)(?=\n\s*(?:\d+\.\s+|$))/is',
+            '/\n\s*([A-Z][A-Z\s]+:.*?)(?=\n\s*(?:[A-Z][A-Z\s]+:|$))/is',
+            '/\n\s*(#{1,6}\s+.*?)(?=\n\s*(?:#{1,6}\s+|$))/is', // Markdown headers
+        ];
+        
+        foreach ($sectionPatterns as $pattern) {
+            if (preg_match_all($pattern, "\n" . $content, $matches, PREG_SET_ORDER)) {
+                foreach ($matches as $match) {
+                    $sections[] = trim($match[1]);
+                }
+                break; // Use the first pattern that finds sections
+            }
+        }
+        
+        // If no sections found, treat the whole content as one section
+        if (empty($sections)) {
+            $sections[] = $content;
+        }
+        
+        return $sections;
+    }
+
+    /**
+     * Chunk a section with improved overlap strategy
+     */
+    private function chunkSection(string $section, int $chunkSize, int $overlap): array
+    {
+        $sentences = $this->splitIntoSentences($section);
         
         $chunks = [];
         $currentChunk = '';
         $currentLength = 0;
-
+        
         foreach ($sentences as $sentence) {
             $sentenceLength = strlen($sentence);
             
@@ -111,8 +165,8 @@ class DocumentProcessingService
             if ($currentLength + $sentenceLength > $chunkSize && !empty($currentChunk)) {
                 $chunks[] = trim($currentChunk);
                 
-                // Start new chunk with overlap
-                $overlapText = $this->getOverlapText($currentChunk, $overlap);
+                // Start new chunk with intelligent overlap
+                $overlapText = $this->getIntelligentOverlap($currentChunk, $overlap);
                 $currentChunk = $overlapText . ' ' . $sentence;
                 $currentLength = strlen($currentChunk);
             } else {
@@ -127,6 +181,78 @@ class DocumentProcessingService
         }
 
         return $chunks;
+    }
+
+    /**
+     * Fallback chunking by sentences
+     */
+    private function chunkBySentences(string $content, int $chunkSize, int $overlap): array
+    {
+        $sentences = $this->splitIntoSentences($content);
+        
+        $chunks = [];
+        $currentChunk = '';
+        $currentLength = 0;
+        
+        foreach ($sentences as $sentence) {
+            $sentenceLength = strlen($sentence);
+            
+            if ($currentLength + $sentenceLength > $chunkSize && !empty($currentChunk)) {
+                $chunks[] = trim($currentChunk);
+                
+                $overlapText = $this->getIntelligentOverlap($currentChunk, $overlap);
+                $currentChunk = $overlapText . ' ' . $sentence;
+                $currentLength = strlen($currentChunk);
+            } else {
+                $currentChunk .= ($currentChunk ? ' ' : '') . $sentence;
+                $currentLength += $sentenceLength;
+            }
+        }
+
+        if (!empty(trim($currentChunk))) {
+            $chunks[] = trim($currentChunk);
+        }
+
+        return $chunks;
+    }
+
+    /**
+     * Get intelligent overlap that preserves context
+     */
+    private function getIntelligentOverlap(string $chunk, int $overlapLength): string
+    {
+        if (strlen($chunk) <= $overlapLength) {
+            return $chunk;
+        }
+
+        // Try to find a good break point (end of sentence, paragraph, etc.)
+        $overlapText = substr($chunk, -$overlapLength);
+        
+        // Look for sentence endings
+        $sentenceEndings = ['. ', '! ', '? ', '.\n', '!\n', '?\n'];
+        foreach ($sentenceEndings as $ending) {
+            $pos = strrpos($overlapText, $ending);
+            if ($pos !== false) {
+                return substr($overlapText, $pos + strlen($ending));
+            }
+        }
+        
+        // Look for paragraph breaks
+        $paragraphBreaks = ['\n\n', '\n'];
+        foreach ($paragraphBreaks as $break) {
+            $pos = strrpos($overlapText, $break);
+            if ($pos !== false) {
+                return substr($overlapText, $pos + strlen($break));
+            }
+        }
+        
+        // Fall back to word boundary
+        $spacePos = strrpos($overlapText, ' ');
+        if ($spacePos !== false) {
+            return substr($overlapText, $spacePos + 1);
+        }
+        
+        return $overlapText;
     }
 
     /**
@@ -159,25 +285,6 @@ class DocumentProcessingService
         });
     }
 
-    /**
-     * Get overlap text from the end of a chunk
-     */
-    private function getOverlapText(string $chunk, int $overlapLength): string
-    {
-        if (strlen($chunk) <= $overlapLength) {
-            return $chunk;
-        }
-
-        $overlapText = substr($chunk, -$overlapLength);
-        
-        // Try to break at word boundary
-        $spacePos = strpos($overlapText, ' ');
-        if ($spacePos !== false) {
-            $overlapText = substr($overlapText, $spacePos + 1);
-        }
-
-        return $overlapText;
-    }
 
     /**
      * Generate embedding for text using OpenAI

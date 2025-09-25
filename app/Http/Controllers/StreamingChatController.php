@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Chat;
 use App\Services\AIProviderService;
+use App\Services\EnhancedAIProviderService;
 use App\Services\StreamingMessageService;
 use App\Services\DocumentProcessingService;
 use Illuminate\Http\Request;
@@ -18,8 +19,8 @@ class StreamingChatController extends Controller
         private StreamingMessageService $streamingMessageService,
         private DocumentProcessingService $documentProcessor
     ) {
-        // Inject DocumentProcessingService into AIProviderService
-        $this->aiProviderService = new AIProviderService($this->documentProcessor);
+        // Use enhanced AI provider service for better pedagogical responses
+        $this->aiProviderService = new EnhancedAIProviderService();
     }
 
     /**
