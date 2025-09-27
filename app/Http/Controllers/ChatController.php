@@ -62,13 +62,37 @@ class ChatController extends Controller
             ->get()
             ->map(function ($chat) {
                 $latestMessage = $chat->latestMessage->first();
-                
+
+                // Ensure UTF-8 safe title/snippet to avoid JSON encoding errors
+                $rawTitle = $chat->title ?: 'New Chat';
+                $safeTitle = is_string($rawTitle)
+                    ? @iconv('UTF-8', 'UTF-8//IGNORE', $rawTitle)
+                    : 'New Chat';
+
+                $snippet = null;
+                if ($latestMessage && isset($latestMessage->content)) {
+                    $content = (string) $latestMessage->content;
+                    $content = @iconv('UTF-8', 'UTF-8//IGNORE', $content);
+                    $snippet = mb_substr($content, 0, 50, 'UTF-8');
+                    if (mb_strlen($content, 'UTF-8') > 50) {
+                        $snippet .= '...';
+                    }
+                }
+
+                // Prefer explicit last_message_at; fallback to latest message time
+                $timestamp = null;
+                if ($chat->last_message_at) {
+                    $timestamp = $chat->last_message_at->diffForHumans();
+                } elseif ($latestMessage && $latestMessage->created_at) {
+                    $timestamp = $latestMessage->created_at->diffForHumans();
+                }
+
                 return [
                     'id' => $chat->id,
-                    'title' => $chat->title ?: 'New Chat',
+                    'title' => $safeTitle,
                     'course_id' => $chat->course_id,
-                    'lastMessage' => $latestMessage ? substr($latestMessage->content, 0, 50) . '...' : null,
-                    'timestamp' => $chat->last_message_at ? $chat->last_message_at->diffForHumans() : null,
+                    'lastMessage' => $snippet,
+                    'timestamp' => $timestamp,
                 ];
             });
 

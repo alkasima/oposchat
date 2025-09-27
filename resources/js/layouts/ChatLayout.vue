@@ -45,6 +45,45 @@ const currentChat = ref<{ id: string; title: string; course_id?: number } | null
 const currentCourse = ref<{ id: number; name: string } | null>(null);
 const showCourseRequired = ref(false);
 const showMobileSidebar = ref(false);
+
+// Persist selected course per chat in localStorage
+const storageKeyForChat = (chatId: string) => `oposchat:selectedCourse:${chatId}`;
+
+const saveSelectedCourse = () => {
+    if (currentChat.value?.id) {
+        const key = storageKeyForChat(currentChat.value.id.toString());
+        if (currentCourse.value) {
+            localStorage.setItem(key, JSON.stringify(currentCourse.value));
+        } else {
+            localStorage.removeItem(key);
+        }
+    }
+};
+
+const loadSelectedCourse = (chatId: string) => {
+    try {
+        const raw = localStorage.getItem(storageKeyForChat(chatId));
+        if (raw) {
+            const stored = JSON.parse(raw);
+            if (stored && typeof stored.id === 'number') {
+                currentCourse.value = { id: stored.id, name: stored.name };
+                if (currentChat.value && !currentChat.value.course_id) {
+                    currentChat.value.course_id = stored.id;
+                }
+            }
+        }
+    } catch (e) {
+        // ignore malformed storage
+    }
+};
+
+// Helper to focus/open the course selector when required
+const courseSelectorRef = ref<HTMLElement | null>(null);
+const focusCourseSelector = () => {
+    if (courseSelectorRef.value) {
+        courseSelectorRef.value.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+};
 const isExamSectionCollapsed = ref(true);
 const isSidebarCollapsed = ref(false);
 const showSettingsModal = ref(false);
@@ -127,6 +166,8 @@ const handleChatSelected = async (chatId: string | null) => {
             course_id: chatData.chat.course_id
         };
         messages.value = chatData.messages;
+        // Try to hydrate course selection from storage
+        loadSelectedCourse(currentChat.value.id.toString());
         showCourseRequired.value = !currentChat.value.course_id;
     } catch (error) {
         console.error('Failed to load chat:', error);
@@ -151,6 +192,8 @@ const handleNewChatCreated = (newChat: any) => {
         title: newChat.title || 'New Chat',
         course_id: newChat.course_id
     };
+    // Hydrate from storage if present
+    loadSelectedCourse(currentChat.value.id.toString());
     showCourseRequired.value = !currentChat.value.course_id;
     
     // Clear messages for new chat
@@ -172,6 +215,8 @@ const sendMessage = async () => {
     // Require an exam selection before chatting
     if (!currentChat.value.course_id) {
         showCourseRequired.value = true;
+        // Nudge user to the selector
+        focusCourseSelector();
         return;
     }
 
@@ -583,6 +628,8 @@ const handleCourseSelected = async (course: any) => {
     
     currentCourse.value = course ? { id: course.id, name: course.name } : null;
     showCourseRequired.value = !currentChat.value?.course_id;
+    // Persist selection
+    saveSelectedCourse();
 };
 
 // Theme toggle

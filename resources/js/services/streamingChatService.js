@@ -226,14 +226,255 @@ class StreamingChatService {
     }
 
     /**
+     * Process LaTeX/math notation
+     */
+    processMathNotation(content) {
+        // Process display math (block math) - \[ ... \]
+        content = content.replace(/\\\[([\s\S]*?)\\\]/g, (match, mathContent) => {
+            return `<div class="my-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-l-4 border-blue-500">
+                <div class="text-center font-mono text-lg">
+                    ${mathContent.trim()}
+                </div>
+            </div>`;
+        });
+
+        // Process inline math - \( ... \)
+        content = content.replace(/\\\(([\s\S]*?)\\\)/g, (match, mathContent) => {
+            return `<span class="inline-math font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-sm">
+                ${mathContent.trim()}
+            </span>`;
+        });
+
+        // Process simple math expressions without LaTeX delimiters
+        // Look for patterns like "π × r²" or "3.14 × 49"
+        content = content.replace(/([π])\s*×\s*([a-zA-Z0-9²³⁴⁵⁶⁷⁸⁹]+)/g, (match, symbol, expression) => {
+            return `<span class="inline-math font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-sm">
+                ${symbol} × ${expression}
+            </span>`;
+        });
+
+        // Process superscripts (like r², x³)
+        content = content.replace(/([a-zA-Z0-9]+)([²³⁴⁵⁶⁷⁸⁹]+)/g, (match, base, superscript) => {
+            return `<span class="inline-math">${base}<sup class="text-xs">${superscript}</sup></span>`;
+        });
+
+        // Process LaTeX fractions (\frac{numerator}{denominator})
+        content = content.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, (match, numerator, denominator) => {
+            return `<span class="inline-math font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-sm">
+                <span class="inline-block align-middle">
+                    <span class="block text-center border-b border-gray-400">${numerator}</span>
+                    <span class="block text-center">${denominator}</span>
+                </span>
+            </span>`;
+        });
+
+        // Process simple fractions (like 14/2)
+        content = content.replace(/(\d+)\/(\d+)/g, (match, numerator, denominator) => {
+            return `<span class="inline-math font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-sm">
+                <span class="inline-block align-middle">
+                    <span class="block text-center border-b border-gray-400">${numerator}</span>
+                    <span class="block text-center">${denominator}</span>
+                </span>
+            </span>`;
+        });
+
+        // Process LaTeX text commands (\text{...})
+        content = content.replace(/\\text\{([^}]+)\}/g, (match, text) => {
+            return `<span class="font-normal">${text}</span>`;
+        });
+
+        // Process LaTeX times symbol (\times)
+        content = content.replace(/\\times/g, '×');
+
+        // Process LaTeX sqrt symbol
+        content = content.replace(/\\sqrt\{([^}]+)\}/g, (match, expression) => {
+            return `<span class="inline-math">√${expression}</span>`;
+        });
+
+        // Process LaTeX pm symbol (±)
+        content = content.replace(/\\pm/g, '±');
+
+        return content;
+    }
+
+    /**
+     * Process markdown tables
+     */
+    processMarkdownTables(content) {
+        console.log('Processing table content:', content);
+
+        // Check if content contains table-like structure
+        if (!content.includes('|')) {
+            console.log('No pipe characters found, skipping table processing');
+            return content;
+        }
+
+        // Try to detect and process table format
+        const lines = content.split('\n').filter(line => line.trim());
+        console.log('Table lines:', lines);
+
+        // Check if this looks like a markdown table
+        const hasHeaders = lines.some(line => line.startsWith('|') && line.endsWith('|'));
+        const hasSeparator = lines.some(line => line.includes('|') && (line.includes('-') || line.includes('=')));
+
+        console.log('Has headers:', hasHeaders, 'Has separator:', hasSeparator);
+
+        if (hasHeaders && hasSeparator) {
+            console.log('Detected markdown table format');
+            return this.processStandardTable(content);
+        }
+
+        // Check for single-line table format
+        if (content.includes('| Shape |') || content.includes('|Rectangle |')) {
+            console.log('Detected single-line table format');
+            return this.processSingleLineTableFormat(content);
+        }
+
+        console.log('No table format detected');
+        return content;
+    }
+
+    // Process standard markdown table format
+    processStandardTable(content) {
+        console.log('Processing standard table format');
+
+        const lines = content.split('\n').filter(line => line.trim());
+        if (lines.length < 2) return content;
+
+        // Find separator line
+        let separatorIndex = -1;
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].includes('|') && (lines[i].includes('-') || lines[i].includes('='))) {
+                separatorIndex = i;
+                break;
+            }
+        }
+
+        if (separatorIndex === -1) return content;
+
+        // Parse headers (line before separator)
+        const headerLine = lines[separatorIndex - 1];
+        const headers = headerLine.split('|').slice(1, -1).map(h => h.trim());
+
+        // Parse data rows (lines after separator)
+        const dataRows = lines.slice(separatorIndex + 1).map(line => {
+            return line.split('|').slice(1, -1).map(cell => cell.trim());
+        }).filter(row => row.length > 0 && row.some(cell => cell.length > 0));
+
+        if (headers.length === 0 || dataRows.length === 0) return content;
+
+        // Build HTML table
+        let tableHtml = '<div class="overflow-x-auto my-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">';
+        tableHtml += '<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">';
+
+        // Headers
+        tableHtml += '<thead class="bg-gray-50 dark:bg-gray-800/50"><tr>';
+        headers.forEach(header => {
+            tableHtml += `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">${header}</th>`;
+        });
+        tableHtml += '</tr></thead>';
+
+        // Data rows
+        tableHtml += '<tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">';
+        dataRows.forEach((row, index) => {
+            tableHtml += '<tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-150">';
+            row.forEach(cell => {
+                tableHtml += `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">${cell}</td>`;
+            });
+            tableHtml += '</tr>';
+        });
+        tableHtml += '</tbody></table></div>';
+
+        return tableHtml;
+    }
+
+    // Process single-line table format
+    processSingleLineTableFormat(content) {
+        console.log('Processing single-line table format');
+
+        // Split by | and filter out empty parts
+        const parts = content.split('|').filter(part => part.trim().length > 0);
+        console.log('Parts:', parts);
+
+        // Find separator index
+        let separatorIndex = -1;
+        for (let i = 0; i < parts.length; i++) {
+            if (parts[i].includes('-') || parts[i].includes('=')) {
+                separatorIndex = i;
+                break;
+            }
+        }
+
+        console.log('Separator index:', separatorIndex);
+
+        // If we found a separator, skip it
+        let startIndex = 0;
+        if (separatorIndex !== -1) {
+            startIndex = separatorIndex + 4; // Skip separator row
+        }
+
+        // Group into rows (4 columns)
+        const rows = [];
+        for (let i = startIndex; i < parts.length; i += 4) {
+            if (i + 3 < parts.length) {
+                const row = [
+                    parts[i].trim(),
+                    parts[i + 1].trim(),
+                    parts[i + 2].trim(),
+                    parts[i + 3].trim()
+                ];
+                if (row.some(cell => cell.length > 0)) {
+                    rows.push(row);
+                }
+            }
+        }
+
+        console.log('Rows:', rows);
+
+        if (rows.length < 2) return content;
+
+        // Build HTML table
+        let tableHtml = '<div class="overflow-x-auto my-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">';
+        tableHtml += '<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">';
+
+        // Headers
+        tableHtml += '<thead class="bg-gray-50 dark:bg-gray-800/50"><tr>';
+        rows[0].forEach(header => {
+            tableHtml += `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">${header}</th>`;
+        });
+        tableHtml += '</tr></thead>';
+
+        // Data rows
+        tableHtml += '<tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">';
+        rows.slice(1).forEach((row, index) => {
+            tableHtml += '<tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-150">';
+            row.forEach(cell => {
+                tableHtml += `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">${cell}</td>`;
+            });
+            tableHtml += '</tr>';
+        });
+        tableHtml += '</tbody></table></div>';
+
+        return tableHtml;
+    }
+
+
+
+    /**
      * Process markdown elements for streaming content
      */
     processMarkdownElements(content) {
+        // Process math notation first (before other elements)
+        content = this.processMathNotation(content);
+
+        // Process tables (before other elements to avoid conflicts)
+        content = this.processMarkdownTables(content);
+
         // Headers - using function replacements to avoid $ issues
         content = content.replace(/^### (.*$)/gim, (match, p1) => `<h3 class="text-lg font-semibold mt-4 mb-2">${p1}</h3>`);
         content = content.replace(/^## (.*$)/gim, (match, p1) => `<h2 class="text-xl font-semibold mt-4 mb-2">${p1}</h2>`);
         content = content.replace(/^# (.*$)/gim, (match, p1) => `<h1 class="text-2xl font-bold mt-4 mb-2">${p1}</h1>`);
-        
+
         // Bold and italic - using function replacements
         content = content.replace(/\*\*(.*?)\*\*/g, (match, p1) => `<strong>${p1}</strong>`);
         content = content.replace(/\*(.*?)\*/g, (match, p1) => `<em>${p1}</em>`);
