@@ -131,7 +131,7 @@ const faqData = [
                                 <span class="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
                                     {{ $page.props.auth.user.name }}
                                 </span>
-                                <br />Choose Your Exam
+                                <br />Tu compañero de estudio para sacarte tu plaza
                             </span>
                             <span v-else>
                                 Master Your 
@@ -144,8 +144,8 @@ const faqData = [
                         
                         <p class="text-xl text-gray-600 dark:text-gray-300 leading-relaxed mb-8 max-w-2xl">
                             <span v-if="$page.props.auth.user">
-                                Select the exam you want to prepare for below and start your personalized AI-powered learning journey. 
-                                Each exam has a dedicated chat where our AI tutor will help you master the material.
+                                Nuestra plataforma ofrece un chat con inteligencia artificial diseñado específicamente para opositores. Con él podrás resolver dudas al instante, generar test y simulacros personalizados, resumir temarios y organizar tu estudio de forma más eficiente. Nuestro objetivo es acompañarte en cada paso de la preparación para que avances con confianza y aumentes tus posibilidades de conseguir la plaza.
+
                             </span>
                             <span v-else>
                                 From <span class="font-semibold text-blue-600">StudyChat</span>, we provide you with a powerful combination of 
