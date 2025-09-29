@@ -127,7 +127,7 @@ const faqData = [
                         
                         <h1 class="text-5xl lg:text-7xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
                             <span v-if="$page.props.auth.user">
-                                Welcome Back,
+                                Bienvenido,
                                 <span class="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
                                     {{ $page.props.auth.user.name }}
                                 </span>
