@@ -164,7 +164,7 @@ const faqData = [
                                 href="#courses"
                                 class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:-translate-y-1 inline-block text-center"
                             >
-                                Choose Your Exam
+                                Escoge tu oposición
                             </a>
                             <Link 
                                 v-else
@@ -178,7 +178,7 @@ const faqData = [
                                 :href="route('dashboard')"
                                 class="border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 px-8 py-4 rounded-2xl font-semibold text-lg hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition-all duration-300 bg-white/80 dark:bg-white/10 backdrop-blur-sm inline-block text-center"
                             >
-                                Go to Dashboard
+                                Entrar al chat
                             </Link>
                             <button 
                                 v-else
@@ -194,8 +194,8 @@ const faqData = [
                             <div class="w-80 h-80 bg-gradient-to-br from-blue-400 via-purple-500 to-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl transform hover:scale-105 transition-transform duration-500 hover:rotate-2">
                                 <div class="text-center text-white">
                                     <div class="text-8xl mb-4 animate-bounce">🧠</div>
-                                    <p class="text-2xl font-bold mb-2">StudyChat</p>
-                                    <p class="text-blue-100">AI Learning Assistant</p>
+                                    <p class="text-2xl font-bold mb-2">Chat de IA para opositores</p>
+                                    <p class="text-blue-100">Tu compañero de estudio las 24 h</p>
                                 </div>
                             </div>
                             <div class="absolute -top-4 -right-4 w-24 h-24 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg animate-pulse">
@@ -322,13 +322,13 @@ const faqData = [
                                 <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
                                     <span class="text-3xl">🧠</span>
                                 </div>
-                                <h3 class="text-xl font-bold text-white mb-2">AI-Powered Learning</h3>
-                                <p class="text-blue-100 text-sm">Personalized study plans adapted to your learning style</p>
+                                <h3 class="text-xl font-bold text-white mb-2">Aprendizaje impulsado por IA</h3>
+                                <p class="text-blue-100 text-sm">Estudia a tu ritmo, la IA se adapta a tu plan de estudio</p>
                             </div>
                         </div>
                         <div class="p-8 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-800">
                             <p class="text-gray-700 dark:text-gray-300 leading-relaxed">
-                                Our advanced AI analyzes your performance and creates customized study plans that adapt to your strengths and weaknesses, ensuring optimal learning efficiency.
+                                Planes de estudio personalizados según tu nivel y ritmo de aprendizaje. La IA detecta tus puntos fuertes y débiles, y genera test y ejercicios adaptados para que avances de forma más eficiente.
                             </p>
                         </div>
                     </div>
@@ -340,13 +340,13 @@ const faqData = [
                                 <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
                                     <span class="text-3xl">📚</span>
                                 </div>
-                                <h3 class="text-xl font-bold text-white mb-2">Updated Content</h3>
-                                <p class="text-green-100 text-sm">Latest exam patterns and practice materials</p>
+                                <h3 class="text-xl font-bold text-white mb-2">Contenido siempre actualizado</h3>
+                                <p class="text-green-100 text-sm">Material de estudio basado en los últimos temarios oficiales </p>
                             </div>
                         </div>
                         <div class="p-8 bg-gradient-to-br from-green-50 to-teal-50 dark:from-slate-800 dark:to-slate-800">
                             <p class="text-gray-700 dark:text-gray-300 leading-relaxed">
-                                Stay ahead with our continuously updated content library featuring the latest exam patterns, questions, and study materials from official sources.
+                                Realiza junto al chat preguntas tipo test, simulacros y resúmenes basados en los últimos temarios y patrones de examen oficiales. Estudia con materiales confiables y al día.
                             </p>
                         </div>
                     </div>
@@ -358,13 +358,13 @@ const faqData = [
                                 <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
                                     <span class="text-3xl">🎯</span>
                                 </div>
-                                <h3 class="text-xl font-bold text-white mb-2">Expert Guidance</h3>
-                                <p class="text-orange-100 text-sm">Professional tutors and mentorship</p>
+                                <h3 class="text-xl font-bold text-white mb-2">Acompañamiento en tu preparación</h3>
+                                <p class="text-orange-100 text-sm">Organizate y mantente enfocado en tu objetivo</p>
                             </div>
                         </div>
                         <div class="p-8 bg-gradient-to-br from-orange-50 to-red-50 dark:from-slate-800 dark:to-slate-800">
                             <p class="text-gray-700 dark:text-gray-300 leading-relaxed">
-                                Get personalized guidance from experienced tutors and mentors who have helped thousands of students achieve their target scores.
+                                Recibe orientación paso a paso con nuestro chat inteligente, que te guía en la organización del estudio, resuelve tus dudas y te mantiene enfocado en tu objetivo: conseguir la plaza.
                             </p>
                         </div>
                     </div>
@@ -377,23 +377,23 @@ const faqData = [
             <div class="container mx-auto px-4">
                 <div class="text-center mb-16">
                     <h2 class="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6">
-                        Choose Your <span class="text-blue-600">Plan</span>
+                        Escoge tu <span class="text-blue-600">Plan</span>
                     </h2>
                     <p class="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-                        Start free and upgrade as you grow. All plans include our core AI-powered learning features.
+                        Prueba sin coste y desbloquea más funciones cuando quieras. Tú decides cómo avanzar hacia tu plaza
                     </p>
                 </div>
                 
                 <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
-                    <!-- Free Plan -->
+                    <!-- Plan Gratis -->
                     <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 hover:border-blue-300 transition-all duration-300 transform hover:-translate-y-2 flex flex-col">
                         <div class="p-8 flex flex-col flex-grow">
                             <div class="text-center mb-8">
                                 <h3 class="text-2xl font-bold text-gray-900 mb-2">Free</h3>
-                                <p class="text-gray-600 mb-4">Get started with basic features</p>
+                                <p class="text-gray-600 mb-4">Ideal para probar la herramienta antes de dar el salto.</p>
                                 <div class="text-4xl font-bold text-gray-900 mb-2">
                                     €0
-                                    <span class="text-lg font-normal text-gray-600">/month</span>
+                                    <span class="text-lg font-normal text-gray-600">/mes</span>
                                 </div>
                             </div>
                             
@@ -402,13 +402,13 @@ const faqData = [
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">3 messages per day</span>
+                                    <span class="text-gray-700">3 mensajes al día</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Community support</span>
+                                    <span class="text-gray-700">Soporte comunitario</span>
                                 </li>
                             </ul>
                             
@@ -425,7 +425,7 @@ const faqData = [
                                     :href="route('dashboard')"
                                     class="w-full bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-gray-100 py-3 px-6 rounded-xl font-semibold text-center hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
-                                    Go to Dashboard
+                                    Empieza con el estudio
                                 </Link>
                             </div>
                         </div>
@@ -439,10 +439,10 @@ const faqData = [
                         <div class="p-8 pt-12 flex flex-col flex-grow">
                             <div class="text-center mb-8">
                                 <h3 class="text-2xl font-bold text-gray-900 mb-2">Premium</h3>
-                                <p class="text-gray-600 mb-4">Perfect for individuals and small teams</p>
+                                <p class="text-gray-600 mb-4">Perfecto para opositores que quieren una ayuda constante y acceso a materiales de práctica</p>
                                 <div class="text-4xl font-bold text-blue-600 mb-2">
                                     €9.99
-                                    <span class="text-lg font-normal text-gray-600">/month</span>
+                                    <span class="text-lg font-normal text-gray-600">/mes</span>
                                 </div>
                             </div>
                             
@@ -451,25 +451,25 @@ const faqData = [
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">200 messages per month</span>
+                                    <span class="text-gray-700">200 mensajes por mes</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Upload files</span>
+                                    <span class="text-gray-700">Generador de tablas y resúmenes</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Access to exams</span>
+                                    <span class="text-gray-700">Guías de estudio personalizadas</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Priority technical support</span>
+                                    <span class="text-gray-700">Soporte técnico prioritario</span>
                                 </li>
                             </ul>
                             
@@ -486,21 +486,21 @@ const faqData = [
                                     :href="route('dashboard')"
                                     class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-blue-600 hover:to-purple-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
-                                    Upgrade to Premium
+                                    Mejorar al Premium
                                 </Link>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Plus Plan -->
+                    <!-- Plan Plus -->
                     <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 hover:border-purple-300 transition-all duration-300 transform hover:-translate-y-2 flex flex-col">
                         <div class="p-8 flex flex-col flex-grow">
                             <div class="text-center mb-8">
                                 <h3 class="text-2xl font-bold text-gray-900 mb-2">Plus</h3>
-                                <p class="text-gray-600 mb-4">For growing teams and businesses</p>
+                                <p class="text-gray-600 mb-4">La mejor opción para opositores que buscan entrenar a fondo y sin límites</p>
                                 <div class="text-4xl font-bold text-purple-600 mb-2">
                                     €14.99
-                                    <span class="text-lg font-normal text-gray-600">/month</span>
+                                    <span class="text-lg font-normal text-gray-600">/mes</span>
                                 </div>
                             </div>
                             
@@ -509,25 +509,25 @@ const faqData = [
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Unlimited messages</span>
+                                    <span class="text-gray-700">Mensajes ilimitados</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Upload files</span>
+                                    <span class="text-gray-700">Generador de tablas y resúmenes</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Access to exams</span>
+                                    <span class="text-gray-700">Acceso completo a tests actualizados y simulacros</span>
                                 </li>
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                    <span class="text-gray-700">Priority technical support</span>
+                                    <span class="text-gray-700">Soporte técnico prioritario</span>
                                 </li>
                             </ul>
                             
@@ -544,22 +544,22 @@ const faqData = [
                                     :href="route('dashboard')"
                                     class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
-                                    Upgrade to Plus
+                                    Mejorar al Plus
                                 </Link>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Academy Plan -->
+                    <!-- Plan para Academias -->
                     <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 hover:border-orange-300 transition-all duration-300 transform hover:-translate-y-2 flex flex-col">
                         <div class="p-8 flex flex-col flex-grow">
                             <div class="text-center mb-8">
-                                <h3 class="text-2xl font-bold text-gray-900 mb-2">Academy</h3>
-                                <p class="text-gray-600 mb-4">For institutions and large organizations</p>
+                                <h3 class="text-2xl font-bold text-gray-900 mb-2">Academias</h3>
+                                <p class="text-gray-600 mb-4">Pensado para academias y grupos de preparación de oposiciones</p>
                                 <div class="text-2xl font-bold text-orange-600 mb-2">
-                                    Custom Pricing
+                                    Precio personalizado 
                                 </div>
-                                <p class="text-sm text-gray-500">Tailored to your institution's needs</p>
+                                <p class="text-sm text-gray-500">Consulta el precio que se adapta a tus características</p>
                             </div>
                             
                             <ul class="space-y-4 mb-8">
@@ -600,7 +600,7 @@ const faqData = [
                                     :href="route('academy.contact')"
                                     class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-orange-600 hover:to-red-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
-                                    Contact Sales
+                                    Consultar precio
                                 </Link>
                             </div>
                         </div>
@@ -629,34 +629,34 @@ const faqData = [
                         Ready to Ace Your <span class="text-yellow-400">Exam?</span>
                     </h2>
                     <p class="text-xl text-gray-300 mb-10 leading-relaxed">
-                        Join thousands of students who have achieved their target scores with StudyChat's AI-powered learning platform
+                        Miles de estudiantes ya confían en OposChat ¿Te atreves?
                     </p>
                     
                     <div class="flex flex-col sm:flex-row gap-6 justify-center items-center mb-8">
                         <button class="bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 px-10 py-4 rounded-2xl font-bold text-lg hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 hover:scale-105">
-                            Start Your Journey Today!
+                            Empieza tu plan de estudio HOY!
                         </button>
                         <a href="#pricing" class="border-2 border-white text-white px-10 py-4 rounded-2xl font-bold text-lg hover:bg-white hover:text-gray-900 transition-all duration-300 inline-block">
-                            View Pricing Plans
+                            Mirar precio de los planes de estudio 
                         </a>
                     </div>
                     
                     <p class="text-sm text-gray-400">
-                        (Free trial available - No credit card required)
+                        (Utiliza el método de pago que mejor se adapte a ti)
                     </p>
                     
                     <div class="flex justify-center items-center space-x-8 mt-12 opacity-60">
                         <div class="text-center">
                             <div class="text-3xl font-bold text-white">50K+</div>
-                            <div class="text-gray-300 text-sm">Students</div>
+                            <div class="text-gray-300 text-sm">Estudiantes</div>
                         </div>
                         <div class="text-center">
                             <div class="text-3xl font-bold text-white">95%</div>
-                            <div class="text-gray-300 text-sm">Success Rate</div>
+                            <div class="text-gray-300 text-sm">Tasa de éxito</div>
                         </div>
                         <div class="text-center">
                             <div class="text-3xl font-bold text-white">4.9★</div>
-                            <div class="text-gray-300 text-sm">Rating</div>
+                            <div class="text-gray-300 text-sm">Valoración</div>
                         </div>
                     </div>
                 </div>
