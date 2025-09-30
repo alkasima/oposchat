@@ -307,10 +307,10 @@ const faqData = [
             <div class="container mx-auto px-4">
                 <div class="text-center mb-16">
                     <h2 class="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6">
-                        What We <span class="text-blue-600">Offer</span>
+                        ¿Qué <span class="text-blue-600">ofrecemos?</span>
                     </h2>
                     <p class="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-                        Discover our comprehensive approach to exam preparation with cutting-edge technology
+                        Comienza a estudiar ayudándote de la tecnología más novedosa
                     </p>
                 </div>
                 
