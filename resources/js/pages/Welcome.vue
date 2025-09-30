@@ -255,13 +255,13 @@ const faqData = [
                         <p class="text-gray-300 mb-4" v-if="course.full_description">{{ course.full_description }}</p>
                         <div class="flex items-center justify-between">
                             <span class="inline-block bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                                More info
+                                Más información
                             </span>
                             <span class="text-yellow-400 font-semibold">&nbsp;</span>
                         </div>
                         <div class="mt-4">
                             <button type="button" @click.stop="toggleMoreInfo(course.id)" class="inline-flex items-center px-3 py-1 text-sm rounded-full bg-blue-500 text-white hover:bg-blue-600">
-                                + MORE INFO
+                                + MÁS INFORMACIÓN
                             </button>
                         </div>
                         <div v-if="openMoreInfo === course.id" class="mt-4 p-4 rounded-xl bg-white/5 border border-white/10 text-gray-2 00">
@@ -277,7 +277,7 @@ const faqData = [
                                 <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
                                 </svg>
-                                Click to Start Learning
+                                Comienza tu aprendizaje
                             </div>
                         </div>
                     </div>
@@ -289,7 +289,7 @@ const faqData = [
                         :href="route('dashboard')"
                         class="bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 px-10 py-4 rounded-2xl font-bold text-lg hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 inline-block"
                     >
-                        GO TO DASHBOARD
+                        IR A MI CHAT
                     </Link>
                     <Link 
                         v-else
