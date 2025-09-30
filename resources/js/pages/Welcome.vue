@@ -60,7 +60,7 @@ const selectCourse = async (course: any) => {
             // Redirect to the chat with the exam context
             router.visit(route('chat', { chat: data.chat.id }));
         } else {
-            console.error('Failed to create exam chat');
+            console.error('No se pudo crear el chat de la oposición');
             // Fallback to general dashboard
             router.visit(route('dashboard'));
         }
@@ -79,24 +79,24 @@ const toggleMoreInfo = (id: string) => {
 
 const faqData = [
     { 
-        question: 'How does the AI-powered learning system work?', 
-        answer: 'Our AI analyzes your performance patterns, identifies knowledge gaps, and creates personalized study plans that adapt in real-time to optimize your learning efficiency.' 
+        question: '¿Qué es OposChat y en qué me puede ayudar?', 
+        answer: 'OposChat es un asistente de estudio basado en inteligencia artificial diseñado específicamente para preparar oposiciones. Utiliza los temarios oficiales y materiales de estudio actualizados para responder tus dudas, ayudarte a repasar y organizar tu preparación de forma más eficaz.' 
     },
     { 
-        question: 'What exams do you currently support?', 
-        answer: 'We currently support SAT, GRE, GMAT, and offer custom preparation for other standardized tests. Our content library is continuously expanding.' 
+        question: '¿En qué se diferencia de ChatGPT u otras inteligencias artificiales?', 
+        answer: 'A diferencia de un chat genérico, OposChat está entrenado con contenidos específicos de las oposiciones. Esto significa que no inventa respuestas, sino que utiliza únicamente la información contenida en los temarios para darte explicaciones dinámicas, fiables y adaptadas a tu examen.' 
     },
     { 
-        question: 'Is there a free trial available?', 
-        answer: 'Yes! We offer a 7-day free trial with full access to our platform features. No credit card required to get started.' 
+        question: '¿Necesito subir mis apuntes o documentos?', 
+        answer: 'No. OposChat ya cuenta con los temarios y materiales necesarios para cada oposición. Tú solo tienes que empezar a preguntar y estudiar con nuestro asistente virtual.' 
     },
     { 
-        question: 'How often is the content updated?', 
-        answer: 'Our content is updated monthly to reflect the latest exam patterns and requirements. We work with official test prep organizations to ensure accuracy.' 
+        question: '¿Qué oposiciones cubre OposChat actualmente?', 
+        answer: 'Actualmente OposChat está enfocado en las oposiciones que puedes encontrar en la página principal, y seguimos trabajando para incorporar más oposiciones en el futuro.' 
     },
     { 
-        question: 'Can I get personalized tutoring?', 
-        answer: 'Our premium plans include one-on-one sessions with certified tutors who specialize in your target exam.' 
+        question: '¿Hasta qué punto son fiables las respuestas de OposChat?', 
+        answer: 'OposChat utiliza un sistema avanzado de inteligencia artificial (RAG) que se apoya exclusivamente en los temarios oficiales de cada oposición. De esta manera, las respuestas no son inventadas ni genéricas, sino explicaciones claras y fundamentadas en el material real de estudio' 
     }
 ];
 </script>
@@ -134,11 +134,11 @@ const faqData = [
                                 <br />Tu compañero de estudio para sacarte tu plaza
                             </span>
                             <span v-else>
-                                Master Your 
+                                Domina tus 
                                 <span class="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                                    Exams
+                                    Oposiciones
                                 </span>
-                                <br />with AI
+                                <br />con IA
                             </span>
                         </h1>
                         
@@ -148,13 +148,13 @@ const faqData = [
 
                             </span>
                             <span v-else>
-                                From <span class="font-semibold text-blue-600">StudyChat</span>, we provide you with a powerful combination of 
-                                <span class="font-semibold text-purple-600">Artificial Intelligence</span> along with 
-                                <span class="font-semibold text-cyan-600">updated curriculum</span> and 
-                                <span class="font-semibold text-green-600">practice exams</span> 
-                                from various <span class="font-semibold text-orange-600">standardized tests</span> to 
-                                <span class="font-semibold text-red-600">help you</span> 
-                                <span class="font-semibold text-blue-600">succeed</span> and achieve your goals.
+                                Desde <span class="font-semibold text-blue-600">OposChat</span>, hemos integrado la  
+                                <span class="font-semibold text-purple-600">Inteligencia Artificial</span> con
+                                <span class="font-semibold text-cyan-600">temario actualizado</span> y 
+                                <span class="font-semibold text-green-600">oficial</span> 
+                                para  
+                                <span class="font-semibold text-red-600">ayudarte</span> a
+                                <span class="font-semibold text-blue-600">aprobar</span> tus oposiciones.
                             </span>
                         </p>
 
@@ -195,7 +195,7 @@ const faqData = [
                                 <div class="text-center text-white">
                                     <div class="text-8xl mb-4 animate-bounce">🧠</div>
                                     <p class="text-2xl font-bold mb-2">Chat de IA para opositores</p>
-                                    <p class="text-blue-100">Tu compañero de estudio las 24 h</p>
+                                    <p class="text-blue-100">Tu compañero de estudio las 24h</p>
                                 </div>
                             </div>
                             <div class="absolute -top-4 -right-4 w-24 h-24 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg animate-pulse">
@@ -218,16 +218,16 @@ const faqData = [
             <div class="container mx-auto px-4 relative z-10">
                 <div class="text-center mb-16">
                     <h2 class="text-4xl lg:text-5xl font-bold text-white mb-6">
-                        <span v-if="$page.props.auth.user">Choose Your <span class="text-yellow-400">Exam</span></span>
-                        <span v-else>Available <span class="text-yellow-400">Courses</span></span>
+                        <span v-if="$page.props.auth.user">Selecciona tu <span class="text-yellow-400">Oposición</span></span>
+                        <span v-else>Cursos <span class="text-yellow-400">disponibles</span></span>
                     </h2>
                     <p class="text-xl text-gray-300 max-w-3xl mx-auto">
-                        <span v-if="$page.props.auth.user">Select the exam you want to prepare for and start chatting with our AI tutor</span>
-                        <span v-else>Choose from our comprehensive selection of exam preparation courses</span>
+                        <span v-if="$page.props.auth.user">Selecciona la oposición para la que quieres prepararte y comienza tu chat personalizado.</span>
+                        <span v-else>Elige entre nuestra amplia selección de oposiciones</span>
                     </p>
                     <div class="mt-4">
                         <Link :href="route('exams.wiki')" class="text-yellow-300 hover:text-yellow-200 font-semibold underline">
-                            General information about competitive examinations →
+                            Información general sobre las oposiciones →
                         </Link>
                     </div>
                 </div>
