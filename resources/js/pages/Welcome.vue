@@ -296,7 +296,7 @@ const faqData = [
                         :href="route('register')"
                         class="bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 px-10 py-4 rounded-2xl font-bold text-lg hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 inline-block"
                     >
-                        GET STARTED FREE
+                        ¡COMIENZA YA!
                     </Link>
                 </div>
             </div>
@@ -608,12 +608,12 @@ const faqData = [
                 </div>
                 
                 <div class="text-center mt-12">
-                    <p class="text-gray-600 dark:text-gray-300 mb-4">All plans include a 14-day free trial. No credit card required.</p>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">Todos los planes incluyen una prueba gratuita de 7 días.</p>
                     <Link 
                         :href="route('pricing')"
                         class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-semibold underline"
                     >
-                        View detailed pricing comparison →
+                        Compara las diferentes tarifas →
                     </Link>
                 </div>
             </div>
@@ -626,7 +626,7 @@ const faqData = [
             <div class="container mx-auto px-4 text-center relative z-10">
                 <div class="max-w-4xl mx-auto">
                     <h2 class="text-4xl lg:text-6xl font-bold text-white mb-6">
-                        Ready to Ace Your <span class="text-yellow-400">Exam?</span>
+                        ¿Preparado para enfrentar tu <span class="text-yellow-400">examen?</span>
                     </h2>
                     <p class="text-xl text-gray-300 mb-10 leading-relaxed">
                         Miles de estudiantes ya confían en OposChat ¿Te atreves?
@@ -668,10 +668,10 @@ const faqData = [
             <div class="container mx-auto px-4">
                 <div class="text-center mb-16">
                     <h2 class="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6">
-                        Frequently Asked <span class="text-blue-600">Questions</span>
+                       Preguntas <span class="text-blue-600">frecuentes</span>
                     </h2>
                     <p class="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-                        Get answers to common questions about our platform and services
+                        Obten respuestas a las preguntas más comunes sobre nuestra plataforma
                     </p>
                 </div>
                 
