@@ -23,10 +23,13 @@ import {
                 <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
                     <h4 class="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
                         <Shield class="w-5 h-5 mr-2 text-blue-600" />
-                        1. Data Security
+                        1. Seguridad de datos
                     </h4>
                     <p class="leading-relaxed">
-                        Appropriate security measures are used to protect your data against manipulation, loss, destruction, and unauthorized access by third parties. Security is constantly being updated.
+                        Se utilizan medidas de seguridad apropiadas para proteger tus datos contra manipulación, pérdida, destrucción y acceso no autorizado por parte de terceros.
+                        
+
+
                     </p>
                 </div>
 
@@ -34,14 +37,14 @@ import {
                 <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
                     <h4 class="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
                         <FileText class="w-5 h-5 mr-2 text-green-600" />
-                        2. Data Collection and Storage
+                        2. Recolección y almacenamiento de datos
                     </h4>
                     <p class="leading-relaxed mb-3">
-                        All data and chats will be stored in your chat history in order to access previous conversations. The stored data is also used to improve the quality of the website and improve usage by users:
+                   Todos los datos y chats se almacenarán en tu historial de chat para poder acceder a conversaciones anteriores. Los datos almacenados también se utilizan para mejorar la calidad del sitio web y optimizar su uso por parte de los usuarios:
                     </p>
                     <div class="ml-4 space-y-1">
-                        <p><strong>a.</strong> Account data: username, email address, and IP.</p>
-                        <p><strong>b.</strong> Chat history.</p>
+                        <p><strong>a.</strong> Datos de cuenta: nombre de usuario, correo electrónico e IP.</p>
+                        <p><strong>b.</strong> Historial de chats.</p>
                     </div>
                 </div>
 
@@ -49,10 +52,10 @@ import {
                 <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
                     <h4 class="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
                         <Trash2 class="w-5 h-5 mr-2 text-red-600" />
-                        3. Data Deletion
+                        3. Eliminación de datos
                     </h4>
                     <p class="leading-relaxed">
-                        You have the right to have your data and account completely deleted immediately upon your request.
+                        Tienes derecho a que tus datos y cuenta sean eliminados por completo e inmediatamente tras tu solicitud.
                     </p>
                 </div>
 
@@ -60,14 +63,14 @@ import {
                 <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
                     <h4 class="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
                         <Users class="w-5 h-5 mr-2 text-orange-600" />
-                        4. Third Party Disclosure
+                        4. Divulgación a terceros
                     </h4>
                     <p class="leading-relaxed mb-3">
-                        The website sends information to an AI chat for the elaboration of responses.
+                        El sitio web envía información a un chat de IA para laborar respuestas.
                     </p>
                     <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
                         <p class="text-yellow-800 dark:text-yellow-200 font-medium">
-                            ⚠️ Do not disclose sensitive data such as passwords, credit cards, and private information.
+                            ⚠️ No divulgues datos sensibles como contraseñas, tarjetas de crédito e información privada.
                         </p>
                     </div>
                 </div>
@@ -76,10 +79,10 @@ import {
                 <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
                     <h4 class="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
                         <Scale class="w-5 h-5 mr-2 text-purple-600" />
-                        5. Rights
+                        5. Derechos
                     </h4>
                     <p class="leading-relaxed text-gray-600 dark:text-gray-400">
-                        We will continue drafting this section and will be updating it accordingly.
+                        Seguiremos redactando esta sección y la actualizaremos.
                     </p>
                 </div>
             </div>
@@ -88,20 +91,20 @@ import {
             <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
                 <h4 class="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
                     <Mail class="w-5 h-5 mr-2 text-orange-600" />
-                    Questions or Concerns?
+                    Preguntas o dudas
                 </h4>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    If you have any questions about our privacy policy or data handling practices, please contact us.
+                    Si tienes preguntas sobre nuestra política de privacidad o prácticas de manejo de datos, contáctanos.
                 </p>
                 <div class="flex items-center space-x-4">
                     <Button @click="window.open('mailto:info@oposchat.com', '_blank')" 
                             class="bg-orange-500 hover:bg-orange-600 text-white">
                         <Mail class="w-4 h-4 mr-2" />
-                        Contact Support
+                        Contactar soporte 
                     </Button>
                     <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
                         <Clock class="w-4 h-4 mr-1" />
-                        Response within 24 hours
+                        Respuesta en 24 horas oposchat@gmail.com
                     </div>
                 </div>
             </div>
