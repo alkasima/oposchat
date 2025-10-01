@@ -232,7 +232,7 @@ onMounted(() => {
                 <span class="text-red-700 dark:text-red-300">{{ error }}</span>
             </div>
             <Button @click="loadData" variant="outline" size="sm" class="mt-3">
-                Try Again
+                Vuelve a intentarlo
             </Button>
         </div>
 
