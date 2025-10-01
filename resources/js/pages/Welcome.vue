@@ -171,7 +171,7 @@ const faqData = [
                                 :href="route('exams.wiki')"
                                 class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:-translate-y-1 inline-block text-center"
                             >
-                                Start Learning Free
+                                Empieza a estudiar gratis
                             </Link>
                             <Link 
                                 v-if="$page.props.auth.user"
@@ -537,7 +537,7 @@ const faqData = [
                                     :href="route('register')"
                                     class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
-                                    Start Free Trial
+                                    Empieza gratis
                                 </Link>
                                 <Link 
                                     v-else
