@@ -13,9 +13,10 @@ import SiteFooter from '@/components/SiteFooter.vue';
         <!-- Header -->
         <div class="text-white py-16" style="background-color: #FFA900;">
             <div class="container mx-auto px-4 text-center">
-                <h1 class="text-4xl md:text-5xl font-bold mb-4">Academy Partnership</h1>
+                <h1 class="text-4xl md:text-5xl font-bold mb-4">Contacto para academias</h1>
                 <p class="text-xl text-white/90 max-w-2xl mx-auto">
-                    Partner with OposChat to provide cutting-edge AI learning solutions for your institution
+                   ¿Tienes una academia? Incorpora OposChat para brindar aprendizaje de vanguardia con inteligencia artificial integrada para tu empresa
+
                 </p>
             </div>
         </div>
@@ -27,20 +28,20 @@ import SiteFooter from '@/components/SiteFooter.vue';
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 md:p-12 mb-8">
                     <div class="text-center mb-8">
                         <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-                            Transform Your Educational Institution
+                            Lleva a tu academia al siguiente nivel
                         </h2>
                         
                         <div class="space-y-6 text-lg text-gray-700 dark:text-gray-300 max-w-3xl mx-auto">
                             <p>
-                                Join leading educational institutions that trust OposChat to enhance their students' learning experience with our advanced AI-powered platform.
+                               Únete a la lista de academias líderes que confían en OposChat para mejorar la experiencia de aprendizaje de sus estudiantes con nuestra plataforma avanzada impulsada por IA.
                             </p>
                             
                             <p>
-                                Our Academy plan offers comprehensive solutions tailored to your institution's specific needs, including advanced analytics, unlimited access, and dedicated support.
+                               Nuestro plan para academias ofrece soluciones integrales adaptadas a las necesidades específicas de su empresa, que incluyen análisis avanzados, acceso ilimitado y soporte dedicado.
                             </p>
                             
                             <p>
-                                Let's discuss how OposChat can integrate seamlessly into your educational ecosystem and help your students achieve their goals.
+                            Veamos cómo OposChat puede integrarse perfectamente en su ecosistema educativo y potenciarlo, ayudando a sus estudiantes a alcanzar sus objetivos.
                             </p>
                         </div>
                     </div>
@@ -49,9 +50,9 @@ import SiteFooter from '@/components/SiteFooter.vue';
                 <!-- Contact Information -->
                 <div class="bg-gradient-to-r from-orange-500 to-red-600 rounded-2xl shadow-xl p-8 md:p-12 text-center">
                     <div class="text-white">
-                        <h3 class="text-2xl font-bold mb-4">Ready to Get Started?</h3>
+                        <h3 class="text-2xl font-bold mb-4">Listo para empezar?</h3>
                         <p class="text-xl mb-6 text-white/90">
-                            Contact our Academy Partnership team to discuss your institution's needs
+                       Contacta con nuestro equipo para evaluar las necesidades de tu academia.
                         </p>
                         
                         <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6 inline-block">
@@ -60,7 +61,7 @@ import SiteFooter from '@/components/SiteFooter.vue';
                                     <span class="text-2xl">📧</span>
                                 </div>
                                 <div class="text-left">
-                                    <p class="text-sm text-white/80 mb-1">Academy Partnerships</p>
+                                    <p class="text-sm text-white/80 mb-1">Contacto para academias</p>
                                     <a 
                                         href="mailto:academy@oposchat.com" 
                                         class="text-2xl font-bold text-white hover:text-white/80 transition-colors"
@@ -72,7 +73,7 @@ import SiteFooter from '@/components/SiteFooter.vue';
                         </div>
                         
                         <p class="text-white/80 mt-6 text-sm">
-                            We typically respond within 24 hours during business days
+                           Tu respuesta llegará dentro de las 24 horas durante los días hábiles.
                         </p>
                     </div>
                 </div>
