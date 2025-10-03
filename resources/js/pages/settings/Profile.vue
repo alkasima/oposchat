@@ -107,7 +107,7 @@ const submit = () => {
                             leave-to-class="opacity-0"
                         >
                             <p v-show="form.recentlySuccessful" class="text-sm text-green-600 dark:text-green-400 font-medium">
-                                Canvios guardados con éxito!
+                                ¡Cambios guardados con éxito!
                             </p>
                         </Transition>
                     </div>
