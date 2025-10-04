@@ -189,7 +189,7 @@ const handleNewChatCreated = (newChat: any) => {
     // Set the new chat as current
     currentChat.value = {
         id: newChat.id.toString(),
-        title: newChat.title || 'New Chat',
+        title: newChat.title || 'Nuevo Chat',
         course_id: newChat.course_id
     };
     // Hydrate from storage if present
@@ -291,7 +291,7 @@ const sendMessage = async () => {
 
     // Update chat title if this is the first message
     if (messages.value.length === 1) {
-        currentChat.value!.title = 'New Chat';
+        currentChat.value!.title = 'Nuevo Chat';
     }
 
 
@@ -474,7 +474,7 @@ const createNewChatIfNeeded = async () => {
             messages.value = [];
             // Note: The sidebar will be updated when the user creates a new chat via the button
         } catch (error) {
-            console.error('Failed to create new chat:', error);
+            console.error('Error al crear nuevo chat:', error);
             throw error; // Re-throw to handle in the calling function
         }
     }
@@ -577,7 +577,7 @@ const handleWaitClick = () => {
 // Rename chat
 const renameCurrentChat = async () => {
     if (!currentChat.value) return;
-    const newTitle = prompt('Rename chat', currentChat.value.title || 'New Chat');
+    const newTitle = prompt('Rename chat', currentChat.value.title || 'Nuevo Chat');
     if (!newTitle || newTitle.trim() === '' || newTitle === currentChat.value.title) return;
     try {
         const updated = await chatApi.updateChat(currentChat.value.id, { title: newTitle.trim() });
@@ -1053,24 +1053,24 @@ if (savedSidebarState === 'false') {
                                 <Bot class="w-10 h-10 text-white" />
                             </div>
                             <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-                                Welcome to OposChat
+                                Bienvenido a oposchat
                             </h2>
                             <p class="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto leading-relaxed">
-                                Start a conversation to get help with your civil service exam preparation. 
-                                Our AI assistant is here to guide you through your studies.
+                                Comienza tu conversación para preparar tu oposición.
+                                Nuestro asistente de IA te ayudará a lo largo de tu estudio
                             </p>
                             <div class="flex flex-col sm:flex-row gap-4 justify-center items-center text-sm text-gray-500 dark:text-gray-400">
                                 <div class="flex items-center">
                                     <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                                    AI-Powered Learning
+                                    Aprendizaje impulsado por IA
                                 </div>
                                 <div class="flex items-center">
                                     <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                                    Exam Preparation
+                                    Preparación de oposiciones
                                 </div>
                                 <div class="flex items-center">
                                     <div class="w-2 h-2 bg-purple-500 rounded-full mr-2"></div>
-                                    24/7 Available
+                                    Siempre disponible
                                 </div>
                             </div>
                         </div>
@@ -1170,7 +1170,7 @@ if (savedSidebarState === 'false') {
                             <textarea
                                 v-model="currentMessage"
                                 @keydown="handleKeyDown"
-                                placeholder="Type a message..."
+                                placeholder="Escribe un mensaje..."
                                 rows="1"
                                 class="w-full resize-none pr-24 py-3 px-4 text-base border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                                 style="min-height: 48px; max-height: 120px;"
