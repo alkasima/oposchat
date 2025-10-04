@@ -82,51 +82,51 @@ onMounted(() => {
     <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-950">
         <SiteHeader />
         <div class="container mx-auto px-4 py-12">
-            <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-6">Exam Preparation Wiki</h1>
+            <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-6">Wiki de oposiciones</h1>
             <p class="text-lg text-gray-700 dark:text-gray-300 max-w-3xl mb-8">
-                This wiki gathers general information about the competitive examinations supported in the platform. 
-                You'll find eligibility, structure, scoring, registration timelines, and official resources for each exam.
-            </p>
+                Infórmate sobre todas las oposiciones que tenemos en nuestra plataforma. 
+                Encontaras información relevante como fechas de exmámen, sistema de puntuación, plazos de inscripción...
+                        </p>
 
             <div class="bg-white/70 dark:bg-white/10 backdrop-blur-sm rounded-xl p-4 mb-8">
                 <div class="text-sm text-gray-700 dark:text-gray-300 mb-2 font-semibold">Quick links</div>
                 <div class="flex flex-wrap gap-3">
-                    <a href="#sat-preparation" class="px-3 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-sm">SAT</a>
-                    <a href="#gre-preparation" class="px-3 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 text-sm">GRE</a>
-                    <a href="#gmat-preparation" class="px-3 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-sm">GMAT</a>
-                    <a href="#custom-preparation" class="px-3 py-1 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 text-sm">Custom</a>
-                    <Link :href="route('home') + '#courses'" class="px-3 py-1 rounded-full bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-gray-200 text-sm">Choose another exam</Link>
+                    <a href="#sat-preparation" class="px-3 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-sm">Seguridad Social</a>
+                    <a href="#gre-preparation" class="px-3 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 text-sm">Policia Nacional</a>
+                    <a href="#gmat-preparation" class="px-3 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-sm">Maestro de infantil</a>
+                    <a href="#custom-preparation" class="px-3 py-1 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 text-sm">Guardia Civil</a>
+                    <Link :href="route('home') + '#courses'" class="px-3 py-1 rounded-full bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-gray-200 text-sm">Elige otra oposición</Link>
                 </div>
             </div>
 
             <div class="grid md:grid-cols-2 gap-6">
                 <div id="sat-preparation" class="bg-white dark:bg-slate-800 rounded-2xl shadow p-6">
-                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">SAT</h2>
-                    <p class="text-gray-700 dark:text-gray-300">The SAT assesses reading, writing, and math. It is widely used for undergraduate admissions. Sections include Reading & Writing and Math. Scores range from 400–1600.</p>
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Seguridad social</h2>
+                    <p class="text-gray-700 dark:text-gray-300">Esto es un examen de seguridad social.</p>
                     <div class="mt-4 flex items-center gap-3">
                         <button @click="startChatFor('sat-preparation', 'SAT')" class="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm">Start Chat</button>
                         <Link :href="route('exams.wiki.course', { slug: 'sat-preparation' })" class="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm">View details</Link>
                     </div>
                 </div>
                 <div id="gre-preparation" class="bg-white dark:bg-slate-800 rounded-2xl shadow p-6">
-                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">GRE</h2>
-                    <p class="text-gray-700 dark:text-gray-300">The GRE General Test evaluates verbal reasoning, quantitative reasoning, and analytical writing. Used for many graduate programs worldwide.</p>
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Policia Nacional</h2>
+                    <p class="text-gray-700 dark:text-gray-300">Esto es un examen de policia nacional.</p>
                     <div class="mt-4 flex items-center gap-3">
                         <button @click="startChatFor('gre-preparation', 'GRE')" class="inline-flex items-center px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 text-sm">Start Chat</button>
                         <Link :href="route('exams.wiki.course', { slug: 'gre-preparation' })" class="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm">View details</Link>
                     </div>
                 </div>
                 <div id="gmat-preparation" class="bg-white dark:bg-slate-800 rounded-2xl shadow p-6">
-                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">GMAT</h2>
-                    <p class="text-gray-700 dark:text-gray-300">The GMAT measures reasoning and analytical skills for business school admissions. It includes Quantitative, Verbal, and Data Insights sections.</p>
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Maestro infantil</h2>
+                    <p class="text-gray-700 dark:text-gray-300">Esto es un examen de maestro infantil.</p>
                     <div class="mt-4 flex items-center gap-3">
                         <button @click="startChatFor('gmat-preparation', 'GMAT')" class="inline-flex items-center px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 text-sm">Start Chat</button>
                         <Link :href="route('exams.wiki.course', { slug: 'gmat-preparation' })" class="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm">View details</Link>
                     </div>
                 </div>
                 <div id="custom-preparation" class="bg-white dark:bg-slate-800 rounded-2xl shadow p-6">
-                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Custom/Other Exams</h2>
-                    <p class="text-gray-700 dark:text-gray-300">If your target exam is not listed, contact us. We can tailor content and guidance to your needs and add it to this wiki.</p>
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Guardia Civil</h2>
+                    <p class="text-gray-700 dark:text-gray-300">Esto es un examen de Guardia civil.</p>
                     <div class="mt-4 flex items-center gap-3">
                         <button @click="startChatFor('custom-preparation', 'Custom Exam')" class="inline-flex items-center px-4 py-2 rounded-lg bg-orange-600 text-white hover:bg-orange-700 text-sm">Start Chat</button>
                         <Link :href="route('exams.wiki.course', { slug: 'custom-preparation' })" class="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm">View details</Link>
@@ -136,7 +136,7 @@ onMounted(() => {
 
             <!-- Dynamic Courses (always visible) -->
             <div class="mt-12">
-                <h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Available Competitive Examinations</h2>
+                <h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Oposiciones disponibles </h2>
                 <div v-if="error" class="text-sm text-red-600 dark:text-red-400 mb-4">{{ error }}</div>
                 <div v-if="loading" class="text-gray-600 dark:text-gray-300">Loading courses…</div>
                 <div v-else class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
