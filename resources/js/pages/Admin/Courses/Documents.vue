@@ -226,11 +226,11 @@ const formatFileSize = (bytes) => {
         <Head title="Course Documents" />
         
         <template #header>
-            Documents for {{ course.name }}
+            Documentos para {{ course.name }}
         </template>
         
         <template #subtitle>
-            Manage course documents and study materials
+            Gestionar documentos del curso y materiales de estudio
         </template>
 
         <div class="space-y-6">
