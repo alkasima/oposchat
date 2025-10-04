@@ -4,7 +4,7 @@
             <div class="mb-6">
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">User Plan Management</h1>
                 <p class="text-gray-600 dark:text-gray-400 mt-2">
-                    Manually update user subscription plans without requiring payment
+                  Actualice manualmente los planes de suscripción de los usuarios sin necesidad de pago
                 </p>
             </div>
 
@@ -40,7 +40,7 @@
                                 <div class="text-sm text-gray-600 dark:text-gray-400">{{ user.email }}</div>
                             </div>
                             <div class="text-sm text-gray-500 dark:text-gray-400">
-                                Click to manage plan
+                               Haga clic para administrar el plan
                             </div>
                         </div>
                     </div>
@@ -54,7 +54,7 @@
                         <!-- Modal Header -->
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-                                Update User Plan
+                                Actualizar el plan de usuario
                             </h3>
                             <button @click="closeModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -120,7 +120,7 @@
 
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Reason for Change
+                                   Razón del cambio
                                 </label>
                                 <Textarea
                                     v-model="updateForm.reason"
