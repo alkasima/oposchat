@@ -129,9 +129,9 @@ const submitOppositionsForm = async () => {
         <!-- Header -->
         <div class="text-white py-16" style="background-color: #FFA900;">
             <div class="container mx-auto px-4 text-center">
-                <h1 class="text-4xl md:text-5xl font-bold mb-4">Contact Us</h1>
+                <h1 class="text-4xl md:text-5xl font-bold mb-4">Contacta con nosotros</h1>
                 <p class="text-xl text-white/90 max-w-2xl mx-auto">
-                    Have any questions or suggestions? We're here to help you
+            ¿Alguna pregunta o sugerencia? Estamos aquí para escucharte!
                 </p>
             </div>
         </div>
@@ -143,7 +143,7 @@ const submitOppositionsForm = async () => {
                 <Card class="shadow-lg dark:bg-gray-800 dark:border-gray-700">
                     <CardHeader class="bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-t-lg">
                         <CardTitle class="text-center text-lg font-semibold">
-                            In case of doubt, contact us
+                           En caso de duda, contacta con nosotros!
                         </CardTitle>
                     </CardHeader>
                     <CardContent class="p-6 dark:bg-gray-800">
@@ -198,7 +198,7 @@ const submitOppositionsForm = async () => {
                                         id="contact-terms"
                                     />
                                     <label for="contact-terms" class="text-sm text-gray-600 dark:text-gray-300">
-                                        I have read the terms and conditions
+                                     He leído los términos y condiciones
                                     </label>
                                 </div>
 
@@ -247,7 +247,7 @@ const submitOppositionsForm = async () => {
                                         id="oppositions-terms"
                                     />
                                     <label for="oppositions-terms" class="text-sm text-gray-600 dark:text-gray-300">
-                                        I have read the terms and conditions
+                                       He leído los términos y condiciones
                                     </label>
                                 </div>
 
@@ -273,7 +273,7 @@ const submitOppositionsForm = async () => {
             <div class="mt-16 text-center">
                 <div class="max-w-3xl mx-auto">
                     <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-                        Other ways to contact us
+                        Otras vías de contacto
                     </h2>
                     <div class="flex justify-center mt-8">
                         <div class="text-center">
