@@ -47,14 +47,14 @@ const badgeColorOptions = [
 </script>
 
 <template>
-    <AdminLayout title="Create Course">
-        <Head title="Create Course" />
+    <AdminLayout title="Crear curso">
+        <Head title="Crear curso" />
         <template #header>
-            Create New Course
+           Crear nuevo curso
         </template>
         
         <template #subtitle>
-            Add a new exam preparation course
+            Añadir un nuevo curso de preparación para exámenes
         </template>
 
         <template #actions>
@@ -63,7 +63,7 @@ const badgeColorOptions = [
                 class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150"
             >
                 <ArrowLeft class="w-4 h-4 mr-2" />
-                Back to Courses
+               Volver a los cursos
             </a>
         </template>
 
@@ -73,17 +73,17 @@ const badgeColorOptions = [
                     <div class="md:grid md:grid-cols-3 md:gap-6">
                         <div class="md:col-span-1">
                             <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white">
-                                Course Information
+                              Información del curso
                             </h3>
                             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                Basic information about the course.
+                              Información básica del curso.
                             </p>
                         </div>
                         <div class="mt-5 md:mt-0 md:col-span-2">
                             <div class="grid grid-cols-6 gap-6">
                                 <div class="col-span-6">
                                     <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Course Name *
+                                       Nombre del curso*
                                     </label>
                                     <input
                                         type="text"
@@ -100,7 +100,7 @@ const badgeColorOptions = [
 
                                 <div class="col-span-6">
                                     <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Short Description
+                                       Pequeña descripción
                                     </label>
                                     <input
                                         type="text"
@@ -113,7 +113,7 @@ const badgeColorOptions = [
 
                                 <div class="col-span-6">
                                     <label for="full_description" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Full Description
+                                       Descripción completa
                                     </label>
                                     <textarea
                                         id="full_description"
@@ -161,10 +161,10 @@ const badgeColorOptions = [
                     <div class="md:grid md:grid-cols-3 md:gap-6">
                         <div class="md:col-span-1">
                             <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white">
-                                Visual Settings
+                                  Visual Settings
                             </h3>
                             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                Customize the appearance of the course.
+                                Personaliza la apariencia del curso.
                             </p>
                         </div>
                         <div class="mt-5 md:mt-0 md:col-span-2">
@@ -184,7 +184,7 @@ const badgeColorOptions = [
 
                                 <div class="col-span-6 sm:col-span-3">
                                     <label for="color" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Color Gradient
+                                       Gradiente de color
                                     </label>
                                     <select
                                         id="color"
@@ -200,7 +200,7 @@ const badgeColorOptions = [
 
                                 <div class="col-span-6 sm:col-span-3">
                                     <label for="badge" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Badge Text
+                                        Color de la insignia
                                     </label>
                                     <input
                                         type="text"
@@ -213,7 +213,7 @@ const badgeColorOptions = [
 
                                 <div class="col-span-6 sm:col-span-3">
                                     <label for="badge_color" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Badge Color
+                                        Color de la insignia
                                     </label>
                                     <select
                                         id="badge_color"
@@ -238,7 +238,7 @@ const badgeColorOptions = [
                                 Status
                             </h3>
                             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                Control the visibility of the course.
+                               Controlar la visibilidad del curso.
                             </p>
                         </div>
                         <div class="mt-5 md:mt-0 md:col-span-2">
