@@ -46,7 +46,7 @@ onMounted(fetchCourse);
         <SiteHeader />
         <div class="container mx-auto px-4 py-10">
             <div class="mb-6 text-sm">
-                <Link :href="route('exams.wiki')" class="text-blue-600 dark:text-blue-300 hover:underline">← Back to Wiki</Link>
+                <Link :href="route('exams.wiki')" class="text-blue-600 dark:text-blue-300 hover:underline">← Regresa a la Wiki</Link>
             </div>
 
             <div v-if="loading" class="text-gray-600 dark:text-gray-300">Loading…</div>
@@ -62,7 +62,7 @@ onMounted(fetchCourse);
 
                 <div class="bg-white dark:bg-slate-800 rounded-2xl shadow p-6">
                     <div class="prose dark:prose-invert max-w-none">
-                        <p v-if="!course.full_description" class="text-gray-600 dark:text-gray-300">No detailed content yet. Check back soon.</p>
+                        <p v-if="!course.full_description" class="text-gray-600 dark:text-gray-300">Próximamente. Vuelve pronto.</p>
                         <div v-else v-html="course.full_description"></div>
                     </div>
                 </div>
