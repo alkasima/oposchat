@@ -50,7 +50,7 @@ function submitPassword() {
             <Settings class="w-5 h-5" />
         </template>
         <template #subtitle>
-            Manage API keys and change password
+           Administrar claves API y cambiar contraseña
         </template>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -138,7 +138,7 @@ function submitPassword() {
                     </div>
                     <div class="pt-2">
                         <button type="submit" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50" :disabled="passwordForm.processing">
-                            Update Password
+                            Actualizar contraseña
                         </button>
                     </div>
                 </form>
