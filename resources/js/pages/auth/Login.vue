@@ -43,8 +43,8 @@ const togglePasswordVisibility = () => {
 </script>
 
 <template>
-    <AuthBase title="Welcome back" description="Sign in to your account to continue">
-        <Head title="Log in" />
+    <AuthBase title="Bienvenido" description="Inicia sesión para continuar">
+        <Head title="Inicia sesión" />
 
         <!-- Success Status Message -->
         <div v-if="status" class="mb-6 rounded-lg bg-green-50 border border-green-200 p-4 text-center">
@@ -58,7 +58,7 @@ const togglePasswordVisibility = () => {
                 <!-- Email Field -->
                 <div class="space-y-2">
                     <Label for="email" class="text-sm font-medium text-gray-700">
-                        Email address
+                        Correo electrónico
                     </Label>
                     <div class="relative">
                         <Mail class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-white" />
@@ -82,7 +82,7 @@ const togglePasswordVisibility = () => {
                 <div class="space-y-2">
                     <div class="flex items-center justify-between">
                         <Label for="password" class="text-sm font-medium text-gray-700">
-                            Password
+                            Contraseña
                         </Label>
                         <TextLink 
                             v-if="canResetPassword" 
@@ -90,7 +90,7 @@ const togglePasswordVisibility = () => {
                             class="text-xs text-blue-600 hover:text-blue-800 transition-colors" 
                             :tabindex="5"
                         >
-                            Forgot password?
+                            ¿Olvidaste la contraseña?
                         </TextLink>
                     </div>
                     <div class="relative">
@@ -127,7 +127,7 @@ const togglePasswordVisibility = () => {
                             :tabindex="3"
                             class="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                         />
-                        <span class="text-sm text-gray-600">Remember me for 30 days</span>
+                        <span class="text-sm text-gray-600">Recuerdame por 30 días</span>
                     </Label>
                 </div>
 
@@ -139,7 +139,7 @@ const togglePasswordVisibility = () => {
                     :disabled="form.processing"
                 >
                     <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin mr-2" />
-                    <span v-if="!form.processing">Sign in to your account</span>
+                    <span v-if="!form.processing">Inicia sesión</span>
                     <span v-else>Signing in...</span>
                 </Button>
             </form>
@@ -150,7 +150,7 @@ const togglePasswordVisibility = () => {
             <Separator class="bg-gray-200" />
             <div class="absolute inset-0 flex items-center justify-center">
                 <span class="bg-gray-50 px-4 text-xs text-gray-500 font-medium">
-                    New to our platform?
+                    ¿Nuevo en nuestra plataforma?
                 </span>
             </div>
         </div>
@@ -158,13 +158,13 @@ const togglePasswordVisibility = () => {
         <!-- Sign Up Link -->
         <div class="text-center">
             <p class="text-sm text-gray-600 dark:text-gray-300">
-                Don't have an account yet?
+                ¿No tienes cuenta todavía?
                 <TextLink 
                     :href="route('register')" 
                     class="font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors ml-1" 
                     :tabindex="6"
                 >
-                    Create a free account
+                    Crea una nueva cuenta
                 </TextLink>
             </p>
         </div>
