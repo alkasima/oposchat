@@ -39,7 +39,7 @@ watch([search, sort, direction], () => {
             <Users class="w-5 h-5" />
         </template>
         <template #subtitle>
-            Manage all registered users
+           Administrar todas las usuarios registradas
         </template>
 
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 sm:p-6">
