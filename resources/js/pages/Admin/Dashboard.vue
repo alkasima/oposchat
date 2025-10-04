@@ -36,11 +36,11 @@ defineProps<{
 <template>
     <AdminLayout title="Dashboard">
         <template #header>
-            Dashboard
+          Panel
         </template>
         
         <template #subtitle>
-            Site statistics and management
+           Estadísticas y gestión del sitio
         </template>
         <!-- Stats Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -49,7 +49,7 @@ defineProps<{
                     <div class="flex items-center justify-between">
                         <div class="flex-1">
                             <p class="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">
-                                Total Users
+                              Usuarios totales
                             </p>
                             <p class="text-3xl font-bold text-blue-900 dark:text-blue-100">
                                 {{ stats.total_users.toLocaleString() }}
@@ -71,7 +71,7 @@ defineProps<{
                     <div class="flex items-center justify-between">
                         <div class="flex-1">
                             <p class="text-sm font-medium text-green-600 dark:text-green-400 mb-1">
-                                Total Chats
+                                Chats totales
                             </p>
                             <p class="text-3xl font-bold text-green-900 dark:text-green-100">
                                 {{ stats.total_chats.toLocaleString() }}
@@ -93,13 +93,13 @@ defineProps<{
                     <div class="flex items-center justify-between">
                         <div class="flex-1">
                             <p class="text-sm font-medium text-purple-600 dark:text-purple-400 mb-1">
-                                Total Messages
+                                Mensajes totales
                             </p>
                             <p class="text-3xl font-bold text-purple-900 dark:text-purple-100">
                                 {{ stats.total_messages.toLocaleString() }}
                             </p>
                             <p class="text-xs text-purple-500 dark:text-purple-300 mt-1">
-                                AI conversations
+                                Conversaciones con la IA
                             </p>
                         </div>
                         <div class="flex-shrink-0">
@@ -115,13 +115,13 @@ defineProps<{
                     <div class="flex items-center justify-between">
                         <div class="flex-1">
                             <p class="text-sm font-medium text-yellow-600 dark:text-yellow-400 mb-1">
-                                Active Subscriptions
+                                Suscripciones activas
                             </p>
                             <p class="text-3xl font-bold text-yellow-900 dark:text-yellow-100">
                                 {{ stats.active_subscriptions.toLocaleString() }}
                             </p>
                             <p class="text-xs text-yellow-500 dark:text-yellow-300 mt-1">
-                                Premium users
+                              Usuarios premium
                             </p>
                         </div>
                         <div class="flex-shrink-0">
@@ -137,13 +137,13 @@ defineProps<{
                     <div class="flex items-center justify-between">
                         <div class="flex-1">
                             <p class="text-sm font-medium text-indigo-600 dark:text-indigo-400 mb-1">
-                                New Users This Month
+                             Nuevos usuarios este mes
                             </p>
                             <p class="text-3xl font-bold text-indigo-900 dark:text-indigo-100">
                                 {{ stats.new_users_this_month.toLocaleString() }}
                             </p>
                             <p class="text-xs text-indigo-500 dark:text-indigo-300 mt-1">
-                                Growth rate
+                               Ratio de crecimiento
                             </p>
                         </div>
                         <div class="flex-shrink-0">
@@ -159,13 +159,13 @@ defineProps<{
                     <div class="flex items-center justify-between">
                         <div class="flex-1">
                             <p class="text-sm font-medium text-red-600 dark:text-red-400 mb-1">
-                                New Chats This Month
+                            Nuevos chats este mes
                             </p>
                             <p class="text-3xl font-bold text-red-900 dark:text-red-100">
                                 {{ stats.new_chats_this_month.toLocaleString() }}
                             </p>
                             <p class="text-xs text-red-500 dark:text-red-300 mt-1">
-                                Activity level
+                                Nivel de actividad
                             </p>
                         </div>
                         <div class="flex-shrink-0">
@@ -181,13 +181,13 @@ defineProps<{
                     <div class="flex items-center justify-between">
                         <div class="flex-1">
                             <p class="text-sm font-medium text-emerald-600 dark:text-emerald-400 mb-1">
-                                Total Courses
+                                Todos los cursos
                             </p>
                             <p class="text-3xl font-bold text-emerald-900 dark:text-emerald-100">
                                 {{ stats.total_courses.toLocaleString() }}
                             </p>
                             <p class="text-xs text-emerald-500 dark:text-emerald-300 mt-1">
-                                Available exams
+                                Exámenes disponibles
                             </p>
                         </div>
                         <div class="flex-shrink-0">
@@ -203,13 +203,13 @@ defineProps<{
                     <div class="flex items-center justify-between">
                         <div class="flex-1">
                             <p class="text-sm font-medium text-teal-600 dark:text-teal-400 mb-1">
-                                Active Courses
+                                Cursos activos
                             </p>
                             <p class="text-3xl font-bold text-teal-900 dark:text-teal-100">
                                 {{ stats.active_courses.toLocaleString() }}
                             </p>
                             <p class="text-xs text-teal-500 dark:text-teal-300 mt-1">
-                                Live courses
+                                Cursos en vivo
                             </p>
                         </div>
                         <div class="flex-shrink-0">
