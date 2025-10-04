@@ -56,7 +56,7 @@ const passwordsMatch = computed(() => {
 </script>
 
 <template>
-    <AuthBase title="Create your account" description="Join us today and start your journey">
+    <AuthBase title="Crea tu cuenta" description="Únete a nosotros para comenzar tu camino">
         <Head title="Register" />
 
         <Card class="p-8 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
@@ -64,7 +64,7 @@ const passwordsMatch = computed(() => {
                 <!-- Name Field -->
                 <div class="space-y-2">
                     <Label for="name" class="text-sm font-medium text-gray-700">
-                        Full name
+                        Nombre completo
                     </Label>
                     <div class="relative">
                         <User class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-white" />
@@ -76,7 +76,7 @@ const passwordsMatch = computed(() => {
                             :tabindex="1"
                             autocomplete="name"
                             v-model="form.name"
-                            placeholder="Enter your full name"
+                            placeholder="Introduce tu nombre completo"
                             class="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors dark:text-black"
                             :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': form.errors.name }"
                         />
@@ -87,7 +87,7 @@ const passwordsMatch = computed(() => {
                 <!-- Email Field -->
                 <div class="space-y-2">
                     <Label for="email" class="text-sm font-medium text-gray-700">
-                        Email address
+                        Dirección de correo
                     </Label>
                     <div class="relative">
                         <Mail class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-white" />
@@ -98,7 +98,7 @@ const passwordsMatch = computed(() => {
                             :tabindex="2"
                             autocomplete="email"
                             v-model="form.email"
-                            placeholder="Enter your email"
+                            placeholder="Introduce tu email"
                             class="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors dark:text-black"
                             :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': form.errors.email }"
                         />
@@ -109,7 +109,7 @@ const passwordsMatch = computed(() => {
                 <!-- Password Field -->
                 <div class="space-y-2">
                     <Label for="password" class="text-sm font-medium text-gray-700">
-                        Password
+                        Contraseña
                     </Label>
                     <div class="relative">
                         <Lock class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-white" />
@@ -120,7 +120,7 @@ const passwordsMatch = computed(() => {
                             :tabindex="3"
                             autocomplete="new-password"
                             v-model="form.password"
-                            placeholder="Create a strong password"
+                            placeholder="Crea tu contraseña"
                             class="pl-10 pr-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors dark:text-black"
                             :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': form.errors.password }"
                         />
@@ -187,7 +187,7 @@ const passwordsMatch = computed(() => {
                 <!-- Confirm Password Field -->
                 <div class="space-y-2">
                     <Label for="password_confirmation" class="text-sm font-medium text-gray-700">
-                        Confirm password
+                        Confirma contraseña
                     </Label>
                     <div class="relative">
                         <Lock class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-white" />
@@ -198,7 +198,7 @@ const passwordsMatch = computed(() => {
                             :tabindex="4"
                             autocomplete="new-password"
                             v-model="form.password_confirmation"
-                            placeholder="Confirm your password"
+                            placeholder="Confirma tu contraseña"
                             class="pl-10 pr-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors dark:text-black"
                             :class="{ 
                                 'border-red-300 focus:border-red-500 focus:ring-red-500': form.errors.password_confirmation,
@@ -229,10 +229,10 @@ const passwordsMatch = computed(() => {
 
                 <!-- Terms and Privacy -->
                 <div class="text-xs text-gray-500 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                    By creating an account, you agree to our 
-                    <TextLink href="#" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Terms of Service</TextLink>
-                    and 
-                    <TextLink href="#" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Privacy Policy</TextLink>.
+                    Creando la cuenta, estas de acuerdo con nuestros
+                    <TextLink href="#" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Terminos de servicio</TextLink>
+                    y 
+                    <TextLink href="#" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Politica de privacidad</TextLink>.
                 </div>
 
                 <!-- Submit Button -->
@@ -254,7 +254,7 @@ const passwordsMatch = computed(() => {
             <Separator class="bg-gray-200" />
             <div class="absolute inset-0 flex items-center justify-center">
                 <span class="bg-gray-50 px-4 text-xs text-gray-500 font-medium">
-                    Already have an account?
+                    ¿Ya tienes una cuenta?
                 </span>
             </div>
         </div>
@@ -262,13 +262,13 @@ const passwordsMatch = computed(() => {
         <!-- Sign In Link -->
         <div class="text-center">
             <p class="text-sm text-gray-600">
-                Ready to sign in?
+                ¿Ya tienes cuenta?
                 <TextLink 
                     :href="route('login')" 
                     class="font-medium text-blue-600 hover:text-blue-800 transition-colors ml-1" 
                     :tabindex="6"
                 >
-                    Sign in to your account
+                    Inicia sesión
                 </TextLink>
             </p>
         </div>
