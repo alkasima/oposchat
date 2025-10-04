@@ -41,11 +41,11 @@ const toggleActive = (course: Course) => {
 <template>
     <AdminLayout title="Courses">
         <template #header>
-            Courses Management
+           Gestión de cursos
         </template>
         
         <template #subtitle>
-            Manage exam courses and their settings
+         Administrar cursos de exámenes y sus configuraciones
         </template>
 
         <template #actions>
@@ -54,7 +54,7 @@ const toggleActive = (course: Course) => {
                 class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
             >
                 <Plus class="w-4 h-4 mr-2" />
-                Add Course
+              Añadir curso
             </Link>
         </template>
 
@@ -62,11 +62,10 @@ const toggleActive = (course: Course) => {
         <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
             <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
                 <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                    All Courses
+                   Todos los cursos
                 </h3>
                 <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-                    Manage your exam preparation courses
-                </p>
+Gestiona tus cursos de preparación para exámenes                </p>
             </div>
             
             <div v-if="courses.length === 0" class="text-center py-12">
@@ -82,7 +81,7 @@ const toggleActive = (course: Course) => {
                             class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                         >
                             <Plus class="w-4 h-4 mr-2" />
-                            Add Course
+                           Añadir curso
                         </Link>
                     </div>
                 </div>
