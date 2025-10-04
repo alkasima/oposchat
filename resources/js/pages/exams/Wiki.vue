@@ -104,7 +104,7 @@ onMounted(() => {
                     <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Seguridad social</h2>
                     <p class="text-gray-700 dark:text-gray-300">Esto es un examen de seguridad social.</p>
                     <div class="mt-4 flex items-center gap-3">
-                        <button @click="startChatFor('sat-preparation', 'SAT')" class="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm">Start Chat</button>
+                        <button @click="startChatFor('sat-preparation', 'SAT')" class="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm">Ir al chat</button>
                         <Link :href="route('exams.wiki.course', { slug: 'sat-preparation' })" class="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm">View details</Link>
                     </div>
                 </div>
@@ -112,7 +112,7 @@ onMounted(() => {
                     <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Policia Nacional</h2>
                     <p class="text-gray-700 dark:text-gray-300">Esto es un examen de policia nacional.</p>
                     <div class="mt-4 flex items-center gap-3">
-                        <button @click="startChatFor('gre-preparation', 'GRE')" class="inline-flex items-center px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 text-sm">Start Chat</button>
+                        <button @click="startChatFor('gre-preparation', 'GRE')" class="inline-flex items-center px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 text-sm">Ir al chat</button>
                         <Link :href="route('exams.wiki.course', { slug: 'gre-preparation' })" class="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm">View details</Link>
                     </div>
                 </div>
@@ -120,7 +120,7 @@ onMounted(() => {
                     <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Maestro infantil</h2>
                     <p class="text-gray-700 dark:text-gray-300">Esto es un examen de maestro infantil.</p>
                     <div class="mt-4 flex items-center gap-3">
-                        <button @click="startChatFor('gmat-preparation', 'GMAT')" class="inline-flex items-center px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 text-sm">Start Chat</button>
+                        <button @click="startChatFor('gmat-preparation', 'GMAT')" class="inline-flex items-center px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 text-sm">Ir al chat</button>
                         <Link :href="route('exams.wiki.course', { slug: 'gmat-preparation' })" class="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm">View details</Link>
                     </div>
                 </div>
@@ -128,7 +128,7 @@ onMounted(() => {
                     <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Guardia Civil</h2>
                     <p class="text-gray-700 dark:text-gray-300">Esto es un examen de Guardia civil.</p>
                     <div class="mt-4 flex items-center gap-3">
-                        <button @click="startChatFor('custom-preparation', 'Custom Exam')" class="inline-flex items-center px-4 py-2 rounded-lg bg-orange-600 text-white hover:bg-orange-700 text-sm">Start Chat</button>
+                        <button @click="startChatFor('custom-preparation', 'Custom Exam')" class="inline-flex items-center px-4 py-2 rounded-lg bg-orange-600 text-white hover:bg-orange-700 text-sm">Ir al chat</button>
                         <Link :href="route('exams.wiki.course', { slug: 'custom-preparation' })" class="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm">View details</Link>
                     </div>
                 </div>
@@ -150,7 +150,7 @@ onMounted(() => {
                         </div>
                         <div>
                             <div class="font-semibold text-gray-900 dark:text-gray-100">{{ c.name }}</div>
-                            <div class="text-sm text-gray-600 dark:text-gray-400">View details</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">Ver información</div>
                         </div>
                     </Link>
                 </div>
