@@ -5,7 +5,7 @@
       <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Course Content Management</h1>
         <p class="mt-2 text-gray-600 dark:text-gray-400">
-          Upload and manage course materials for AI-powered exam preparation
+          Cargue y administre materiales del curso para la preparación de exámenes con tecnología de IA
         </p>
       </div>
 
@@ -92,7 +92,7 @@
         <!-- File Upload -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-            Upload File
+           Subir archivo
           </h2>
           <form @submit.prevent="uploadFile" class="space-y-4">
             <div>
@@ -149,20 +149,20 @@
         <!-- Course Actions -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-            Course Actions
+            Acciones del curso
           </h2>
           <div class="flex space-x-4">
             <button
               @click="getContentStats"
               class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
             >
-              Get Stats
+              Obtener estadísticas
             </button>
             <button
               @click="deleteCourseContent"
               class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
             >
-              Delete All Content
+            Eliminar todo el contenido
             </button>
           </div>
         </div>
