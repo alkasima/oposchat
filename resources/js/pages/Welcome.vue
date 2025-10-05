@@ -122,7 +122,7 @@ const faqData = [
                     <div class="lg:w-3/5 mb-12 lg:mb-0">
                         <div class="inline-flex items-center bg-white/80 dark:bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 mb-6 shadow-lg">
                             <span class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
-                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">AI-Powered Learning Platform</span>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Estudio avanzado con IA</span>
                         </div>
                         
                         <h1 class="text-5xl lg:text-7xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
