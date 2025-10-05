@@ -66,19 +66,19 @@ onMounted(async () => {
                         <h1 class="text-white text-2xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
                             OposChat
                         </h1>
-                        <p class="text-blue-200 text-xs">AI-Powered Learning</p>
+                        <p class="text-blue-200 text-xs">Tu aliado para la plaza</p>
                     </div>
                 </Link>
 
                 <!-- Desktop Navigation -->
                 <div class="hidden md:flex items-center space-x-8">
                     <Link :href="route('home')" class="text-white hover:text-yellow-300 transition-all duration-300 font-medium relative group">
-                        Home
+                        Inicio
                         <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-yellow-300 transition-all duration-300 group-hover:w-full"></span>
                     </Link>
                     <div class="relative group">
                         <button class="text-white hover:text-yellow-300 transition-all duration-300 flex items-center font-medium">
-                            Courses 
+                            Oposiciones 
                             <svg class="w-4 h-4 ml-1 transform group-hover:rotate-180 transition-transform duration-300" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                             </svg>
@@ -97,20 +97,20 @@ onMounted(async () => {
                                     </Link>
                                 </template>
                                 <div class="border-t border-gray-100 mt-2"></div>
-                                <Link :href="route('exams.wiki')" class="block px-4 py-2 text-sm text-blue-600 hover:bg-blue-50">View all exams →</Link>
+                                <Link :href="route('exams.wiki')" class="block px-4 py-2 text-sm text-blue-600 hover:bg-blue-50">Ver todas las oposiciones →</Link>
                             </div>
                         </div>
                     </div>
                     <Link :href="route('about')" class="text-white hover:text-yellow-300 transition-all duration-300 font-medium relative group">
-                        About
+                        Sobre OposChat
                         <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-yellow-300 transition-all duration-300 group-hover:w-full"></span>
                     </Link>
                     <Link :href="route('contact')" class="text-white hover:text-yellow-300 transition-all duration-300 font-medium relative group">
-                        Contact
+                        Contacto
                         <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-yellow-300 transition-all duration-300 group-hover:w-full"></span>
                     </Link>
                     <Link :href="route('pricing')" class="text-white hover:text-yellow-300 transition-all duration-300 font-medium relative group">
-                        Pricing
+                        Precios
                         <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-yellow-300 transition-all duration-300 group-hover:w-full"></span>
                     </Link>
                     <div v-if="$page.props.auth.user" class="flex items-center space-x-4">
@@ -154,7 +154,7 @@ onMounted(async () => {
                                             @click="isProfileOpen = false"
                                         >
                                             <BarChart3 class="w-4 h-4 mr-3" />
-                                            Dashboard
+                                            Mi Chat
                                         </Link>
                                         <Link 
                                             :href="route('profile.edit')"
@@ -170,7 +170,7 @@ onMounted(async () => {
                                             @click="isProfileOpen = false"
                                         >
                                             <CreditCard class="w-4 h-4 mr-3" />
-                                            Subscription & Billing
+                                            Planes y precios
                                         </Link>
                                         <Link 
                                             :href="route('profile.edit')"
@@ -178,7 +178,7 @@ onMounted(async () => {
                                             @click="isProfileOpen = false"
                                         >
                                             <Settings class="w-4 h-4 mr-3" />
-                                            Settings
+                                            Ajustes
                                         </Link>
                                     </div>
                                     
@@ -192,7 +192,7 @@ onMounted(async () => {
                                             @click="isProfileOpen = false"
                                         >
                                             <LogOut class="w-4 h-4 mr-3" />
-                                            Sign Out
+                                            Cerrar sesión
                                         </Link>
                                     </div>
                                 </div>
@@ -204,7 +204,7 @@ onMounted(async () => {
                         :href="route('login')"
                         class="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 py-2.5 rounded-full hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                     >
-                        Sign In / Register
+                        Iniciar sesión / Crear cuenta
                     </Link>
                     <!-- Theme Toggle -->
                     <button @click="cycleTheme" class="ml-4 p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white" title="Theme: {{ appearance }}">
@@ -224,11 +224,11 @@ onMounted(async () => {
             <!-- Mobile Menu -->
             <div v-if="isMenuOpen" class="md:hidden mt-4 pb-4 border-t border-blue-800">
                 <div class="flex flex-col space-y-4 pt-4">
-                    <Link :href="route('home')" class="text-white hover:text-yellow-300 transition-colors">Home</Link>
-                    <Link href="#courses" class="text-white hover:text-yellow-300 transition-colors">Exams</Link>
-                    <Link :href="route('about')" class="text-white hover:text-yellow-300 transition-colors">About</Link>
-                    <Link :href="route('contact')" class="text-white hover:text-yellow-300 transition-colors">Contact</Link>
-                    <Link :href="route('pricing')" class="text-white hover:text-yellow-300 transition-colors">Pricing</Link>
+                    <Link :href="route('home')" class="text-white hover:text-yellow-300 transition-colors">Inicio</Link>
+                    <Link href="#courses" class="text-white hover:text-yellow-300 transition-colors">Oposiciones</Link>
+                    <Link :href="route('about')" class="text-white hover:text-yellow-300 transition-colors">Sobre OposChat</Link>
+                    <Link :href="route('contact')" class="text-white hover:text-yellow-300 transition-colors">Contacto</Link>
+                    <Link :href="route('pricing')" class="text-white hover:text-yellow-300 transition-colors">Precios</Link>
                     <div v-if="$page.props.auth.user" class="space-y-2">
                         <div class="px-4 py-2 border-b border-blue-800 mb-2">
                             <p class="text-sm font-medium text-white">{{ $page.props.auth.user.name || 'User' }}</p>
@@ -243,7 +243,7 @@ onMounted(async () => {
                             @click="isMenuOpen = false"
                         >
                             <BarChart3 class="w-4 h-4 mr-3" />
-                            Dashboard
+                            Mi Chat
                         </Link>
                         <Link 
                             :href="route('profile.edit')"
@@ -251,7 +251,7 @@ onMounted(async () => {
                             @click="isMenuOpen = false"
                         >
                             <User class="w-4 h-4 mr-3" />
-                            Profile Settings
+                            Ajustes de perfil
                         </Link>
                         <Link 
                             :href="route('subscription')"
@@ -259,7 +259,7 @@ onMounted(async () => {
                             @click="isMenuOpen = false"
                         >
                             <CreditCard class="w-4 h-4 mr-3" />
-                            Subscription & Billing
+                            Planes y precios
                         </Link>
                         <Link 
                             :href="route('profile.edit')"
@@ -267,7 +267,7 @@ onMounted(async () => {
                             @click="isMenuOpen = false"
                         >
                             <Settings class="w-4 h-4 mr-3" />
-                            Settings
+                            Ajustes
                         </Link>
                         <Link 
                             :href="route('logout')"
@@ -277,7 +277,7 @@ onMounted(async () => {
                             @click="isMenuOpen = false"
                         >
                             <LogOut class="w-4 h-4 mr-3" />
-                            Sign Out
+                            Cerrar sesión
                         </Link>
                     </div>
                     <Link 
@@ -285,11 +285,11 @@ onMounted(async () => {
                         :href="route('login')"
                         class="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-full text-center"
                     >
-                        Sign In / Register
+                        Iniciar sesión / Crear cuenta
                     </Link>
                     <button @click="cycleTheme" class="text-white border border-white/30 rounded-lg px-4 py-2">
-                        <span v-if="appearance === 'light'">Light mode</span>
-                        <span v-else>Dark mode</span>
+                        <span v-if="appearance === 'light'">Modo claro</span>
+                        <span v-else>Modo oscuro</span>
                     </button>
                 </div>
             </div>
