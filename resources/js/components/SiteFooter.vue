@@ -13,11 +13,11 @@ import { Link } from '@inertiajs/vue3';
                         </div>
                         <div>
                             <h3 class="text-2xl font-bold">OposChat</h3>
-                            <p class="text-blue-200 text-sm">AI-Powered Learning</p>
+                            <p class="text-blue-200 text-sm">Tu aliado para la plaza</p>
                         </div>
                     </Link>
                     <p class="text-gray-300 leading-relaxed">
-                        Empowering students worldwide with AI-driven exam preparation and personalized learning experiences.
+                        Tu futuro empieza con una preparación inteligente.
                     </p>
                 </div>
 
@@ -25,7 +25,6 @@ import { Link } from '@inertiajs/vue3';
                     <h4 class="font-bold mb-6 text-lg">About Us</h4>
                     <ul class="space-y-3 text-gray-300">
                         <li><Link :href="route('about')" class="hover:text-yellow-400 transition-colors duration-300 flex items-center"><span class="mr-2">→</span>Our Story</Link></li>
-                        <li><a href="#" class="hover:text-yellow-400 transition-colors duration-300 flex items-center"><span class="mr-2">→</span>Mission & Vision</a></li>
                         <li><Link :href="route('contact')" class="hover:text-yellow-400 transition-colors duration-300 flex items-center"><span class="mr-2">→</span>Contact Us</Link></li>
                     </ul>
                 </div>
@@ -60,7 +59,7 @@ import { Link } from '@inertiajs/vue3';
 
             <div class="border-t border-gray-700 pt-8 flex flex-col md:flex-row justify-between items-center">
                 <p class="text-gray-400 mb-4 md:mb-0">
-                    &copy; {{ new Date().getFullYear() }} StudyChat. All rights reserved.
+                    &copy; {{ new Date().getFullYear() }} OposChat. Todos los derechos reservados.
                 </p>
             </div>
         </div>
