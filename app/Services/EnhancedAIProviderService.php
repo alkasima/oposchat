@@ -83,20 +83,35 @@ class EnhancedAIProviderService extends AIProviderService
      */
     private function createPedagogicalSystemMessage(array $contextData, bool $isRelevant): string
     {
-        $baseMessage = "You are an expert educational AI assistant specialized in exam preparation. You MUST use ONLY the provided course materials/syllabus.
+        $baseMessage = "You are OposChat, a professional study assistant specialized in preparing students for oral and written exams.
+Your only source of knowledge is the retrieved syllabus passages that are provided to you.
+You must not use external information beyond what appears in the syllabus.
 
-STRICT GROUNDING RULES (ENFORCED):
-1) Use only facts explicitly present in the provided syllabus content. Do NOT use general knowledge or training data.
-2) If the syllabus does not include the requested information, reply exactly: 'This information is not included in the syllabus.'
-3) Do not invent explanations, examples, numbers, formulas, steps, or definitions that are not present in the syllabus.
-4) When listing items (bullets, steps, table rows), include ONLY items that exist in the syllabus. Do NOT add extra rows/lines beyond what is present.
-5) Keep the response concise and didactic. Rephrase syllabus content in your own words, but do not expand it with outside knowledge.
-6) If the retrieved context is short, answer only with what is present. Do NOT speculate or extrapolate.
+Your main task is to reformulate the syllabus content in your own words and present it in a clear, didactic, and engaging way — as if you were a teacher helping a student understand the material.
 
-PEDAGOGICAL STYLE (within the rules above):
-- Organize content with short headings, clear bullets, and step-by-step structure when appropriate.
-- Prefer clarity over length; avoid redundancy.
-- If the user asks for comparison or a table, populate it strictly with syllabus facts.
+You must:
+
+Never copy-paste text from the syllabus. Always paraphrase naturally.
+
+Organize information into tables, lists, step-by-step guides, or diagrams when possible.
+
+Always respond helpfully, even if the syllabus doesn't explicitly mention the user's question.
+
+In that case, adapt and reorganize what's in the syllabus to fit the request (e.g., turn it into a study guide, outline, or summary).
+
+Do not say \"This is not included in the syllabus.\"
+
+Instead, find a way to answer using relevant syllabus material and say something like:
+
+\"Let's approach this based on what the syllabus covers.\"
+
+When users ask for:
+
+a study guide, diagram, outline, summary, or oral exam prep,
+you must create it dynamically from the syllabus, using creative organization and helpful explanations.
+
+✅ Tone: Supportive, conversational, and educational (like a good teacher).
+✅ Goal: Make studying easier and more effective, while staying 100% faithful to the syllabus.
 
 Model disclosure: You are running on {$this->getProvider()} model {$this->getModel()}.";
 
@@ -105,12 +120,13 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
             $contextText = implode(' ', $contextData['context']);
             $baseMessage .= "\n\nRELEVANT SYLLABUS CONTENT:\n" . $contextText;
             
-            // Add explicit constraints for context usage
-            $baseMessage .= "\n\nUSAGE CONSTRAINTS:\n- Base every statement on the content above.\n- Do NOT add new bullets/rows beyond the facts provided.\n- If a detail is missing above, state: 'This information is not included in the syllabus.'";
-            
         } elseif (!$isRelevant) {
-            // Strict out-of-scope instruction
-            $baseMessage .= "\n\nIMPORTANT: The user's question is outside the scope of the uploaded course materials. You MUST respond with: 'This information is not included in the syllabus.' Do NOT provide any general knowledge or external information.";
+            // More helpful out-of-scope instruction
+            $baseMessage .= "\n\nIMPORTANT: The user's question appears to be outside the scope of the uploaded course materials. However, try to be helpful by:
+1. Checking if the question can be answered using related syllabus content
+2. Suggesting how the user might rephrase their question to focus on syllabus topics
+3. Offering to help with study guides, summaries, or explanations of syllabus content instead
+4. Use phrases like 'Let's approach this based on what the syllabus covers' instead of saying 'not in syllabus'";
         }
 
         return $baseMessage;
@@ -126,6 +142,10 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
         }
 
         try {
+            // Detect creative requests that need broader context
+            $isCreativeRequest = $this->isCreativeStudyRequest($query);
+            $searchLimit = $isCreativeRequest ? 10 : 8; // Get more context for creative requests
+            
             $embedding = $this->generateEmbedding($query);
             if (!$embedding) {
                 Log::warning('Failed to generate embedding for query', ['query' => $query]);
@@ -134,7 +154,7 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
 
             // Search for more context chunks for better synthesis
             $vectorStore = app(\App\Services\VectorStoreService::class);
-            $searchResults = $vectorStore->searchWithEmbedding($embedding, $namespaces, 8); // Increased from 5 to 8
+            $searchResults = $vectorStore->searchWithEmbedding($embedding, $namespaces, $searchLimit);
             
             if (!$searchResults['success'] || empty($searchResults['results'])) {
                 Log::warning('No relevant context found', [
@@ -155,22 +175,22 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
                 }
             }
 
-            // Enhanced relevance scoring with multiple criteria
+            // Enhanced relevance scoring with flexible criteria for creative requests
             $avgRelevance = !empty($relevanceScores) ? array_sum($relevanceScores) / count($relevanceScores) : 0;
-            $minRelevanceThreshold = 0.75; // Higher threshold for better accuracy
-            $minContextChunks = 2;
+            $minRelevanceThreshold = 0.60; // Lowered threshold for better coverage
+            $minContextChunks = 1; // Reduced requirement for creative responses
             $minHighRelevanceChunks = 1;
 
             // Count highly relevant chunks
             $highRelevanceChunks = array_filter($relevanceScores, function($score) {
-                return $score >= 0.80; // Higher threshold for high relevance
+                return $score >= 0.70; // Lowered threshold for high relevance
             });
 
-            // More precise relevance determination
+            // More flexible relevance determination for creative study assistance
             $isRelevant = (count($context) >= $minContextChunks) && 
                          (($avgRelevance >= $minRelevanceThreshold) || 
                           (count($highRelevanceChunks) >= $minHighRelevanceChunks) ||
-                          (max($relevanceScores) >= 0.85)); // Single very relevant chunk
+                          (count($context) >= 3)); // Allow if we have 3+ chunks regardless of relevance
 
             Log::info('Enhanced context retrieval', [
                 'query' => $query,
@@ -197,5 +217,29 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
             ]);
             return [];
         }
+    }
+
+    /**
+     * Detect if the query is a creative study request that needs broader context
+     */
+    private function isCreativeStudyRequest(string $query): bool
+    {
+        $creativeKeywords = [
+            'study guide', 'study plan', 'create a guide', 'make a guide',
+            'diagram', 'create diagram', 'draw', 'visual', 'chart', 'flowchart',
+            'outline', 'summary', 'overview', 'structure', 'organize',
+            'prepare for exam', 'exam preparation', 'study strategy',
+            'review', 'revision', 'consolidate', 'synthesize'
+        ];
+        
+        $queryLower = strtolower($query);
+        
+        foreach ($creativeKeywords as $keyword) {
+            if (strpos($queryLower, $keyword) !== false) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 }

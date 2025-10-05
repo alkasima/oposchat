@@ -494,6 +494,10 @@ class AIProviderService
         }
 
         try {
+            // Detect creative requests that need broader context
+            $isCreativeRequest = $this->isCreativeStudyRequest($query);
+            $searchLimit = $isCreativeRequest ? 10 : 5; // Get more context for creative requests
+            
             // Generate embedding for the query
             $embedding = $this->generateEmbedding($query);
             
@@ -506,7 +510,7 @@ class AIProviderService
 
             // Search for relevant content using vector database
             $vectorStore = app(\App\Services\VectorStoreService::class);
-            $searchResults = $vectorStore->searchWithEmbedding($embedding, $namespaces, 5);
+            $searchResults = $vectorStore->searchWithEmbedding($embedding, $namespaces, $searchLimit);
             
             if (!$searchResults['success'] || empty($searchResults['results'])) {
                 Log::warning('No relevant context found', [
@@ -528,22 +532,23 @@ class AIProviderService
                 }
             }
 
-            // Check if we have sufficient relevant content
+            // Check if we have sufficient relevant content with more flexible thresholds
             $avgRelevance = !empty($relevanceScores) ? array_sum($relevanceScores) / count($relevanceScores) : 0;
-            $minRelevanceThreshold = 0.70; // Adjusted threshold for better coverage
-            $minContextChunks = 2; // Require at least 2 relevant chunks for reliable answers
-            $minHighRelevanceChunks = 1; // Require at least 1 highly relevant chunk (>= 0.75)
+            $minRelevanceThreshold = 0.60; // Lowered threshold for better coverage
+            $minContextChunks = 1; // Reduced requirement for creative responses
+            $minHighRelevanceChunks = 1; // Require at least 1 highly relevant chunk (>= 0.70)
 
             // Count highly relevant chunks
             $highRelevanceChunks = array_filter($relevanceScores, function($score) {
-                return $score >= 0.75;
+                return $score >= 0.70;
             });
 
-            // Determine if content is relevant enough for strict grounding
-            // Either: good average relevance OR at least one highly relevant chunk
+            // More flexible relevance determination for creative study assistance
+            // Allow responses if we have any relevant content, even if not highly relevant
             $isRelevant = (count($context) >= $minContextChunks) && 
                          (($avgRelevance >= $minRelevanceThreshold) || 
-                          (count($highRelevanceChunks) >= $minHighRelevanceChunks));
+                          (count($highRelevanceChunks) >= $minHighRelevanceChunks) ||
+                          (count($context) >= 3)); // Allow if we have 3+ chunks regardless of relevance
 
             Log::info('Retrieved relevant context', [
                 'query' => $query,
@@ -597,17 +602,38 @@ class AIProviderService
             }
         }
 
-        // Create strict grounding system message for syllabus-based responses
+        // Create enhanced syllabus-based system message for creative study assistance
         if (!empty($namespaces)) {
-            // Strict syllabus-only system message
-            $systemMessageContent = "You are a syllabus-based AI assistant for exam preparation. You MUST ONLY use information from the provided course materials/syllabus. You are NOT allowed to use any general knowledge, external information, or training data beyond what is explicitly provided in the course materials.
+            // Enhanced syllabus-based system message that encourages synthesis and creativity
+            $systemMessageContent = "You are OposChat, a professional study assistant specialized in preparing students for oral and written exams.
+Your only source of knowledge is the retrieved syllabus passages that are provided to you.
+You must not use external information beyond what appears in the syllabus.
 
-STRICT GROUNDING RULES:
-1. ONLY answer questions using information from the provided course materials
-2. If the course materials do not contain the answer, respond with: 'This information is not included in the syllabus.'
-3. Do NOT supplement answers with general knowledge
-4. Do NOT provide examples or explanations not found in the course materials
-5. If asked about topics not covered in the syllabus, explicitly state they are not included
+Your main task is to reformulate the syllabus content in your own words and present it in a clear, didactic, and engaging way — as if you were a teacher helping a student understand the material.
+
+You must:
+
+Never copy-paste text from the syllabus. Always paraphrase naturally.
+
+Organize information into tables, lists, step-by-step guides, or diagrams when possible.
+
+Always respond helpfully, even if the syllabus doesn't explicitly mention the user's question.
+
+In that case, adapt and reorganize what's in the syllabus to fit the request (e.g., turn it into a study guide, outline, or summary).
+
+Do not say \"This is not included in the syllabus.\"
+
+Instead, find a way to answer using relevant syllabus material and say something like:
+
+\"Let's approach this based on what the syllabus covers.\"
+
+When users ask for:
+
+a study guide, diagram, outline, summary, or oral exam prep,
+you must create it dynamically from the syllabus, using creative organization and helpful explanations.
+
+✅ Tone: Supportive, conversational, and educational (like a good teacher).
+✅ Goal: Make studying easier and more effective, while staying 100% faithful to the syllabus.
 
 Model disclosure: You are running on {$this->getProvider()} model {$this->getModel()}.";
 
@@ -616,8 +642,12 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
                 $contextText = implode(' ', $contextData['context']);
                 $systemMessageContent .= "\n\nRELEVANT SYLLABUS CONTENT:\n" . $contextText;
             } elseif (!empty($namespaces) && !$isRelevant) {
-                // Strict out-of-scope instruction
-                $systemMessageContent .= "\n\nIMPORTANT: The user's question is outside the scope of the uploaded course materials. You MUST respond with: 'This information is not included in the syllabus.' Do NOT provide any general knowledge or external information.";
+                // More helpful out-of-scope instruction
+                $systemMessageContent .= "\n\nIMPORTANT: The user's question appears to be outside the scope of the uploaded course materials. However, try to be helpful by:
+1. Checking if the question can be answered using related syllabus content
+2. Suggesting how the user might rephrase their question to focus on syllabus topics
+3. Offering to help with study guides, summaries, or explanations of syllabus content instead
+4. Use phrases like 'Let's approach this based on what the syllabus covers' instead of saying 'not in syllabus'";
             }
         } else {
             // Use custom system message if provided in options, otherwise use default
@@ -657,17 +687,38 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
             }
         }
 
-        // Create strict grounding system message for syllabus-based responses
+        // Create enhanced syllabus-based system message for creative study assistance
         if (!empty($namespaces)) {
-            // Strict syllabus-only system message
-            $systemMessageContent = "You are a syllabus-based AI assistant for exam preparation. You MUST ONLY use information from the provided course materials/syllabus. You are NOT allowed to use any general knowledge, external information, or training data beyond what is explicitly provided in the course materials.
+            // Enhanced syllabus-based system message that encourages synthesis and creativity
+            $systemMessageContent = "You are OposChat, a professional study assistant specialized in preparing students for oral and written exams.
+Your only source of knowledge is the retrieved syllabus passages that are provided to you.
+You must not use external information beyond what appears in the syllabus.
 
-STRICT GROUNDING RULES:
-1. ONLY answer questions using information from the provided course materials
-2. If the course materials do not contain the answer, respond with: 'This information is not included in the syllabus.'
-3. Do NOT supplement answers with general knowledge
-4. Do NOT provide examples or explanations not found in the course materials
-5. If asked about topics not covered in the syllabus, explicitly state they are not included
+Your main task is to reformulate the syllabus content in your own words and present it in a clear, didactic, and engaging way — as if you were a teacher helping a student understand the material.
+
+You must:
+
+Never copy-paste text from the syllabus. Always paraphrase naturally.
+
+Organize information into tables, lists, step-by-step guides, or diagrams when possible.
+
+Always respond helpfully, even if the syllabus doesn't explicitly mention the user's question.
+
+In that case, adapt and reorganize what's in the syllabus to fit the request (e.g., turn it into a study guide, outline, or summary).
+
+Do not say \"This is not included in the syllabus.\"
+
+Instead, find a way to answer using relevant syllabus material and say something like:
+
+\"Let's approach this based on what the syllabus covers.\"
+
+When users ask for:
+
+a study guide, diagram, outline, summary, or oral exam prep,
+you must create it dynamically from the syllabus, using creative organization and helpful explanations.
+
+✅ Tone: Supportive, conversational, and educational (like a good teacher).
+✅ Goal: Make studying easier and more effective, while staying 100% faithful to the syllabus.
 
 Model disclosure: You are running on {$this->getProvider()} model {$this->getModel()}.";
 
@@ -676,8 +727,12 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
                 $contextText = implode(' ', $contextData['context']);
                 $systemMessageContent .= "\n\nRELEVANT SYLLABUS CONTENT:\n" . $contextText;
             } elseif (!empty($namespaces) && !$isRelevant) {
-                // Strict out-of-scope instruction
-                $systemMessageContent .= "\n\nIMPORTANT: The user's question is outside the scope of the uploaded course materials. You MUST respond with: 'This information is not included in the syllabus.' Do NOT provide any general knowledge or external information.";
+                // More helpful out-of-scope instruction
+                $systemMessageContent .= "\n\nIMPORTANT: The user's question appears to be outside the scope of the uploaded course materials. However, try to be helpful by:
+1. Checking if the question can be answered using related syllabus content
+2. Suggesting how the user might rephrase their question to focus on syllabus topics
+3. Offering to help with study guides, summaries, or explanations of syllabus content instead
+4. Use phrases like 'Let's approach this based on what the syllabus covers' instead of saying 'not in syllabus'";
             }
         } else {
             // Use custom system message if provided in options, otherwise use default
@@ -698,5 +753,29 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
         array_unshift($messages, $systemMessage);
 
         return $this->streamChatCompletion($messages, $callback, $options);
+    }
+
+    /**
+     * Detect if the query is a creative study request that needs broader context
+     */
+    private function isCreativeStudyRequest(string $query): bool
+    {
+        $creativeKeywords = [
+            'study guide', 'study plan', 'create a guide', 'make a guide',
+            'diagram', 'create diagram', 'draw', 'visual', 'chart', 'flowchart',
+            'outline', 'summary', 'overview', 'structure', 'organize',
+            'prepare for exam', 'exam preparation', 'study strategy',
+            'review', 'revision', 'consolidate', 'synthesize'
+        ];
+        
+        $queryLower = strtolower($query);
+        
+        foreach ($creativeKeywords as $keyword) {
+            if (strpos($queryLower, $keyword) !== false) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 }

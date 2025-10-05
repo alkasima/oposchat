@@ -1,3 +1,59 @@
+Sample Exam Syllabus – Algebra and Geometry
+
+This document is intentionally small, concise, and strictly scoped to help test Retrieval‑Augmented Generation (RAG) behaviors. Every fact you need appears below. If a question asks for anything outside this content, the correct response is: "This information is not included in the syllabus."
+
+Algebra Basics
+- Linear equation (one variable): solve by isolating the variable using inverse operations.
+- System of two linear equations: solve by substitution or elimination.
+- Polynomial degree: highest exponent of the variable in a single‑variable polynomial.
+
+Quadratic Equations
+- Standard form: ax^2 + bx + c = 0, where a ≠ 0.
+- Discriminant: Δ = b^2 − 4ac.
+- Three solving techniques (one‑line each):
+  1) Factoring – express as (x − p)(x − q) = 0 and set each factor to zero.
+  2) Completing the square – rewrite into (x − h)^2 = k and take square roots.
+  3) Quadratic formula – x = (−b ± √(b^2 − 4ac)) / (2a).
+
+Comparison Table (for rendering test – one row per method only)
+| Technique | Key Idea | When It’s Handy |
+|-----------|----------|-----------------|
+| Factoring | Turn the quadratic into a product of two binomials | Integers that factor cleanly |
+| Completing the square | Convert to a perfect square trinomial | Vertex form or when factoring is hard |
+| Quadratic formula | Direct formula using a,b,c | Always works when a ≠ 0 |
+
+Geometry Essentials
+- Circles: radius r, diameter d = 2r; Circumference C = 2πr; Area A = πr^2.
+- Triangles: Area A = 1/2 × base × height; Right triangle relation a^2 + b^2 = c^2.
+- Rectangles & Squares:
+  • Rectangle: P = 2(length + width); A = length × width
+  • Square: P = 4 × side; A = side^2
+
+Shape Formulas Table (rendering test)
+| Shape | Area | Perimeter | Volume |
+|-------|------|-----------|--------|
+| Rectangle | A = lw | P = 2(l + w) | N/A |
+| Square | A = s^2 | P = 4s | N/A |
+| Circle | A = πr^2 | C = 2πr | N/A |
+| Triangle | A = 1/2 bh | N/A | N/A |
+| Cylinder | A_lateral = 2πrh | N/A | V = πr^2 h |
+| Sphere | N/A | N/A | V = 4/3 π r^3 |
+
+Worked Mini‑Example (grounding)
+- For x^2 − 5x + 6 = 0: factoring gives (x − 2)(x − 3) = 0 → x = 2, 3.
+- Circle with r = 7: A = 49π; C = 14π.
+
+Practice Questions (use to test RAG)
+1) List the three techniques for solving a quadratic and give one‑line descriptions.
+2) Use the quadratic formula to solve x^2 − 5x + 6 = 0 and show the final roots.
+3) What’s the area and circumference of a circle with radius 7?
+4) Make a table comparing Factoring, Completing the square, and Quadratic formula with ‘Key Idea’ and ‘When It’s Handy’ columns.
+5) Provide the shape formulas table.
+6) Explain the discriminant and what it indicates.
+7) What is the volume of a cone? (Correct answer: “This information is not included in the syllabus.”)
+
+Out‑of‑Scope Guardrail
+- If a request is not covered by this document, the assistant must reply: “This information is not included in the syllabus.”
 SAT Math Study Guide
 
 Chapter 1: Algebra Fundamentals
