@@ -24,22 +24,22 @@ import { Link } from '@inertiajs/vue3';
                 <div>
                     <h4 class="font-bold mb-6 text-lg">About Us</h4>
                     <ul class="space-y-3 text-gray-300">
-                        <li><Link :href="route('about')" class="hover:text-yellow-400 transition-colors duration-300 flex items-center"><span class="mr-2">→</span>Our Story</Link></li>
-                        <li><Link :href="route('contact')" class="hover:text-yellow-400 transition-colors duration-300 flex items-center"><span class="mr-2">→</span>Contact Us</Link></li>
+                        <li><Link :href="route('about')" class="hover:text-yellow-400 transition-colors duration-300 flex items-center"><span class="mr-2">→</span>Nuestra historia</Link></li>
+                        <li><Link :href="route('contact')" class="hover:text-yellow-400 transition-colors duration-300 flex items-center"><span class="mr-2">→</span>Contacta con nosotros</Link></li>
                     </ul>
                 </div>
 
                 <div>
                     <h4 class="font-bold mb-6 text-lg">Legal</h4>
                     <ul class="space-y-3 text-gray-300">
-                        <li><Link :href="route('legal.privacy')" class="hover:text-yellow-400 transition-colors duration-300 flex items-center"><span class="mr-2">→</span>Privacy Policy</Link></li>
-                        <li><Link :href="route('legal.terms')" class="hover:text-yellow-400 transition-colors duration-300 flex items-center"><span class="mr-2">→</span>Terms of Service</Link></li>
-                        <li><Link :href="route('legal.cookies')" class="hover:text-yellow-400 transition-colors duration-300 flex items-center"><span class="mr-2">→</span>Cookie Policy</Link></li>
+                        <li><Link :href="route('legal.privacy')" class="hover:text-yellow-400 transition-colors duration-300 flex items-center"><span class="mr-2">→</span>Política de privacidad</Link></li>
+                        <li><Link :href="route('legal.terms')" class="hover:text-yellow-400 transition-colors duration-300 flex items-center"><span class="mr-2">→</span>Términos y Condiciones</Link></li>
+                        <li><Link :href="route('legal.cookies')" class="hover:text-yellow-400 transition-colors duration-300 flex items-center"><span class="mr-2">→</span>Política de Cookies</Link></li>
                     </ul>
                 </div>
 
                 <div>
-                    <h4 class="font-bold mb-6 text-lg">Connect With Us</h4>
+                    <h4 class="font-bold mb-6 text-lg">Conecta con nosotros</h4>
                     <div class="flex space-x-4 mb-6">
                         <a href="#" class="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center hover:from-blue-500 hover:to-blue-600 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg">
                             <span class="text-xl">📘</span>
