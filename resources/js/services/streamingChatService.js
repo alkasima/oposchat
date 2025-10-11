@@ -309,8 +309,17 @@ class StreamingChatService {
             return content;
         }
 
-        // Try to detect and process table format
-        const lines = content.split('\n').filter(line => line.trim());
+        // Detect and convert contiguous table blocks within mixed content
+        const originalLines = content.split('\n');
+        const lines = [...originalLines];
+        const isSeparatorLine = (line) => /^\|?[\-:=\s\|]+\|?$/.test(line.trim());
+        const isTableRowLine = (line) => {
+            const trimmed = line.trim();
+            if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) return false;
+            const pipeCount = (trimmed.match(/\|/g) || []).length;
+            const startsOrEndsWithPipe = trimmed.startsWith('|') || trimmed.endsWith('|');
+            return startsOrEndsWithPipe && pipeCount >= 2;
+        };
         console.log('Table lines:', lines);
 
         // Check if this looks like a markdown table
@@ -318,20 +327,32 @@ class StreamingChatService {
         const hasSeparator = lines.some(line => line.includes('|') && (line.includes('-') || line.includes('=')));
 
         console.log('Has headers:', hasHeaders, 'Has separator:', hasSeparator);
-
-        if (hasHeaders && hasSeparator) {
-            console.log('Detected markdown table format');
-            return this.processStandardTable(content);
+        const result = [];
+        let i = 0;
+        while (i < lines.length) {
+            const line = lines[i];
+            if (isTableRowLine(line)) {
+                let j = i + 1;
+                while (j < lines.length && lines[j].trim() === '') j++;
+                if (j < lines.length && isSeparatorLine(lines[j])) {
+                    const block = [line, lines[j]];
+                    j++;
+                    while (j < lines.length && (isTableRowLine(lines[j]) || isSeparatorLine(lines[j]) || lines[j].trim() === '')) {
+                        block.push(lines[j]);
+                        j++;
+                    }
+                    const blockText = block.join('\n');
+                    const tableHtml = this.processStandardTable(blockText);
+                    result.push(tableHtml);
+                    i = j;
+                    continue;
+                }
+            }
+            result.push(line);
+            i++;
         }
 
-        // Check for single-line table format
-        if (content.includes('| Shape |') || content.includes('|Rectangle |')) {
-            console.log('Detected single-line table format');
-            return this.processSingleLineTableFormat(content);
-        }
-
-        console.log('No table format detected');
-        return content;
+        return result.join('\n');
     }
 
     // Process standard markdown table format

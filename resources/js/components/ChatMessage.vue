@@ -103,7 +103,7 @@ const processMathNotation = (content) => {
     return content;
 };
 
-// Process markdown tables
+// Process markdown tables within mixed content by converting contiguous table blocks
 const processMarkdownTables = (content) => {
     console.log('Processing table content:', content);
 
@@ -113,35 +113,50 @@ const processMarkdownTables = (content) => {
         return content;
     }
 
-    // Try to detect and process table format
-    const lines = content.split('\n').filter(line => line.trim());
-    console.log('Table lines:', lines);
+    // Detect and convert contiguous table blocks within mixed content
+    const originalLines = content.split('\n');
+    const isSeparatorLine = (line) => /^\|?[\-:=\s\|]+\|?$/.test(line.trim());
+    const isTableRowLine = (line) => {
+        const trimmed = line.trim();
+        if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) return false;
+        const pipeCount = (trimmed.match(/\|/g) || []).length;
+        const startsOrEndsWithPipe = trimmed.startsWith('|') || trimmed.endsWith('|');
+        return startsOrEndsWithPipe && pipeCount >= 2;
+    };
 
-    // Check if this looks like a markdown table
-    const hasHeaders = lines.some(line => line.startsWith('|') && line.endsWith('|'));
-    const hasSeparator = lines.some(line => line.includes('|') && (line.includes('-') || line.includes('=')));
-
-    console.log('Has headers:', hasHeaders, 'Has separator:', hasSeparator);
-
-    if (hasHeaders && hasSeparator) {
-        console.log('Detected markdown table format');
-        return processStandardTable(content);
+    // Walk through lines and convert blocks
+    const lines = [...originalLines];
+    const result = [];
+    let i = 0;
+    while (i < lines.length) {
+        const line = lines[i];
+        if (isTableRowLine(line)) {
+            let j = i + 1;
+            while (j < lines.length && lines[j].trim() === '') j++;
+            if (j < lines.length && isSeparatorLine(lines[j])) {
+                const block = [line, lines[j]];
+                j++;
+                while (j < lines.length && (isTableRowLine(lines[j]) || isSeparatorLine(lines[j]) || lines[j].trim() === '')) {
+                    block.push(lines[j]);
+                    j++;
+                }
+                const blockText = block.join('\n');
+                const tableHtml = processStandardTable(blockText);
+                result.push(tableHtml);
+                i = j;
+                continue;
+            }
+        }
+        result.push(line);
+        i++;
     }
 
-    // Check for single-line table format
-    if (content.includes('| Shape |') || content.includes('|Rectangle |')) {
-        console.log('Detected single-line table format');
-        return processSingleLineTableFormat(content);
-    }
-
-    console.log('No table format detected');
-    return content;
+    return result.join('\n');
 };
 
 // Process standard markdown table format
 const processStandardTable = (content) => {
-    console.log('Processing standard table format');
-
+    try {
     const lines = content.split('\n').filter(line => line.trim());
     if (lines.length < 2) return content;
 
@@ -190,6 +205,10 @@ const processStandardTable = (content) => {
     tableHtml += '</tbody></table></div>';
 
     return tableHtml;
+    } catch (error) {
+        console.error('Error in processStandardTable:', error);
+        return content; // Return original content if there's an error
+    }
 };
 
 // Process single-line table format
@@ -353,12 +372,27 @@ const formatContent = (content) => {
     
     formattedContent = processedLines.join('\n');
     
+    // Protect generated tables from paragraph wrapping by placeholders
+    const tablePlaceholders = [];
+    let placeholderIndex = 0;
+    formattedContent = formattedContent.replace(/<div class="overflow-x-auto[\s\S]*?<\/div>/g, (match) => {
+        const placeholder = `__TABLE_BLOCK_${placeholderIndex}__`;
+        tablePlaceholders.push(match);
+        placeholderIndex++;
+        return placeholder;
+    });
+    
     // Process line breaks more intelligently - only add breaks between paragraphs, not every line
     formattedContent = formattedContent
         .replace(/\n\n+/g, '</p><p class="mb-3">')  // Multiple newlines = paragraph breaks
         .replace(/\n/g, ' ')                        // Single newlines = spaces
         .replace(/^/, '<p class="mb-3">')           // Start with paragraph
         .replace(/$/, '</p>');                      // End with paragraph
+
+    // Restore protected table blocks
+    for (let k = 0; k < tablePlaceholders.length; k++) {
+        formattedContent = formattedContent.replace(`__TABLE_BLOCK_${k}__`, tablePlaceholders[k]);
+    }
     
     // Clean up empty paragraphs
     formattedContent = formattedContent.replace(/<p class="mb-3"><\/p>/g, '');
