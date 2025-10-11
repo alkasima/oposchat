@@ -49,6 +49,9 @@ const showMobileSidebar = ref(false);
 // Persist selected course per chat in localStorage
 const storageKeyForChat = (chatId: string) => `oposchat:selectedCourse:${chatId}`;
 
+// Persist current chat ID in localStorage
+const CURRENT_CHAT_KEY = 'oposchat:currentChatId';
+
 const saveSelectedCourse = () => {
     if (currentChat.value?.id) {
         const key = storageKeyForChat(currentChat.value.id.toString());
@@ -74,6 +77,34 @@ const loadSelectedCourse = (chatId: string) => {
         }
     } catch (e) {
         // ignore malformed storage
+    }
+};
+
+// Save current chat ID to localStorage
+const saveCurrentChat = (chatId: string) => {
+    try {
+        localStorage.setItem(CURRENT_CHAT_KEY, chatId);
+    } catch (e) {
+        console.error('Failed to save current chat:', e);
+    }
+};
+
+// Load current chat ID from localStorage
+const loadCurrentChat = () => {
+    try {
+        return localStorage.getItem(CURRENT_CHAT_KEY);
+    } catch (e) {
+        console.error('Failed to load current chat:', e);
+        return null;
+    }
+};
+
+// Clear current chat from localStorage
+const clearCurrentChat = () => {
+    try {
+        localStorage.removeItem(CURRENT_CHAT_KEY);
+    } catch (e) {
+        console.error('Failed to clear current chat:', e);
     }
 };
 
@@ -150,10 +181,11 @@ const {
 const handleChatSelected = async (chatId: string | null) => {
     // Close mobile sidebar when a chat is selected
     showMobileSidebar.value = false;
-    
+
     if (!chatId) {
         currentChat.value = null;
         messages.value = [];
+        clearCurrentChat();
         return;
     }
 
@@ -169,6 +201,8 @@ const handleChatSelected = async (chatId: string | null) => {
         // Try to hydrate course selection from storage
         loadSelectedCourse(currentChat.value.id.toString());
         showCourseRequired.value = !currentChat.value.course_id;
+        // Save current chat ID to localStorage
+        saveCurrentChat(chatId);
     } catch (error) {
         console.error('Failed to load chat:', error);
     } finally {
@@ -176,16 +210,25 @@ const handleChatSelected = async (chatId: string | null) => {
     }
 };
 
-// Auto-load chat if provided via prop (from /chat/{id})
-if (props.initialChatId) {
-    handleChatSelected(props.initialChatId.toString());
-}
+// Auto-load chat if provided via prop (from /chat/{id}) or restore from localStorage
+onMounted(() => {
+    if (props.initialChatId) {
+        // If we have an initial chat ID from the URL/route, use it
+        handleChatSelected(props.initialChatId.toString());
+    } else {
+        // Otherwise, try to restore the last active chat from localStorage
+        const savedChatId = loadCurrentChat();
+        if (savedChatId && savedChatId !== 'null' && savedChatId !== 'undefined') {
+            handleChatSelected(savedChatId);
+        }
+    }
+});
 
 // Handle new chat creation from sidebar
 const handleNewChatCreated = (newChat: any) => {
     // Close mobile sidebar when a new chat is created
     showMobileSidebar.value = false;
-    
+
     // Set the new chat as current
     currentChat.value = {
         id: newChat.id.toString(),
@@ -195,17 +238,20 @@ const handleNewChatCreated = (newChat: any) => {
     // Hydrate from storage if present
     loadSelectedCourse(currentChat.value.id.toString());
     showCourseRequired.value = !currentChat.value.course_id;
-    
+
     // Clear messages for new chat
     messages.value = [];
-    
+
     // Stop any active streaming
     if (streamingChatService) {
         streamingChatService.stopAllStreaming();
     }
-    
+
     // Reset typing state
     isTyping.value = false;
+
+    // Save the new chat ID to localStorage
+    saveCurrentChat(newChat.id.toString());
 };
 
 // Send message to current chat using streaming
