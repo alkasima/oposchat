@@ -153,58 +153,22 @@ const loadChats = async () => {
 };
 
 const createNewChat = async () => {
-    // Check if user can create new conversations
-    if (!hasFeatureAccess('chat_messages')) {
-        const chatUsage = usage.value.chat_messages;
-        subscriptionPromptData.value = {
-            type: 'usage_limit_exceeded',
-            title: 'Daily Limit Reached',
-            message: `You've reached your daily limit of ${chatUsage?.limit || 0} conversations. Upgrade to Premium for 200 messages per month or Plus for unlimited messages.`,
-            resetTime: chatUsage?.reset_time,
-            showWaitOption: false // Remove wait option
-        };
-        showSubscriptionPrompt.value = true;
-        return;
-    }
-
-    try {
-        const newChat = await chatApi.createChat();
-        
-        // Add to chat list
-        chats.value.unshift({
-            ...newChat,
-            isActive: true
-        });
-        
-        // Clear previous active states
-        chats.value.forEach((chat, index) => {
-            if (index > 0) chat.isActive = false;
-        });
-        
-        // Update active chat
-        activeChat.value = newChat.id.toString();
-        
-        // Emit events to parent
-        emit('newChatCreated', newChat);
-        emit('chatSelected', newChat.id.toString());
-        
-        // Refresh usage data to update immediately
-        await fetchUsageData();
-    } catch (error) {
-        const errorInfo = handleSubscriptionError(error);
-        if (errorInfo.type === 'usage_limit_exceeded' || errorInfo.type === 'subscription_required') {
-            subscriptionPromptData.value = {
-                type: errorInfo.type,
-                title: errorInfo.type === 'usage_limit_exceeded' ? 'Daily Limit Reached' : 'Premium Feature',
-                message: errorInfo.message,
-                resetTime: errorInfo.resetTime,
-                showWaitOption: false // Remove wait option && errorInfo.type === 'usage_limit_exceeded'
-            };
-            showSubscriptionPrompt.value = true;
-        } else {
-            console.error('Failed to create chat:', error);
-        }
-    }
+    // Instead of creating a chat immediately, just clear the current chat
+    // The chat will be created when the user sends their first message
+    
+    // Clear previous active states
+    chats.value.forEach((chat) => {
+        chat.isActive = false;
+    });
+    
+    // Clear active chat
+    activeChat.value = null;
+    
+    // Emit events to parent to clear current chat
+    emit('chatSelected', null);
+    
+    // Show a message that they can start typing
+    console.log('Ready for new conversation - start typing to create a chat');
 };
 
 const selectChat = (chatId: string) => {
@@ -460,7 +424,7 @@ onMounted(async () => {
                     @click="showUserMenu = !showUserMenu"
                     class=""
                     :class="{ 
-                        'w-full justify-start p-3': !isCollapsed, 
+                        'w-full justify-center p-3': !isCollapsed, 
                         'w-10 h-10 p-0': isCollapsed,
                         'bg-gray-800 hover:bg-gray-700 text-white': isDark,
                         'bg-gray-100 hover:bg-gray-200 text-gray-900': !isDark
@@ -472,19 +436,22 @@ onMounted(async () => {
                         <Crown v-if="hasPremium" class="w-3 h-3 text-yellow-400" />
                         <User v-else class="w-3 h-3" :class="isCollapsed ? 'text-white' : (isDark ? 'text-white' : 'text-gray-600')" />
                     </div>
-                    <div v-if="!isCollapsed" class="flex-1 text-left">
-                        <div class="text-sm font-medium flex items-center" :class="isDark ? 'text-white' : 'text-gray-900'">
-                            {{ user?.name || 'User' }}
+                    <div v-if="!isCollapsed" class="flex-1 text-center">
+                        <div class="text-sm font-medium flex items-center justify-center mb-1" :class="isDark ? 'text-white' : 'text-gray-900'">
+                            <span>{{ user?.name || 'User' }}</span>
                             <span v-if="hasPremium" class="ml-2 px-2 py-0.5 text-xs bg-yellow-500 text-black rounded-full font-medium">
                                 {{ currentPlanName }}
                             </span>
                         </div>
-                        <div class="text-xs" :class="isDark ? 'text-gray-400' : 'text-gray-500'">{{ user?.email }}</div>
-                        <div class="text-xs mt-1 flex items-center justify-between" :class="isDark ? 'text-gray-500' : 'text-gray-600'">
+                        <div class="text-xs mb-1 px-3 py-2 rounded-lg flex items-center justify-center gap-2" :class="isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'">
+                            <Crown v-if="hasPremium" class="w-3 h-3 text-yellow-500 flex-shrink-0" />
+                            <span class="truncate">{{ user?.email }}</span>
+                        </div>
+                        <div class="text-xs flex items-center justify-center gap-2" :class="isDark ? 'text-gray-500' : 'text-gray-600'">
                             <span>Plan: {{ currentPlanName }}</span>
                             <button 
                                 @click="refreshSubscriptionData"
-                                class="ml-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                                class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
                                 title="Refresh subscription status"
                             >
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

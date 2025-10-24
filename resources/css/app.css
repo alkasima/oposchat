@@ -232,13 +232,14 @@
         width: 6px;
     }
     
+    /* Light mode scrollbar */
     .scrollbar-thin::-webkit-scrollbar-track {
-        background: rgb(31 41 55); /* gray-800 */
+        background: rgb(243 244 246); /* gray-100 */
         border-radius: 3px;
     }
     
     .scrollbar-thin::-webkit-scrollbar-thumb {
-        background: rgb(75 85 99); /* gray-600 */
+        background: rgb(156 163 175); /* gray-400 */
         border-radius: 3px;
         transition: background-color 0.2s ease;
     }
@@ -247,9 +248,27 @@
         background: rgb(107 114 128); /* gray-500 */
     }
     
-    /* Firefox scrollbar styles */
+    /* Dark mode scrollbar */
+    .dark .scrollbar-thin::-webkit-scrollbar-track {
+        background: rgb(31 41 55); /* gray-800 */
+    }
+    
+    .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: rgb(75 85 99); /* gray-600 */
+    }
+    
+    .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+        background: rgb(107 114 128); /* gray-500 */
+    }
+    
+    /* Firefox scrollbar styles - light mode */
     .scrollbar-thin {
         scrollbar-width: thin;
+        scrollbar-color: rgb(156 163 175) rgb(243 244 246);
+    }
+    
+    /* Firefox scrollbar styles - dark mode */
+    .dark .scrollbar-thin {
         scrollbar-color: rgb(75 85 99) rgb(31 41 55);
     }
     

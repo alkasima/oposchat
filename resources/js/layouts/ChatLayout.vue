@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { Head, usePage, Link, router } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +38,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const selectedFile = ref<File | null>(null);
 const isProcessingFile = ref(false);
 const imagePreviewUrl = ref<string | null>(null);
+const chatContainer = ref<HTMLDivElement | null>(null);
 
 // Real chat data
 const messages = ref<Message[]>([]);
@@ -177,6 +178,24 @@ const {
     fetchUsageData
 } = useSubscription();
 
+// Function to scroll to bottom of chat
+const scrollToBottom = async () => {
+    await nextTick();
+    
+    const attemptScroll = () => {
+        const container = chatContainer.value || document.querySelector('.chat-scrollbar');
+        if (container) {
+            container.scrollTop = container.scrollHeight;
+            console.log('Scrolled to bottom:', container.scrollTop, container.scrollHeight);
+        }
+    };
+    
+    // Try multiple times with increasing delays
+    setTimeout(attemptScroll, 100);
+    setTimeout(attemptScroll, 300);
+    setTimeout(attemptScroll, 500);
+};
+
 // Handle chat selection from sidebar
 const handleChatSelected = async (chatId: string | null) => {
     // Close mobile sidebar when a chat is selected
@@ -203,6 +222,12 @@ const handleChatSelected = async (chatId: string | null) => {
         showCourseRequired.value = !currentChat.value.course_id;
         // Save current chat ID to localStorage
         saveCurrentChat(chatId);
+        
+        // Wait for messages to render and then scroll to bottom
+        await nextTick();
+        setTimeout(async () => {
+            await scrollToBottom();
+        }, 200);
     } catch (error) {
         console.error('Failed to load chat:', error);
     } finally {
@@ -210,16 +235,36 @@ const handleChatSelected = async (chatId: string | null) => {
     }
 };
 
+// Watch for messages changes and scroll to bottom
+watch(() => messages.value.length, async () => {
+    if (messages.value.length > 0) {
+        await nextTick();
+        setTimeout(async () => {
+            await scrollToBottom();
+        }, 100);
+    }
+}, { flush: 'post' });
+
+// Watch for when messages array changes (new chat loaded)
+watch(() => messages.value, async (newMessages) => {
+    if (newMessages && newMessages.length > 0) {
+        await nextTick();
+        setTimeout(async () => {
+            await scrollToBottom();
+        }, 300);
+    }
+}, { deep: true, flush: 'post' });
+
 // Auto-load chat if provided via prop (from /chat/{id}) or restore from localStorage
-onMounted(() => {
+onMounted(async () => {
     if (props.initialChatId) {
         // If we have an initial chat ID from the URL/route, use it
-        handleChatSelected(props.initialChatId.toString());
+        await handleChatSelected(props.initialChatId.toString());
     } else {
         // Otherwise, try to restore the last active chat from localStorage
         const savedChatId = loadCurrentChat();
         if (savedChatId && savedChatId !== 'null' && savedChatId !== 'undefined') {
-            handleChatSelected(savedChatId);
+            await handleChatSelected(savedChatId);
         }
     }
 });
@@ -256,7 +301,13 @@ const handleNewChatCreated = (newChat: any) => {
 
 // Send message to current chat using streaming
 const sendMessage = async () => {
-    if (!currentMessage.value.trim() || !currentChat.value) return;
+    if (!currentMessage.value.trim()) return;
+    
+    // If no current chat, try to create one first
+    if (!currentChat.value) {
+        const chatCreated = await createNewChatIfNeeded();
+        if (!chatCreated) return; // Chat creation failed or was blocked
+    }
 
     // Require an exam selection before chatting
     if (!currentChat.value.course_id) {
@@ -515,23 +566,51 @@ const fallbackToRegularChat = async (messageContent: string, streamingMessageId:
 const createNewChatIfNeeded = async () => {
     if (!currentChat.value && currentMessage.value.trim()) {
         try {
+            // Check if user can create new conversations
+            if (!hasFeatureAccess('chat_messages')) {
+                const chatUsage = usage.value.chat_messages;
+                subscriptionPromptData.value = {
+                    type: 'usage_limit_exceeded',
+                    title: 'Daily Limit Reached',
+                    message: `You've reached your daily limit of ${chatUsage?.limit || 0} conversations. Upgrade to Premium for 200 messages per month or Plus for unlimited messages.`,
+                    resetTime: chatUsage?.reset_time,
+                    showWaitOption: false
+                };
+                showSubscriptionPrompt.value = true;
+                return false;
+            }
+
             const newChat = await chatApi.createChat();
-            currentChat.value = { id: newChat.id.toString(), title: newChat.title };
+            currentChat.value = { 
+                id: newChat.id.toString(), 
+                title: newChat.title,
+                course_id: newChat.course_id 
+            };
             messages.value = [];
-            // Note: The sidebar will be updated when the user creates a new chat via the button
+            
+            // Save the new chat ID to localStorage
+            saveCurrentChat(newChat.id.toString());
+            
+            // Refresh usage data
+            await fetchUsageData();
+            
+            return true;
         } catch (error) {
-            console.error('Error al crear nuevo chat:', error);
+            console.error('Error creating new chat:', error);
             throw error; // Re-throw to handle in the calling function
         }
     }
+    return true;
 };
 
 const handleKeyDown = async (event: KeyboardEvent) => {
     if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
         try {
-            await createNewChatIfNeeded();
-            await sendMessage();
+            const chatCreated = await createNewChatIfNeeded();
+            if (chatCreated) {
+                await sendMessage();
+            }
         } catch (error) {
             console.error('Failed to send message:', error);
         }
@@ -1078,7 +1157,7 @@ if (savedSidebarState === 'false') {
 
 
             <!-- Chat Messages Area -->
-            <div class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 chat-scrollbar">
+            <div ref="chatContainer" class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 chat-scrollbar">
                 <div class="max-w-4xl mx-auto px-6 py-6">
                     <!-- Loading State -->
                     <div v-if="isLoading" class="flex items-center justify-center py-12">

@@ -33,6 +33,37 @@ const stopStreaming = () => {
     }
 };
 
+// Clean cell content by removing CSS utility classes and other unwanted content
+const cleanCellContent = (content) => {
+    if (!content) return '';
+    
+    // Remove CSS utility classes (common patterns)
+    let cleaned = content
+        // Remove common CSS utility classes
+        .replace(/\b(bg-\w+|text-\w+|border-\w+|rounded-\w+|px-\d+|py-\d+|mx-\d+|my-\d+|w-\d+|h-\d+|flex|grid|block|inline|hidden|visible|opacity-\d+|transition-\w+|duration-\d+|hover:\w+|dark:\w+|focus:\w+|active:\w+)\b/g, '')
+        // Remove fractional numbers that might be CSS values
+        .replace(/\b\d+\/\d+\b/g, '')
+        // Remove standalone numbers that might be CSS values
+        .replace(/\b(800|50|150|200|300|400|500|600|700|900)\b/g, '')
+        // Remove quotes and brackets that might be from CSS
+        .replace(/["']/g, '')
+        .replace(/[{}]/g, '')
+        // Remove transition and duration related text
+        .replace(/\b(transition-colors|duration-\d+|hover:bg-\w+|dark:hover:bg-\w+)\b/g, '')
+        // Remove specific patterns that appear in the issue
+        .replace(/\b(transition-colors:\s*\d+)\b/g, '')
+        .replace(/\b(\d+\s+\d+)\b/g, '')
+        .replace(/\b(\d+\/\d+)\b/g, '')
+        // Remove any remaining CSS-like syntax
+        .replace(/:\s*\d+/g, '')
+        .replace(/\s*>\s*/g, '')
+        // Clean up multiple spaces
+        .replace(/\s+/g, ' ')
+        .trim();
+    
+    return cleaned;
+};
+
 // Process LaTeX/math notation
 const processMathNotation = (content) => {
     // Process display math (block math) - \[ ... \]
@@ -173,11 +204,11 @@ const processStandardTable = (content) => {
 
     // Parse headers (line before separator)
     const headerLine = lines[separatorIndex - 1];
-    const headers = headerLine.split('|').slice(1, -1).map(h => h.trim());
+    const headers = headerLine.split('|').slice(1, -1).map(h => cleanCellContent(h.trim()));
 
     // Parse data rows (lines after separator)
     const dataRows = lines.slice(separatorIndex + 1).map(line => {
-        return line.split('|').slice(1, -1).map(cell => cell.trim());
+        return line.split('|').slice(1, -1).map(cell => cleanCellContent(cell.trim()));
     }).filter(row => row.length > 0 && row.some(cell => cell.length > 0));
 
     if (headers.length === 0 || dataRows.length === 0) return content;
@@ -241,10 +272,10 @@ const processSingleLineTableFormat = (content) => {
     for (let i = startIndex; i < parts.length; i += 4) {
         if (i + 3 < parts.length) {
             const row = [
-                parts[i].trim(),
-                parts[i + 1].trim(),
-                parts[i + 2].trim(),
-                parts[i + 3].trim()
+                cleanCellContent(parts[i].trim()),
+                cleanCellContent(parts[i + 1].trim()),
+                cleanCellContent(parts[i + 2].trim()),
+                cleanCellContent(parts[i + 3].trim())
             ];
             if (row.some(cell => cell.length > 0)) {
                 rows.push(row);
@@ -287,8 +318,20 @@ const formatContent = (content) => {
     if (!content) return '';
     
     
-    // First, let's clean up any existing $ artifacts from regex replacements
+    // First, clean up CSS utility classes and unwanted content
     let formattedContent = content
+        // Remove CSS utility classes that might be in the raw content
+        .replace(/\b(bg-\w+|text-\w+|border-\w+|rounded-\w+|px-\d+|py-\d+|mx-\d+|my-\d+|w-\d+|h-\d+|flex|grid|block|inline|hidden|visible|opacity-\d+|transition-\w+|duration-\d+|hover:\w+|dark:\w+|focus:\w+|active:\w+)\b/g, '')
+        // Remove specific patterns that appear in the issue
+        .replace(/\b(transition-colors:\s*\d+)\b/g, '')
+        .replace(/\b(\d+\s+\d+)\b/g, '')
+        .replace(/\b(\d+\/\d+)\b/g, '')
+        // Remove any remaining CSS-like syntax
+        .replace(/:\s*\d+/g, '')
+        .replace(/\s*>\s*/g, '')
+        // Clean up multiple spaces
+        .replace(/\s+/g, ' ')
+        // Remove $ artifacts from regex replacements
         .replace(/\$\d+/g, '')                    // Remove $1, $2, etc.
         .replace(/\$+/g, '')                      // Remove multiple $ signs
         .replace(/\*\*V\.\*\*/g, '**V.**')        // Fix V. specifically
@@ -319,6 +362,20 @@ const formatContent = (content) => {
     // Process bold and italic using function replacements
     formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, (match, p1) => `<strong>${p1}</strong>`);
     formattedContent = formattedContent.replace(/\*([^*\n]+)\*/g, (match, p1) => `<em>${p1}</em>`);
+
+    // Clean any remaining CSS artifacts that might appear in table content
+    formattedContent = formattedContent
+        // Remove any remaining CSS utility classes
+        .replace(/\b(bg-\w+|text-\w+|border-\w+|rounded-\w+|px-\d+|py-\d+|mx-\d+|my-\d+|w-\d+|h-\d+|flex|grid|block|inline|hidden|visible|opacity-\d+|transition-\w+|duration-\d+|hover:\w+|dark:\w+|focus:\w+|active:\w+)\b/g, '')
+        // Remove specific patterns that appear in the issue
+        .replace(/\b(transition-colors:\s*\d+)\b/g, '')
+        .replace(/\b(\d+\s+\d+)\b/g, '')
+        .replace(/\b(\d+\/\d+)\b/g, '')
+        // Remove any remaining CSS-like syntax
+        .replace(/:\s*\d+/g, '')
+        .replace(/\s*>\s*/g, '')
+        // Clean up multiple spaces
+        .replace(/\s+/g, ' ');
 
     // Process tables first (before lists to avoid conflicts)
     formattedContent = processMarkdownTables(formattedContent);
