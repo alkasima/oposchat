@@ -121,7 +121,48 @@ const decodeHtml = (html: string): string => {
 };
 
 // Format content with markdown-like formatting and sanitize output.
-const formatContent = (content: string | undefined): string => {
+// `applyHeuristics` toggles heading/list heuristics (disable while streaming)
+// Process list-like content that doesn't have proper markdown syntax
+const processListLikeContent = (content: string): string => {
+    // Look for patterns like "Topic 1", "Description:", "Examples:" that should be formatted as lists
+    const lines = content.split('\n');
+    const processedLines = [];
+    let inList = false;
+    let listItems = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        
+        // Check if this looks like a list item (Topic X, Description:, Examples:, etc.)
+        const isListItem = /^(Topic \d+|Description:|Examples?:?)$/i.test(line);
+        
+        if (isListItem) {
+            if (!inList) {
+                // Start a new list
+                inList = true;
+                listItems = [];
+            }
+            listItems.push(line);
+        } else {
+            // If we were in a list and now we're not, process the accumulated list
+            if (inList && listItems.length > 0) {
+                processedLines.push('- ' + listItems.join('\n- '));
+                inList = false;
+                listItems = [];
+            }
+            processedLines.push(line);
+        }
+    }
+    
+    // Handle any remaining list items
+    if (inList && listItems.length > 0) {
+        processedLines.push('- ' + listItems.join('\n- '));
+    }
+    
+    return processedLines.join('\n');
+};
+
+const formatContent = (content: string | undefined, applyHeuristics = true): string => {
     if (!content) return '';
 
     // First, decode any HTML entities so we can detect raw HTML tables
@@ -141,9 +182,32 @@ const formatContent = (content: string | undefined): string => {
         });
         sanitized = sanitized.replace(/<table(?![^>]*class=)/g, '<table class="w-full"');
 
+        // Ensure lists show bullets even if global reset removed them
+        sanitized = sanitized.replace(/<ul([^>]*)class=(["'])(.*?)\2([^>]*)>/g, (m, before, quote, cls, after) => {
+            // append list-disc and pl-6 ml-4 for proper indentation
+            const newCls = (cls + ' list-disc pl-6 ml-4').replace(/\s+/g, ' ').trim();
+            return `<ul${before}class=${quote}${newCls}${quote}${after}>`;
+        });
+        sanitized = sanitized.replace(/<ul(?![^>]*class=)/g, '<ul class="list-disc pl-6 ml-4"');
+        sanitized = sanitized.replace(/<ol([^>]*)class=(["'])(.*?)\2([^>]*)>/g, (m, before, quote, cls, after) => {
+            const newCls = (cls + ' list-decimal pl-6 ml-4').replace(/\s+/g, ' ').trim();
+            return `<ol${before}class=${quote}${newCls}${quote}${after}>`;
+        });
+        sanitized = sanitized.replace(/<ol(?![^>]*class=)/g, '<ol class="list-decimal pl-6 ml-4"');
+
         // Add classes to th/td
         sanitized = sanitized.replace(/<th>/g, '<th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800">');
         sanitized = sanitized.replace(/<td>/g, '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-900 dark:text-gray-100">');
+
+        // Heuristic: convert paragraph headings ending with ':' into proper headings
+        // when followed by a list or standalone paragraph heading.
+        if (applyHeuristics) {
+            sanitized = sanitized.replace(/<p>\s*([^<]{2,200}?)\s*:\s*<\/p>\s*(?=<(ul|ol)>)/g, '<h2>$1</h2>');
+            sanitized = sanitized.replace(/<p>\s*([^<]{2,200}?)\s*:\s*<\/p>/g, '<h2>$1</h2>');
+
+            // Convert an opening list item that is just a heading ("Heading:") into a heading
+            sanitized = sanitized.replace(/<(ul|ol)>\s*<li>\s*([^<]{2,200}?)\s*:\s*<\/li>\s*/g, '<h3>$2</h3><$1>');
+        }
 
         return sanitized;
     }
@@ -153,6 +217,9 @@ const formatContent = (content: string | undefined): string => {
 
     // Process LaTeX/math notation first
     text = processMathNotation(text);
+
+    // Process list-like content that doesn't have proper markdown syntax
+    text = processListLikeContent(text);
 
     // Render markdown to HTML (marked supports GFM tables)
     const html = marked.parse(text || '', { gfm: true });
@@ -169,6 +236,61 @@ const formatContent = (content: string | undefined): string => {
     sanitized = sanitized.replace(/<table(?![^>]*class=)/g, '<table class="w-full"');
     sanitized = sanitized.replace(/<th>/g, '<th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800">');
     sanitized = sanitized.replace(/<td>/g, '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-900 dark:text-gray-100">');
+
+    // Ensure lists show bullets (Tailwind reset may remove default markers)
+    sanitized = sanitized.replace(/<ul([^>]*)class=(["'])(.*?)\2([^>]*)>/g, (m, before, quote, cls, after) => {
+        const newCls = (cls + ' list-disc pl-6 ml-4').replace(/\s+/g, ' ').trim();
+        return `<ul${before}class=${quote}${newCls}${quote}${after}>`;
+    });
+    sanitized = sanitized.replace(/<ul(?![^>]*class=)/g, '<ul class="list-disc pl-6 ml-4"');
+    sanitized = sanitized.replace(/<ol([^>]*)class=(["'])(.*?)\2([^>]*)>/g, (m, before, quote, cls, after) => {
+        const newCls = (cls + ' list-decimal pl-6 ml-4').replace(/\s+/g, ' ').trim();
+        return `<ol${before}class=${quote}${newCls}${quote}${after}>`;
+    });
+    sanitized = sanitized.replace(/<ol(?![^>]*class=)/g, '<ol class="list-decimal pl-6 ml-4"');
+
+    // Heuristic: convert paragraph headings ending with ':' into proper headings
+    if (applyHeuristics) {
+        sanitized = sanitized.replace(/<p>\s*([^<]{2,200}?)\s*:\s*<\/p>\s*(?=<(ul|ol)>)/g, '<h2>$1</h2>');
+        sanitized = sanitized.replace(/<p>\s*([^<]{2,200}?)\s*:\s*<\/p>/g, '<h2>$1</h2>');
+        sanitized = sanitized.replace(/<(ul|ol)>\s*<li>\s*([^<]{2,200}?)\s*:\s*<\/li>\s*/g, '<h3>$2</h3><$1>');
+
+        // Promote lines like "Topic 1" to H2 when followed by a Description label
+        sanitized = sanitized.replace(/<p>\s*(Topic\s+\d[\w\s\-:\.]*)\s*<\/p>\s*(?=<p>\s*Description:)/gi, '<h2>$1</h2>');
+
+        // Bold the Description label and keep its content inline
+        sanitized = sanitized.replace(/<p>\s*Description:\s*(.*?)\s*<\/p>/gi, '<p><strong>Description:</strong> $1</p>');
+
+        // Convert Examples: + consecutive <p> lines into a list
+        const examplesLabel = /<p>\s*Examples:\s*<\/p>/i;
+        let exIdx = sanitized.search(examplesLabel);
+        while (exIdx !== -1) {
+            const labelMatch = sanitized.match(examplesLabel);
+            if (!labelMatch) break;
+            const startPos = sanitized.indexOf(labelMatch[0], exIdx);
+            let cursor = startPos + labelMatch[0].length;
+            const itemRe = /^\s*<p>\s*([\s\S]*?)\s*<\/p>/i;
+            const items: string[] = [];
+            while (true) {
+                const rest = sanitized.slice(cursor);
+                const m = rest.match(itemRe);
+                if (!m) break;
+                const text = m[1].trim();
+                // stop if next paragraph looks like a labeled section or another heading
+                if (/^([A-Z][A-Za-z0-9\s]{0,80}:)$/.test(text) || /^Topic\s+\d+/i.test(text)) break;
+                items.push(text);
+                cursor += m[0].length;
+            }
+            if (items.length > 0) {
+                const seqRe = new RegExp(labelMatch[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:\s*<p>\s*[\s\S]*?\s*<\/p>){' + items.length + '}', 'i');
+                const ul = '<p><strong>Examples:</strong></p><ul>' + items.map(i => '<li>' + i + '</li>').join('') + '</ul>';
+                sanitized = sanitized.replace(seqRe, ul);
+        } else {
+                break;
+            }
+            exIdx = sanitized.search(examplesLabel);
+        }
+    }
 
     return sanitized;
 };
@@ -198,7 +320,6 @@ watch(() => props.message.streamingContent, async () => {
     }
 }, { immediate: true });
 </script>
-
 <template>
     <div class="group flex items-start space-x-4 py-4" :data-message-id="message.id">
         <!-- Avatar -->
@@ -213,7 +334,6 @@ watch(() => props.message.streamingContent, async () => {
             </div>
         </div>
 
-        <!-- Message Content -->
         <div class="flex-1 min-w-0">
             <div class="flex items-center space-x-2 mb-1">
                 <span class="text-sm font-medium text-gray-900 dark:text-white">
@@ -236,7 +356,7 @@ watch(() => props.message.streamingContent, async () => {
                 <!-- Streaming content with real-time formatting -->
                 <div v-if="isStreaming && hasStreamingContent" 
                      class="streaming-content"
-                     v-html="formatContent(message.streamingContent)">
+                 v-html="formatContent(message.streamingContent, false)">
                 </div>
                 
                 <!-- Regular content with formatting -->
@@ -246,7 +366,6 @@ watch(() => props.message.streamingContent, async () => {
                 <!-- Streaming cursor -->
                 <span v-if="isStreaming" class="inline-block w-0.5 h-4 bg-orange-500 animate-pulse ml-1"></span>
             </div>
-
             <!-- Message Actions -->
             <div v-if="!isUser" class="flex items-center space-x-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
                 <!-- Stop streaming button -->
@@ -348,6 +467,33 @@ watch(() => props.message.streamingContent, async () => {
 
 .message-content {
     line-height: 1.6;
+}
+
+/* Heading styles for clearer structure in long plans */
+.streaming-content :deep(h1), .message-content :deep(h1) {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+.streaming-content :deep(h2), .message-content :deep(h2) {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: 0.9rem;
+    margin-bottom: 0.4rem;
+}
+.streaming-content :deep(h3), .message-content :deep(h3) {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-top: 0.7rem;
+    margin-bottom: 0.3rem;
+}
+
+/* Ensure table layout is full width */
+.streaming-content table,
+.message-content table {
+    width: 100%;
+    table-layout: auto;
 }
 
 /* Ensure tables in messages take full width */

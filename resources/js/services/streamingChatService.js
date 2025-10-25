@@ -258,7 +258,60 @@ class StreamingChatService {
         // Process other markdown elements
         formattedContent = this.processMarkdownElements(processedContent);
         
+        // Additional processing for list-like content without proper markdown syntax
+        formattedContent = this.processListLikeContent(formattedContent);
+        
         return formattedContent;
+    }
+
+    /**
+     * Process list-like content that doesn't have proper markdown syntax
+     */
+    processListLikeContent(content) {
+        // Look for patterns like "Topic 1", "Description:", "Examples:" that should be formatted as lists
+        const lines = content.split('\n');
+        const processedLines = [];
+        let inList = false;
+        let listItems = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            
+            // Check if this looks like a list item (Topic X, Description:, Examples:, etc.)
+            const isListItem = /^(Topic \d+|Description:|Examples?:?)$/i.test(line);
+            
+            if (isListItem) {
+                if (!inList) {
+                    // Start a new list
+                    inList = true;
+                    listItems = [];
+                }
+                listItems.push(line);
+            } else {
+                // If we were in a list and now we're not, process the accumulated list
+                if (inList && listItems.length > 0) {
+                    processedLines.push('<ul class="list-disc pl-6 ml-4 my-2 space-y-1">');
+                    listItems.forEach(item => {
+                        processedLines.push(`<li class="ml-2">${item}</li>`);
+                    });
+                    processedLines.push('</ul>');
+                    inList = false;
+                    listItems = [];
+                }
+                processedLines.push(line);
+            }
+        }
+        
+        // Handle any remaining list items
+        if (inList && listItems.length > 0) {
+            processedLines.push('<ul class="list-disc pl-6 ml-4 my-2 space-y-1">');
+            listItems.forEach(item => {
+                processedLines.push(`<li class="ml-2">${item}</li>`);
+            });
+            processedLines.push('</ul>');
+        }
+        
+        return processedLines.join('\n');
     }
 
     /**
@@ -584,7 +637,7 @@ class StreamingChatService {
             if (bulletMatch) {
                 if (!inList || listType !== 'ul') {
                     if (inList) processedLines.push(`</${listType}>`);
-                    processedLines.push('<ul class="list-disc list-inside my-2 space-y-1">');
+                    processedLines.push('<ul class="list-disc pl-6 ml-4 my-2 space-y-1">');
                     inList = true;
                     listType = 'ul';
                 }
@@ -592,7 +645,7 @@ class StreamingChatService {
             } else if (numberedMatch) {
                 if (!inList || listType !== 'ol') {
                     if (inList) processedLines.push(`</${listType}>`);
-                    processedLines.push('<ol class="list-decimal list-inside my-2 space-y-1">');
+                    processedLines.push('<ol class="list-decimal pl-6 ml-4 my-2 space-y-1">');
                     inList = true;
                     listType = 'ol';
                 }
