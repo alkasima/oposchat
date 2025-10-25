@@ -52,7 +52,7 @@ class StreamingChatService {
         this.eventSource.addEventListener('session_started', (event) => {
             const data = JSON.parse(event.data);
             sessionId = data.session_id;
-            console.log('Streaming session started:', sessionId);
+            console.log('Streaming session started: - streamingChatService.js:55', sessionId);
             
             // Update the stored connection with session ID
             const connection = this.activeConnections.get(chatId);
@@ -88,7 +88,7 @@ class StreamingChatService {
         this.eventSource.addEventListener('completed', (event) => {
             const data = JSON.parse(event.data);
             isComplete = true;
-            console.log('Streaming completed:', data.message_id);
+            console.log('Streaming completed: - streamingChatService.js:91', data.message_id);
             onComplete(data.message_id, accumulatedContent);
             this.cleanup(chatId);
         });
@@ -96,7 +96,7 @@ class StreamingChatService {
         // Handle usage limit exceeded
         this.eventSource.addEventListener('usage_limit_exceeded', (event) => {
             const data = JSON.parse(event.data);
-            console.log('Usage limit exceeded:', data);
+            console.log('Usage limit exceeded: - streamingChatService.js:99', data);
             onError({
                 type: 'USAGE_LIMIT_EXCEEDED',
                 message: data.message,
@@ -107,7 +107,7 @@ class StreamingChatService {
 
         // Handle errors
         this.eventSource.addEventListener('error', (event) => {
-            console.error('Streaming error:', event);
+            console.error('Streaming error: - streamingChatService.js:110', event);
             
             // Check if it's a connection error or server error
             if (this.eventSource.readyState === EventSource.CLOSED) {
@@ -123,7 +123,7 @@ class StreamingChatService {
 
         // Handle connection close
         this.eventSource.addEventListener('close', (event) => {
-            console.log('Streaming connection closed');
+            console.log('Streaming connection closed - streamingChatService.js:126');
             this.cleanup(chatId);
         });
 
@@ -152,7 +152,7 @@ class StreamingChatService {
                         }
                     });
                 } catch (error) {
-                    console.error('Error stopping streaming:', error);
+                    console.error('Error stopping streaming: - streamingChatService.js:155', error);
                 }
             }
 
@@ -181,13 +181,49 @@ class StreamingChatService {
     }
 
     /**
+     * Decode HTML entities
+     */
+    decodeHtml(html) {
+        const txt = document.createElement('textarea');
+        txt.innerHTML = html;
+        return txt.value;
+    }
+
+    /**
      * Format streaming content with progressive markdown rendering
      */
     formatStreamingContent(content) {
         if (!content) return '';
 
+        // First, decode HTML entities
+        const decodedContent = this.decodeHtml(content);
+
+        // If content contains HTML table tags, treat as HTML and add styling
+        if (decodedContent.includes('<table>')) {
+            let formattedContent = decodedContent;
+
+            // Add wrapper and styling to existing HTML tables
+            formattedContent = formattedContent.replace(
+                /<table>/g,
+                '<div class="overflow-x-auto my-6"><table class="w-full border-collapse border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">'
+            );
+            formattedContent = formattedContent.replace(/<\/table>/g, '</table></div>');
+
+            // Add styling to table headers and cells
+            formattedContent = formattedContent.replace(
+                /<th>/g,
+                '<th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800">'
+            );
+            formattedContent = formattedContent.replace(
+                /<td>/g,
+                '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-900 dark:text-gray-100">'
+            );
+
+            return formattedContent;
+        }
+
         // Handle code blocks progressively
-        let formattedContent = content;
+        let formattedContent = decodedContent;
         
         // Process incomplete code blocks
         const codeBlockRegex = /```(\w+)?\n([\s\S]*?)(?:```|$)/g;
@@ -301,18 +337,28 @@ class StreamingChatService {
      * Process markdown tables
      */
     processMarkdownTables(content) {
-        console.log('Processing table content:', content);
+        console.log('Processing table content: - streamingChatService.js:340', content);
 
         // Check if content contains table-like structure
         if (!content.includes('|')) {
-            console.log('No pipe characters found, skipping table processing');
+            console.log('No pipe characters found, skipping table processing - streamingChatService.js:344');
             return content;
         }
 
         // Detect and convert contiguous table blocks within mixed content
         const originalLines = content.split('\n');
         const lines = [...originalLines];
-        const isSeparatorLine = (line) => /^\|?[\-:=\s\|]+\|?$/.test(line.trim());
+        const isSeparatorLine = (line) => {
+            const trimmed = line.trim();
+            // Check if line contains | and multiple dashes or equals
+            if (!trimmed.includes('|') || (!trimmed.includes('-') && !trimmed.includes('='))) {
+                return false;
+            }
+            // Check for multiple dashes or equals (at least 2)
+            const dashCount = (trimmed.match(/-/g) || []).length;
+            const equalsCount = (trimmed.match(/=/g) || []).length;
+            return dashCount >= 2 || equalsCount >= 2;
+        };
         const isTableRowLine = (line) => {
             const trimmed = line.trim();
             if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) return false;
@@ -320,13 +366,13 @@ class StreamingChatService {
             const startsOrEndsWithPipe = trimmed.startsWith('|') || trimmed.endsWith('|');
             return startsOrEndsWithPipe && pipeCount >= 2;
         };
-        console.log('Table lines:', lines);
+        console.log('Table lines: - streamingChatService.js:369', lines);
 
         // Check if this looks like a markdown table
         const hasHeaders = lines.some(line => line.startsWith('|') && line.endsWith('|'));
         const hasSeparator = lines.some(line => line.includes('|') && (line.includes('-') || line.includes('=')));
 
-        console.log('Has headers:', hasHeaders, 'Has separator:', hasSeparator);
+        console.log('Has headers: - streamingChatService.js:375', hasHeaders, 'Has separator:', hasSeparator);
         const result = [];
         let i = 0;
         while (i < lines.length) {
@@ -357,17 +403,24 @@ class StreamingChatService {
 
     // Process standard markdown table format
     processStandardTable(content) {
-        console.log('Processing standard table format');
+        console.log('Processing standard table format - streamingChatService.js:406');
 
         const lines = content.split('\n').filter(line => line.trim());
         if (lines.length < 2) return content;
 
-        // Find separator line
+        // Find separator line - improved detection
         let separatorIndex = -1;
         for (let i = 0; i < lines.length; i++) {
-            if (lines[i].includes('|') && (lines[i].includes('-') || lines[i].includes('='))) {
-                separatorIndex = i;
-                break;
+            const line = lines[i].trim();
+            // Check if line contains | and - or = characters (markdown table separator)
+            if (line.includes('|') && (line.includes('-') || line.includes('='))) {
+                // Additional check: make sure it's actually a separator line
+                const hasMultipleDashes = (line.match(/-/g) || []).length >= 2;
+                const hasMultipleEquals = (line.match(/=/g) || []).length >= 2;
+                if (hasMultipleDashes || hasMultipleEquals) {
+                    separatorIndex = i;
+                    break;
+                }
             }
         }
 
@@ -384,23 +437,25 @@ class StreamingChatService {
 
         if (headers.length === 0 || dataRows.length === 0) return content;
 
-        // Build HTML table
-        let tableHtml = '<div class="overflow-x-auto my-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">';
-        tableHtml += '<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">';
+        // Build HTML table with ChatGPT-like styling
+        let tableHtml = '<div class="overflow-x-auto my-6">';
+        tableHtml += '<table class="w-full border-collapse border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">';
 
         // Headers
-        tableHtml += '<thead class="bg-gray-50 dark:bg-gray-800/50"><tr>';
+        tableHtml += '<thead class="bg-gray-50 dark:bg-gray-800"><tr>';
         headers.forEach(header => {
-            tableHtml += `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">${header}</th>`;
+            tableHtml += `<th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800">${header}</th>`;
         });
         tableHtml += '</tr></thead>';
 
         // Data rows
-        tableHtml += '<tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">';
+        tableHtml += '<tbody class="bg-white dark:bg-gray-900">';
         dataRows.forEach((row, index) => {
-            tableHtml += '<tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-150">';
+            const isEven = index % 2 === 0;
+            const rowClass = isEven ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800';
+            tableHtml += `<tr class="${rowClass}">`;
             row.forEach(cell => {
-                tableHtml += `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">${cell}</td>`;
+                tableHtml += `<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-900 dark:text-gray-100">${cell}</td>`;
             });
             tableHtml += '</tr>';
         });
@@ -411,11 +466,11 @@ class StreamingChatService {
 
     // Process single-line table format
     processSingleLineTableFormat(content) {
-        console.log('Processing single-line table format');
+        console.log('Processing singleline table format - streamingChatService.js:469');
 
         // Split by | and filter out empty parts
         const parts = content.split('|').filter(part => part.trim().length > 0);
-        console.log('Parts:', parts);
+        console.log('Parts: - streamingChatService.js:473', parts);
 
         // Find separator index
         let separatorIndex = -1;
@@ -426,7 +481,7 @@ class StreamingChatService {
             }
         }
 
-        console.log('Separator index:', separatorIndex);
+        console.log('Separator index: - streamingChatService.js:484', separatorIndex);
 
         // If we found a separator, skip it
         let startIndex = 0;
@@ -450,27 +505,29 @@ class StreamingChatService {
             }
         }
 
-        console.log('Rows:', rows);
+        console.log('Rows: - streamingChatService.js:508', rows);
 
         if (rows.length < 2) return content;
 
-        // Build HTML table
-        let tableHtml = '<div class="overflow-x-auto my-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">';
-        tableHtml += '<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">';
+        // Build HTML table with ChatGPT-like styling
+        let tableHtml = '<div class="overflow-x-auto my-6">';
+        tableHtml += '<table class="w-full border-collapse border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">';
 
         // Headers
-        tableHtml += '<thead class="bg-gray-50 dark:bg-gray-800/50"><tr>';
+        tableHtml += '<thead class="bg-gray-50 dark:bg-gray-800"><tr>';
         rows[0].forEach(header => {
-            tableHtml += `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">${header}</th>`;
+            tableHtml += `<th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800">${header}</th>`;
         });
         tableHtml += '</tr></thead>';
 
         // Data rows
-        tableHtml += '<tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">';
+        tableHtml += '<tbody class="bg-white dark:bg-gray-900">';
         rows.slice(1).forEach((row, index) => {
-            tableHtml += '<tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-150">';
+            const isEven = index % 2 === 0;
+            const rowClass = isEven ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800';
+            tableHtml += `<tr class="${rowClass}">`;
             row.forEach(cell => {
-                tableHtml += `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">${cell}</td>`;
+                tableHtml += `<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-900 dark:text-gray-100">${cell}</td>`;
             });
             tableHtml += '</tr>';
         });
@@ -485,11 +542,21 @@ class StreamingChatService {
      * Process markdown elements for streaming content
      */
     processMarkdownElements(content) {
-        // Process math notation first (before other elements)
-        content = this.processMathNotation(content);
-
-        // Process tables (before other elements to avoid conflicts)
+        // Process tables FIRST (before any other formatting)
         content = this.processMarkdownTables(content);
+        
+        // Protect generated tables from further processing
+        const tablePlaceholders = [];
+        let tablePlaceholderIndex = 0;
+        content = content.replace(/<div class="overflow-x-auto[\s\S]*?<\/div>/g, (match) => {
+            const placeholder = `__TABLE_PLACEHOLDER_${tablePlaceholderIndex}__`;
+            tablePlaceholders.push(match);
+            tablePlaceholderIndex++;
+            return placeholder;
+        });
+
+        // Process math notation (before other elements)
+        content = this.processMathNotation(content);
 
         // Headers - using function replacements to avoid $ issues
         content = content.replace(/^### (.*$)/gim, (match, p1) => `<h3 class="text-lg font-semibold mt-4 mb-2">${p1}</h3>`);
@@ -557,6 +624,11 @@ class StreamingChatService {
         // Clean up empty paragraphs
         content = content.replace(/<p class="mb-3"><\/p>/g, '');
         
+        // Restore protected tables
+        for (let i = 0; i < tablePlaceholders.length; i++) {
+            content = content.replace(`__TABLE_PLACEHOLDER_${i}__`, tablePlaceholders[i]);
+        }
+        
         return content;
     }
 
@@ -609,7 +681,7 @@ class StreamingChatService {
                 }
             }
         } catch (error) {
-            console.error('Failed to refresh usage data:', error);
+            console.error('Failed to refresh usage data: - streamingChatService.js:684', error);
         }
     }
 

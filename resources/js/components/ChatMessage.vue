@@ -2,6 +2,7 @@
 import { computed, ref, watch, nextTick } from 'vue';
 import { User, Bot, Copy, ThumbsUp, ThumbsDown, Square } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
+import MarkdownIt from 'markdown-it';
 
 interface Props {
     message: {
@@ -18,6 +19,8 @@ interface Props {
 
 const props = defineProps<Props>();
 
+const md = new MarkdownIt();
+
 const isUser = computed(() => props.message.role === 'user');
 const isStreaming = computed(() => props.message.isStreaming || false);
 const hasStreamingContent = computed(() => props.message.streamingContent && props.message.streamingContent !== props.message.content);
@@ -33,36 +36,6 @@ const stopStreaming = () => {
     }
 };
 
-// Clean cell content by removing CSS utility classes and other unwanted content
-const cleanCellContent = (content) => {
-    if (!content) return '';
-    
-    // Remove CSS utility classes (common patterns)
-    let cleaned = content
-        // Remove common CSS utility classes
-        .replace(/\b(bg-\w+|text-\w+|border-\w+|rounded-\w+|px-\d+|py-\d+|mx-\d+|my-\d+|w-\d+|h-\d+|flex|grid|block|inline|hidden|visible|opacity-\d+|transition-\w+|duration-\d+|hover:\w+|dark:\w+|focus:\w+|active:\w+)\b/g, '')
-        // Remove fractional numbers that might be CSS values
-        .replace(/\b\d+\/\d+\b/g, '')
-        // Remove standalone numbers that might be CSS values
-        .replace(/\b(800|50|150|200|300|400|500|600|700|900)\b/g, '')
-        // Remove quotes and brackets that might be from CSS
-        .replace(/["']/g, '')
-        .replace(/[{}]/g, '')
-        // Remove transition and duration related text
-        .replace(/\b(transition-colors|duration-\d+|hover:bg-\w+|dark:hover:bg-\w+)\b/g, '')
-        // Remove specific patterns that appear in the issue
-        .replace(/\b(transition-colors:\s*\d+)\b/g, '')
-        .replace(/\b(\d+\s+\d+)\b/g, '')
-        .replace(/\b(\d+\/\d+)\b/g, '')
-        // Remove any remaining CSS-like syntax
-        .replace(/:\s*\d+/g, '')
-        .replace(/\s*>\s*/g, '')
-        // Clean up multiple spaces
-        .replace(/\s+/g, ' ')
-        .trim();
-    
-    return cleaned;
-};
 
 // Process LaTeX/math notation
 const processMathNotation = (content) => {
@@ -134,341 +107,75 @@ const processMathNotation = (content) => {
     return content;
 };
 
-// Process markdown tables within mixed content by converting contiguous table blocks
-const processMarkdownTables = (content) => {
-    console.log('Processing table content:', content);
 
-    // Check if content contains table-like structure
-    if (!content.includes('|')) {
-        console.log('No pipe characters found, skipping table processing');
-        return content;
-    }
 
-    // Detect and convert contiguous table blocks within mixed content
-    const originalLines = content.split('\n');
-    const isSeparatorLine = (line) => /^\|?[\-:=\s\|]+\|?$/.test(line.trim());
-    const isTableRowLine = (line) => {
-        const trimmed = line.trim();
-        if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) return false;
-        const pipeCount = (trimmed.match(/\|/g) || []).length;
-        const startsOrEndsWithPipe = trimmed.startsWith('|') || trimmed.endsWith('|');
-        return startsOrEndsWithPipe && pipeCount >= 2;
-    };
 
-    // Walk through lines and convert blocks
-    const lines = [...originalLines];
-    const result = [];
-    let i = 0;
-    while (i < lines.length) {
-        const line = lines[i];
-        if (isTableRowLine(line)) {
-            let j = i + 1;
-            while (j < lines.length && lines[j].trim() === '') j++;
-            if (j < lines.length && isSeparatorLine(lines[j])) {
-                const block = [line, lines[j]];
-                j++;
-                while (j < lines.length && (isTableRowLine(lines[j]) || isSeparatorLine(lines[j]) || lines[j].trim() === '')) {
-                    block.push(lines[j]);
-                    j++;
-                }
-                const blockText = block.join('\n');
-                const tableHtml = processStandardTable(blockText);
-                result.push(tableHtml);
-                i = j;
-                continue;
-            }
-        }
-        result.push(line);
-        i++;
-    }
 
-    return result.join('\n');
+// Decode HTML entities
+const decodeHtml = (html: string): string => {
+    const txt = document.createElement('textarea');
+    txt.innerHTML = html;
+    return txt.value;
 };
-
-// Process standard markdown table format
-const processStandardTable = (content) => {
-    try {
-    const lines = content.split('\n').filter(line => line.trim());
-    if (lines.length < 2) return content;
-
-    // Find separator line
-    let separatorIndex = -1;
-    for (let i = 0; i < lines.length; i++) {
-        if (lines[i].includes('|') && (lines[i].includes('-') || lines[i].includes('='))) {
-            separatorIndex = i;
-            break;
-        }
-    }
-
-    if (separatorIndex === -1) return content;
-
-    // Parse headers (line before separator)
-    const headerLine = lines[separatorIndex - 1];
-    const headers = headerLine.split('|').slice(1, -1).map(h => cleanCellContent(h.trim()));
-
-    // Parse data rows (lines after separator)
-    const dataRows = lines.slice(separatorIndex + 1).map(line => {
-        return line.split('|').slice(1, -1).map(cell => cleanCellContent(cell.trim()));
-    }).filter(row => row.length > 0 && row.some(cell => cell.length > 0));
-
-    if (headers.length === 0 || dataRows.length === 0) return content;
-
-    // Build HTML table
-    let tableHtml = '<div class="overflow-x-auto my-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">';
-    tableHtml += '<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">';
-
-    // Headers
-    tableHtml += '<thead class="bg-gray-50 dark:bg-gray-800/50"><tr>';
-    headers.forEach(header => {
-        tableHtml += `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">${header}</th>`;
-    });
-    tableHtml += '</tr></thead>';
-
-    // Data rows
-    tableHtml += '<tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">';
-    dataRows.forEach((row, index) => {
-        tableHtml += '<tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-150">';
-        row.forEach(cell => {
-            tableHtml += `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">${cell}</td>`;
-        });
-        tableHtml += '</tr>';
-    });
-    tableHtml += '</tbody></table></div>';
-
-    return tableHtml;
-    } catch (error) {
-        console.error('Error in processStandardTable:', error);
-        return content; // Return original content if there's an error
-    }
-};
-
-// Process single-line table format
-const processSingleLineTableFormat = (content) => {
-    console.log('Processing single-line table format');
-
-    // Split by | and filter out empty parts
-    const parts = content.split('|').filter(part => part.trim().length > 0);
-    console.log('Parts:', parts);
-
-    // Find separator index
-    let separatorIndex = -1;
-    for (let i = 0; i < parts.length; i++) {
-        if (parts[i].includes('-') || parts[i].includes('=')) {
-            separatorIndex = i;
-            break;
-        }
-    }
-
-    console.log('Separator index:', separatorIndex);
-
-    // If we found a separator, skip it
-    let startIndex = 0;
-    if (separatorIndex !== -1) {
-        startIndex = separatorIndex + 4; // Skip separator row
-    }
-
-    // Group into rows (4 columns)
-    const rows = [];
-    for (let i = startIndex; i < parts.length; i += 4) {
-        if (i + 3 < parts.length) {
-            const row = [
-                cleanCellContent(parts[i].trim()),
-                cleanCellContent(parts[i + 1].trim()),
-                cleanCellContent(parts[i + 2].trim()),
-                cleanCellContent(parts[i + 3].trim())
-            ];
-            if (row.some(cell => cell.length > 0)) {
-                rows.push(row);
-            }
-        }
-    }
-
-    console.log('Rows:', rows);
-
-    if (rows.length < 2) return content;
-
-    // Build HTML table
-    let tableHtml = '<div class="overflow-x-auto my-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">';
-    tableHtml += '<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">';
-
-    // Headers
-    tableHtml += '<thead class="bg-gray-50 dark:bg-gray-800/50"><tr>';
-    rows[0].forEach(header => {
-        tableHtml += `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">${header}</th>`;
-    });
-    tableHtml += '</tr></thead>';
-
-    // Data rows
-    tableHtml += '<tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">';
-    rows.slice(1).forEach((row, index) => {
-        tableHtml += '<tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-150">';
-        row.forEach(cell => {
-            tableHtml += `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">${cell}</td>`;
-        });
-        tableHtml += '</tr>';
-    });
-    tableHtml += '</tbody></table></div>';
-
-    return tableHtml;
-};
-
 
 // Format content with markdown-like formatting
-const formatContent = (content) => {
+const formatContent = (content: string | undefined): string => {
     if (!content) return '';
-    
-    
-    // First, clean up CSS utility classes and unwanted content
-    let formattedContent = content
-        // Remove CSS utility classes that might be in the raw content
-        .replace(/\b(bg-\w+|text-\w+|border-\w+|rounded-\w+|px-\d+|py-\d+|mx-\d+|my-\d+|w-\d+|h-\d+|flex|grid|block|inline|hidden|visible|opacity-\d+|transition-\w+|duration-\d+|hover:\w+|dark:\w+|focus:\w+|active:\w+)\b/g, '')
-        // Remove specific patterns that appear in the issue
-        .replace(/\b(transition-colors:\s*\d+)\b/g, '')
-        .replace(/\b(\d+\s+\d+)\b/g, '')
-        .replace(/\b(\d+\/\d+)\b/g, '')
-        // Remove any remaining CSS-like syntax
-        .replace(/:\s*\d+/g, '')
-        .replace(/\s*>\s*/g, '')
-        // Clean up multiple spaces
-        .replace(/\s+/g, ' ')
-        // Remove $ artifacts from regex replacements
-        .replace(/\$\d+/g, '')                    // Remove $1, $2, etc.
-        .replace(/\$+/g, '')                      // Remove multiple $ signs
-        .replace(/\*\*V\.\*\*/g, '**V.**')        // Fix V. specifically
-        .replace(/V\.\s*Resources:/g, 'V. Resources:')  // Fix V. Resources specifically
-        .replace(/([IVX]+)\.\s*([A-Z])/g, '$1. $2');   // Fix Roman numerals spacing
-    
-    // Process code blocks first to protect them from other formatting
-    const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-    const codeBlocks = [];
-    let codeBlockIndex = 0;
-    
-    formattedContent = formattedContent.replace(codeBlockRegex, (match, language, codeContent) => {
-        const placeholder = `__CODE_BLOCK_${codeBlockIndex}__`;
-        const languageClass = language ? `language-${language}` : '';
-        codeBlocks[codeBlockIndex] = `<pre class="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 overflow-x-auto my-4"><code class="${languageClass}">${escapeHtml(codeContent.trim())}</code></pre>`;
-        codeBlockIndex++;
-        return placeholder;
-    });
-    
-    // Process headers using function replacements to avoid $ issues
-    formattedContent = formattedContent.replace(/^### (.*$)/gim, (match, p1) => `<h3 class="text-lg font-semibold mt-4 mb-2">${p1}</h3>`);
-    formattedContent = formattedContent.replace(/^## (.*$)/gim, (match, p1) => `<h2 class="text-xl font-semibold mt-4 mb-2">${p1}</h2>`);
-    formattedContent = formattedContent.replace(/^# (.*$)/gim, (match, p1) => `<h1 class="text-2xl font-bold mt-4 mb-2">${p1}</h1>`);
-    
-    // Process LaTeX/math notation first (before other formatting)
+
+    // If content contains HTML table tags (after decoding), treat as HTML and add styling
+    const decodedContent = decodeHtml(content);
+    if (decodedContent.includes('<table>')) {
+        let formattedContent = decodedContent;
+
+        // Add wrapper and styling to existing HTML tables
+        formattedContent = formattedContent.replace(
+            /<table>/g,
+            '<div class="overflow-x-auto my-6"><table class="w-full border-collapse border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">'
+        );
+        formattedContent = formattedContent.replace(/<\/table>/g, '</table></div>');
+
+        // Add styling to table headers and cells
+        formattedContent = formattedContent.replace(
+            /<th>/g,
+            '<th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800">'
+        );
+        formattedContent = formattedContent.replace(
+            /<td>/g,
+            '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-900 dark:text-gray-100">'
+        );
+
+        return formattedContent;
+    }
+
+    // Otherwise, treat as markdown
+    let formattedContent = content;
+
+    // Process LaTeX/math notation first
     formattedContent = processMathNotation(formattedContent);
 
-    // Process bold and italic using function replacements
-    formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, (match, p1) => `<strong>${p1}</strong>`);
-    formattedContent = formattedContent.replace(/\*([^*\n]+)\*/g, (match, p1) => `<em>${p1}</em>`);
+    // Parse markdown
+    formattedContent = md.render(formattedContent);
 
-    // Clean any remaining CSS artifacts that might appear in table content
-    formattedContent = formattedContent
-        // Remove any remaining CSS utility classes
-        .replace(/\b(bg-\w+|text-\w+|border-\w+|rounded-\w+|px-\d+|py-\d+|mx-\d+|my-\d+|w-\d+|h-\d+|flex|grid|block|inline|hidden|visible|opacity-\d+|transition-\w+|duration-\d+|hover:\w+|dark:\w+|focus:\w+|active:\w+)\b/g, '')
-        // Remove specific patterns that appear in the issue
-        .replace(/\b(transition-colors:\s*\d+)\b/g, '')
-        .replace(/\b(\d+\s+\d+)\b/g, '')
-        .replace(/\b(\d+\/\d+)\b/g, '')
-        // Remove any remaining CSS-like syntax
-        .replace(/:\s*\d+/g, '')
-        .replace(/\s*>\s*/g, '')
-        // Clean up multiple spaces
-        .replace(/\s+/g, ' ');
+    // Wrap tables with ChatGPT-like styling
+    formattedContent = formattedContent.replace(
+        /<table>/g,
+        '<div class="overflow-x-auto my-6"><table class="w-full border-collapse border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">'
+    );
+    formattedContent = formattedContent.replace(/<\/table>/g, '</table></div>');
 
-    // Process tables first (before lists to avoid conflicts)
-    formattedContent = processMarkdownTables(formattedContent);
+    // Add styling to table headers and cells
+    formattedContent = formattedContent.replace(
+        /<th>/g,
+        '<th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800">'
+    );
+    formattedContent = formattedContent.replace(
+        /<td>/g,
+        '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-900 dark:text-gray-100">'
+    );
 
-    // Process lists more carefully
-    const lines = formattedContent.split('\n');
-    const processedLines = [];
-    let inList = false;
-    let listType = null; // 'ul' or 'ol'
-    
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        
-        // Check for bullet list items
-        const bulletMatch = line.match(/^[-*+]\s+(.+)$/);
-        // Check for numbered list items  
-        const numberedMatch = line.match(/^(\d+)\.\s+(.+)$/);
-        
-        if (bulletMatch) {
-            if (!inList || listType !== 'ul') {
-                if (inList) processedLines.push(`</${listType}>`);
-                processedLines.push('<ul class="list-disc list-inside my-2 space-y-1">');
-                inList = true;
-                listType = 'ul';
-            }
-            const listContent = bulletMatch[1];
-            processedLines.push(`<li class="ml-2">${listContent}</li>`);
-        } else if (numberedMatch) {
-            if (!inList || listType !== 'ol') {
-                if (inList) processedLines.push(`</${listType}>`);
-                processedLines.push('<ol class="list-decimal list-inside my-2 space-y-1">');
-                inList = true;
-                listType = 'ol';
-            }
-            const listContent = numberedMatch[2];
-            processedLines.push(`<li class="ml-2" value="${numberedMatch[1]}">${listContent}</li>`);
-        } else {
-            if (inList) {
-                processedLines.push(`</${listType}>`);
-                inList = false;
-                listType = null;
-            }
-            processedLines.push(line);
-        }
-    }
-    
-    // Close any remaining list
-    if (inList) {
-        processedLines.push(`</${listType}>`);
-    }
-    
-    formattedContent = processedLines.join('\n');
-    
-    // Protect generated tables from paragraph wrapping by placeholders
-    const tablePlaceholders = [];
-    let placeholderIndex = 0;
-    formattedContent = formattedContent.replace(/<div class="overflow-x-auto[\s\S]*?<\/div>/g, (match) => {
-        const placeholder = `__TABLE_BLOCK_${placeholderIndex}__`;
-        tablePlaceholders.push(match);
-        placeholderIndex++;
-        return placeholder;
-    });
-    
-    // Process line breaks more intelligently - only add breaks between paragraphs, not every line
-    formattedContent = formattedContent
-        .replace(/\n\n+/g, '</p><p class="mb-3">')  // Multiple newlines = paragraph breaks
-        .replace(/\n/g, ' ')                        // Single newlines = spaces
-        .replace(/^/, '<p class="mb-3">')           // Start with paragraph
-        .replace(/$/, '</p>');                      // End with paragraph
-
-    // Restore protected table blocks
-    for (let k = 0; k < tablePlaceholders.length; k++) {
-        formattedContent = formattedContent.replace(`__TABLE_BLOCK_${k}__`, tablePlaceholders[k]);
-    }
-    
-    // Clean up empty paragraphs
-    formattedContent = formattedContent.replace(/<p class="mb-3"><\/p>/g, '');
-    
-    // Restore code blocks
-    for (let i = 0; i < codeBlocks.length; i++) {
-        formattedContent = formattedContent.replace(`__CODE_BLOCK_${i}__`, codeBlocks[i]);
-    }
-    
-    
     return formattedContent;
 };
 
-// Escape HTML to prevent XSS
-const escapeHtml = (text) => {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-};
 
 // Smart auto-scroll: only scroll if user is near the bottom
 const shouldAutoScroll = () => {

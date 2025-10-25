@@ -418,7 +418,7 @@ onMounted(async () => {
         </div>
 
         <!-- User Profile Section -->
-        <div class="p-4 border-t" :class="isDark ? 'border-gray-700' : 'border-gray-200'">
+        <div class="p-8 border-t" :class="isDark ? 'border-gray-700' : 'border-gray-200'">
             <div class="relative">
                 <Button 
                     @click="showUserMenu = !showUserMenu"
@@ -433,18 +433,16 @@ onMounted(async () => {
                     :title="isCollapsed ? 'User Menu' : ''"
                 >
                     <div class="w-6 h-6 rounded-full flex items-center justify-center" :class="{ 'mr-3': !isCollapsed, 'bg-orange-500': isCollapsed }">
-                        <Crown v-if="hasPremium" class="w-3 h-3 text-yellow-400" />
-                        <User v-else class="w-3 h-3" :class="isCollapsed ? 'text-white' : (isDark ? 'text-white' : 'text-gray-600')" />
+                        <User class="w-3 h-3" :class="isCollapsed ? 'text-white' : (isDark ? 'text-white' : 'text-gray-600')" />
                     </div>
                     <div v-if="!isCollapsed" class="flex-1 text-center">
-                        <div class="text-sm font-medium flex items-center justify-center mb-1" :class="isDark ? 'text-white' : 'text-gray-900'">
+                        <div class="text-sm font-medium flex items-center justify-center mb-2" :class="isDark ? 'text-white' : 'text-gray-900'">
                             <span>{{ user?.name || 'User' }}</span>
-                            <span v-if="hasPremium" class="ml-2 px-2 py-0.5 text-xs bg-yellow-500 text-black rounded-full font-medium">
+                            <span v-if="hasPremium" class="ml-2 px-1 py-0.5 text-xs bg-yellow-500 text-black rounded-full font-medium">
                                 {{ currentPlanName }}
                             </span>
                         </div>
                         <div class="text-xs mb-1 px-3 py-2 rounded-lg flex items-center justify-center gap-2" :class="isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'">
-                            <Crown v-if="hasPremium" class="w-3 h-3 text-yellow-500 flex-shrink-0" />
                             <span class="truncate">{{ user?.email }}</span>
                         </div>
                         <div class="text-xs flex items-center justify-center gap-2" :class="isDark ? 'text-gray-500' : 'text-gray-600'">
@@ -463,14 +461,14 @@ onMounted(async () => {
                 </Button>
 
                 <!-- User Menu Dropdown -->
-                <div v-if="showUserMenu" 
-                     class="absolute bottom-full left-0 right-0 mb-2 rounded-lg shadow-lg py-2 z-50"
-                     :class="isDark 
-                         ? 'bg-gray-800 border border-gray-700' 
-                         : 'bg-white border border-gray-200'">
-                    
+                <div v-if="showUserMenu"
+                     class="absolute bottom-full left-0 right-0 mb-2 rounded-lg shadow-lg py-1 z-50"
+                     :class="isDark
+                         ? 'bg-gray-800 border border-gray-700'
+                         : 'bg-gray-100 border border-gray-200'">
+
                     <!-- Usage Indicators -->
-                    <div v-if="usage.chat_messages && !usage.chat_messages.unlimited" class="px-3 py-2">
+                    <div v-if="usage.chat_messages && !usage.chat_messages.unlimited" class="px-2 py-1">
                         <UsageIndicator
                             feature="chat_messages"
                             feature-name="Chat Messages"
@@ -479,8 +477,8 @@ onMounted(async () => {
                             @upgrade="handleUpgradeClick"
                         />
                     </div>
-                    
-                    <div v-if="usage.file_uploads && !usage.file_uploads.unlimited" class="px-3 py-2">
+
+                    <div v-if="usage.file_uploads && !usage.file_uploads.unlimited" class="px-2 py-1">
                         <UsageIndicator
                             feature="file_uploads"
                             feature-name="File Uploads"
@@ -489,21 +487,21 @@ onMounted(async () => {
                             @upgrade="handleUpgradeClick"
                         />
                     </div>
-                    
+
                     <button @click="openSettings"
-                            class="w-full flex items-center px-4 py-2 text-sm transition-colors"
-                            :class="isDark 
-                                ? 'text-gray-300 hover:bg-gray-700 hover:text-white' 
-                                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'">
+                            class="w-full flex items-center px-3 py-1 text-sm transition-colors"
+                            :class="isDark
+                                ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                                : 'text-gray-700 hover:bg-gray-200 hover:text-gray-900'">
                         <Settings class="w-4 h-4 mr-3" />
                         Settings
                     </button>
                     <Separator class="my-1" :class="isDark ? 'bg-gray-700' : 'bg-gray-200'" />
-                    <button @click="logout" 
-                            class="w-full flex items-center px-4 py-2 text-sm transition-colors"
-                            :class="isDark 
-                                ? 'text-gray-300 hover:bg-gray-700 hover:text-white' 
-                                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'">
+                    <button @click="logout"
+                            class="w-full flex items-center px-3 py-1 text-sm transition-colors"
+                            :class="isDark
+                                ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                                : 'text-gray-700 hover:bg-gray-200 hover:text-gray-900'">
                         <LogOut class="w-4 h-4 mr-3" />
                         Sign out
                     </button>
