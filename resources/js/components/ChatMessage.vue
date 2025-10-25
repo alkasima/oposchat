@@ -2,7 +2,8 @@
 import { computed, ref, watch, nextTick } from 'vue';
 import { User, Bot, Copy, ThumbsUp, ThumbsDown, Square } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
-import MarkdownIt from 'markdown-it';
+import DOMPurify from 'dompurify';
+import { marked } from 'marked';
 
 interface Props {
     message: {
@@ -19,7 +20,8 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const md = new MarkdownIt();
+// Use marked for GFM (tables) and DOMPurify to sanitize output
+marked.setOptions({ gfm: true, breaks: true });
 
 const isUser = computed(() => props.message.role === 'user');
 const isStreaming = computed(() => props.message.isStreaming || false);
@@ -118,62 +120,57 @@ const decodeHtml = (html: string): string => {
     return txt.value;
 };
 
-// Format content with markdown-like formatting
+// Format content with markdown-like formatting and sanitize output.
 const formatContent = (content: string | undefined): string => {
     if (!content) return '';
 
-    // If content contains HTML table tags (after decoding), treat as HTML and add styling
+    // First, decode any HTML entities so we can detect raw HTML tables
     const decodedContent = decodeHtml(content);
-    if (decodedContent.includes('<table>')) {
-        let formattedContent = decodedContent;
 
-        // Add wrapper and styling to existing HTML tables
-        formattedContent = formattedContent.replace(
-            /<table>/g,
-            '<div class="overflow-x-auto my-6"><table class="w-full border-collapse border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">'
-        );
-        formattedContent = formattedContent.replace(/<\/table>/g, '</table></div>');
+    // If the decoded content contains an HTML table tag, treat it as HTML.
+    if (decodedContent.includes('<table')) {
+        // Sanitize the decoded HTML, then apply our table styling wrapper.
+    let sanitized = String(DOMPurify.sanitize(decodedContent, { USE_PROFILES: { html: true } }) as unknown as string);
 
-        // Add styling to table headers and cells
-        formattedContent = formattedContent.replace(
-            /<th>/g,
-            '<th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800">'
-        );
-        formattedContent = formattedContent.replace(
-            /<td>/g,
-            '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-900 dark:text-gray-100">'
-        );
+        sanitized = sanitized.replace(/<table/g, '<div class="overflow-x-auto my-6">$&');
+        sanitized = sanitized.replace(/<\/table>/g, '</table></div>');
 
-        return formattedContent;
+        // Ensure table elements take full width: add `w-full` class when missing
+        sanitized = sanitized.replace(/<table([^>]*)class=(["'])(.*?)\2([^>]*)>/g, (m, before, quote, cls, after) => {
+            return `<table${before}class=${quote}${cls} w-full${quote}${after}>`;
+        });
+        sanitized = sanitized.replace(/<table(?![^>]*class=)/g, '<table class="w-full"');
+
+        // Add classes to th/td
+        sanitized = sanitized.replace(/<th>/g, '<th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800">');
+        sanitized = sanitized.replace(/<td>/g, '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-900 dark:text-gray-100">');
+
+        return sanitized;
     }
 
-    // Otherwise, treat as markdown
-    let formattedContent = content;
+    // Otherwise treat as markdown (supports tables via GFM)
+    let text = content;
 
     // Process LaTeX/math notation first
-    formattedContent = processMathNotation(formattedContent);
+    text = processMathNotation(text);
 
-    // Parse markdown
-    formattedContent = md.render(formattedContent);
+    // Render markdown to HTML (marked supports GFM tables)
+    const html = marked.parse(text || '', { gfm: true });
 
-    // Wrap tables with ChatGPT-like styling
-    formattedContent = formattedContent.replace(
-        /<table>/g,
-        '<div class="overflow-x-auto my-6"><table class="w-full border-collapse border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">'
-    );
-    formattedContent = formattedContent.replace(/<\/table>/g, '</table></div>');
+    // Sanitize rendered HTML and style tables
+    let sanitized = String(DOMPurify.sanitize(html, { USE_PROFILES: { html: true } }) as unknown as string);
 
-    // Add styling to table headers and cells
-    formattedContent = formattedContent.replace(
-        /<th>/g,
-        '<th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800">'
-    );
-    formattedContent = formattedContent.replace(
-        /<td>/g,
-        '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-900 dark:text-gray-100">'
-    );
+    sanitized = sanitized.replace(/<table/g, '<div class="overflow-x-auto my-6">$&');
+    sanitized = sanitized.replace(/<\/table>/g, '</table></div>');
+    // Ensure table elements take full width: add `w-full` class when missing
+    sanitized = sanitized.replace(/<table([^>]*)class=(["'])(.*?)\2([^>]*)>/g, (m, before, quote, cls, after) => {
+        return `<table${before}class=${quote}${cls} w-full${quote}${after}>`;
+    });
+    sanitized = sanitized.replace(/<table(?![^>]*class=)/g, '<table class="w-full"');
+    sanitized = sanitized.replace(/<th>/g, '<th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800">');
+    sanitized = sanitized.replace(/<td>/g, '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-900 dark:text-gray-100">');
 
-    return formattedContent;
+    return sanitized;
 };
 
 
@@ -351,5 +348,12 @@ watch(() => props.message.streamingContent, async () => {
 
 .message-content {
     line-height: 1.6;
+}
+
+/* Ensure tables in messages take full width */
+.streaming-content table,
+.message-content table {
+    width: 100%;
+    table-layout: auto;
 }
 </style>
