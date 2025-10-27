@@ -4,6 +4,7 @@ import { User, Bot, Copy, ThumbsUp, ThumbsDown, Square } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
+import { useToast } from '@/composables/useToast';
 
 interface Props {
     message: {
@@ -20,6 +21,12 @@ interface Props {
 
 const props = defineProps<Props>();
 
+// Toast composable
+const { success } = useToast();
+
+// Template ref for the prose content area
+const proseRef = ref<HTMLElement | null>(null);
+
 // Use marked for GFM (tables) and DOMPurify to sanitize output
 marked.setOptions({ gfm: true, breaks: true });
 
@@ -27,9 +34,44 @@ const isUser = computed(() => props.message.role === 'user');
 const isStreaming = computed(() => props.message.isStreaming || false);
 const hasStreamingContent = computed(() => props.message.streamingContent && props.message.streamingContent !== props.message.content);
 
-const copyMessage = () => {
-    const contentToCopy = hasStreamingContent.value ? props.message.streamingContent! : props.message.content;
-    navigator.clipboard.writeText(contentToCopy);
+const copyMessage = async () => {
+    try {
+        if (!proseRef.value) {
+            console.error('No content to copy');
+            return;
+        }
+
+        // Get both HTML and text content from the rendered message
+        const htmlContent = proseRef.value.innerHTML || '';
+        const textContent = proseRef.value.innerText || proseRef.value.textContent || '';
+        
+        if (!htmlContent && !textContent) {
+            console.error('No content to copy');
+            return;
+        }
+
+        // Copy with formatting (HTML) and plain text fallback
+        // This allows pasting into Word with formatting preserved
+        await navigator.clipboard.write([
+            new ClipboardItem({
+                'text/html': new Blob([htmlContent], { type: 'text/html' }),
+                'text/plain': new Blob([textContent], { type: 'text/plain' })
+            })
+        ]);
+
+        // Show success toast
+        success('Copied to clipboard');
+    } catch (err) {
+        console.error('Failed to copy:', err);
+        // Fallback to plain text if ClipboardItem fails
+        try {
+            const textContent = proseRef.value?.innerText || proseRef.value?.textContent || '';
+            await navigator.clipboard.writeText(textContent);
+            success('Copied to clipboard');
+        } catch (fallbackErr) {
+            console.error('Fallback copy also failed:', fallbackErr);
+        }
+    }
 };
 
 const stopStreaming = () => {
@@ -352,7 +394,7 @@ watch(() => props.message.streamingContent, async () => {
                 </span>
             </div>
             
-            <div class="prose prose-sm max-w-none text-gray-900 dark:text-white">
+            <div ref="proseRef" class="prose prose-sm max-w-none text-gray-900 dark:text-white">
                 <!-- Streaming content with real-time formatting -->
                 <div v-if="isStreaming && hasStreamingContent" 
                      class="streaming-content"
@@ -366,7 +408,7 @@ watch(() => props.message.streamingContent, async () => {
                 <!-- Streaming cursor -->
                 <span v-if="isStreaming" class="inline-block w-0.5 h-4 bg-orange-500 animate-pulse ml-1"></span>
             </div>
-            <!-- Message Actions -->
+            <!-- Message Actions for Assistant -->
             <div v-if="!isUser" class="flex items-center space-x-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
                 <!-- Stop streaming button -->
                 <Button v-if="isStreaming" 
@@ -399,6 +441,18 @@ watch(() => props.message.streamingContent, async () => {
                         variant="ghost" 
                         class="h-8 px-2 text-gray-500 hover:text-gray-700">
                     <ThumbsDown class="w-3 h-3" />
+                </Button>
+            </div>
+            
+            <!-- Message Actions for User -->
+            <div v-if="isUser" class="flex items-center space-x-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                <!-- Copy button -->
+                <Button @click="copyMessage" 
+                        size="sm" 
+                        variant="ghost" 
+                        class="h-8 px-2 text-gray-500 hover:text-gray-700">
+                    <Copy class="w-3 h-3 mr-1" />
+                    Copy
                 </Button>
             </div>
         </div>

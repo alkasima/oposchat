@@ -9,6 +9,7 @@ import SettingsModal from '@/components/SettingsModal.vue';
 import SubscriptionPrompt from '@/components/SubscriptionPrompt.vue';
 import SubscriptionSuccessModal from '@/components/SubscriptionSuccessModal.vue';
 import CourseSelector from '@/components/CourseSelector.vue';
+import ToastContainer from '@/components/ui/toast/ToastContainer.vue';
 
 import { useSubscription } from '@/composables/useSubscription.js';
 import chatApi from '@/services/chatApi.js';
@@ -1376,5 +1377,8 @@ if (savedSidebarState === 'false') {
             :subscription="subscription"
             @close="showSuccessModal = false"
         />
+
+        <!-- Toast Container for notifications -->
+        <ToastContainer />
     </div>
 </template>
