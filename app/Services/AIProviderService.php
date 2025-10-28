@@ -496,7 +496,7 @@ class AIProviderService
         try {
             // Detect creative requests that need broader context
             $isCreativeRequest = $this->isCreativeStudyRequest($query);
-            $searchLimit = $isCreativeRequest ? 8 : 5; // Slightly conservative even for creative requests
+            $searchLimit = $isCreativeRequest ? 10 : 5; // Get more context for creative requests
             
             // Generate embedding for the query
             $embedding = $this->generateEmbedding($query);
@@ -534,19 +534,21 @@ class AIProviderService
 
             // Check if we have sufficient relevant content with more flexible thresholds
             $avgRelevance = !empty($relevanceScores) ? array_sum($relevanceScores) / count($relevanceScores) : 0;
-            $minRelevanceThreshold = 0.72; // Stricter threshold to keep answers syllabus-grounded
-            $minContextChunks = 2; // Require at least 2 chunks to proceed
-            $minHighRelevanceChunks = 2; // Require at least 2 highly relevant chunks (>= 0.78)
+            $minRelevanceThreshold = 0.60; // Lowered threshold for better coverage
+            $minContextChunks = 1; // Reduced requirement for creative responses
+            $minHighRelevanceChunks = 1; // Require at least 1 highly relevant chunk (>= 0.70)
 
             // Count highly relevant chunks
             $highRelevanceChunks = array_filter($relevanceScores, function($score) {
-                return $score >= 0.78;
+                return $score >= 0.70;
             });
 
-            // Stricter relevance determination to avoid hallucinations and off-syllabus content
+            // More flexible relevance determination for creative study assistance
+            // Allow responses if we have any relevant content, even if not highly relevant
             $isRelevant = (count($context) >= $minContextChunks) && 
                          (($avgRelevance >= $minRelevanceThreshold) || 
-                          (count($highRelevanceChunks) >= $minHighRelevanceChunks));
+                          (count($highRelevanceChunks) >= $minHighRelevanceChunks) ||
+                          (count($context) >= 3)); // Allow if we have 3+ chunks regardless of relevance
 
             Log::info('Retrieved relevant context', [
                 'query' => $query,
@@ -615,6 +617,8 @@ Never copy-paste text from the syllabus. Always paraphrase naturally.
 
 Organize information into tables, lists, step-by-step guides, or diagrams when possible.
 
+CRITICAL FOR DIAGRAMS: When creating diagrams or flowcharts, wrap the diagram code in markdown code blocks with language tag. Keep diagrams simple with max 10-12 nodes, short labels, and NEVER use ASCII art with +, -, | characters.
+
 Always respond helpfully, even if the syllabus doesn't explicitly mention the user's question.
 
 In that case, adapt and reorganize what's in the syllabus to fit the request (e.g., turn it into a study guide, outline, or summary).
@@ -629,11 +633,6 @@ When users ask for:
 
 a study guide, diagram, outline, summary, or oral exam prep,
 you must create it dynamically from the syllabus, using creative organization and helpful explanations.
-
-IMPORTANT: When creating tables, you MUST use proper markdown table syntax with | symbols. Example:
-| Column 1 | Column 2 | Column 3 |
-|----------|----------|----------|
-| Data 1   | Data 2   | Data 3   |
 
 ✅ Tone: Supportive, conversational, and educational (like a good teacher).
 ✅ Goal: Make studying easier and more effective, while staying 100% faithful to the syllabus.
@@ -651,17 +650,6 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
 2. Suggesting how the user might rephrase their question to focus on syllabus topics
 3. Offering to help with study guides, summaries, or explanations of syllabus content instead
 4. Use phrases like 'Let's approach this based on what the syllabus covers' instead of saying 'not in syllabus'";
-            }
-
-            // Enforce external knowledge policy (admin settings override config)
-            $settings = app(\App\Services\SettingsService::class);
-            $allowExternal = $settings->getBool('ALLOW_EXTERNAL_WEB', (bool) config('ai.external.allow_external_web', false));
-            if (!$allowExternal) {
-                $systemMessageContent .= "\n\nPolicy: Do not use or assume external knowledge. Base every statement strictly on the provided syllabus content. If something is missing, say you will focus on what the syllabus provides and adapt accordingly.";
-            } else {
-                $disclaimer = $settings->get('EXTERNAL_DISCLAIMER', config('ai.external.disclaimer'));
-                $prefix = $settings->get('EXTERNAL_PREFIX', config('ai.external.prefix'));
-                $systemMessageContent .= "\n\nExternal information policy: You may include external information only when absolutely necessary. Clearly mark it with '{$prefix}' and prepend the following disclaimer once: '{$disclaimer}'.";
             }
         } else {
             // Use custom system message if provided in options, otherwise use default
@@ -716,6 +704,8 @@ Never copy-paste text from the syllabus. Always paraphrase naturally.
 
 Organize information into tables, lists, step-by-step guides, or diagrams when possible.
 
+CRITICAL FOR DIAGRAMS: When creating diagrams or flowcharts, wrap the diagram code in markdown code blocks with language tag. Keep diagrams simple with max 10-12 nodes, short labels, and NEVER use ASCII art with +, -, | characters.
+
 Always respond helpfully, even if the syllabus doesn't explicitly mention the user's question.
 
 In that case, adapt and reorganize what's in the syllabus to fit the request (e.g., turn it into a study guide, outline, or summary).
@@ -730,11 +720,6 @@ When users ask for:
 
 a study guide, diagram, outline, summary, or oral exam prep,
 you must create it dynamically from the syllabus, using creative organization and helpful explanations.
-
-IMPORTANT: When creating tables, you MUST use proper markdown table syntax with | symbols. Example:
-| Column 1 | Column 2 | Column 3 |
-|----------|----------|----------|
-| Data 1   | Data 2   | Data 3   |
 
 ✅ Tone: Supportive, conversational, and educational (like a good teacher).
 ✅ Goal: Make studying easier and more effective, while staying 100% faithful to the syllabus.

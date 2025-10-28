@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue';
+import { computed, ref, watch, nextTick, onMounted } from 'vue';
 import { User, Bot, Copy, ThumbsUp, ThumbsDown, Square } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import { useToast } from '@/composables/useToast';
+import mermaid from 'mermaid';
 
 interface Props {
     message: {
@@ -334,9 +335,116 @@ const formatContent = (content: string | undefined, applyHeuristics = true): str
         }
     }
 
+    // Process Mermaid diagrams - detect and wrap in proper format
+    sanitized = processMermaidDiagrams(sanitized);
+    
     return sanitized;
 };
 
+// Process and wrap Mermaid diagrams
+const processMermaidDiagrams = (html: string): string => {
+    // Detect Mermaid syntax patterns (with or without code blocks)
+    // Look for graph/flowchart syntax followed by node definitions
+    
+    // First, check if already in code blocks
+    const codeBlockRegex = /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g;
+    if (html.match(codeBlockRegex)) {
+        // Already in code blocks, just format it properly
+        return html.replace(codeBlockRegex, (match, diagramCode) => {
+            const uniqueId = `mermaid-${props.message.id}-${Date.now()}`;
+            return `<div class="mermaid-container">
+                <div class="mermaid-loading flex items-center justify-center my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600">
+                    <div class="flex items-center space-x-3">
+                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div>
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Rendering diagram...</span>
+                    </div>
+                </div>
+                <div class="mermaid my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-x-auto" id="${uniqueId}" style="display: none;">${diagramCode.trim()}</div>
+            </div>`;
+        });
+    }
+    
+    // Look for standalone Mermaid syntax (flowchart/graph followed by node definitions)
+    const standaloneMermaidRegex = /(flowchart\s+TD|graph\s+TD|flowchart\s+LR|graph\s+LR)[\s\S]*?(?=\n\n|$)/g;
+    
+    return html.replace(standaloneMermaidRegex, (match) => {
+        const uniqueId = `mermaid-${props.message.id}-${Date.now()}`;
+        const cleanCode = match.trim();
+        
+        return `<div class="mermaid-container">
+            <div class="mermaid-loading flex items-center justify-center my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600">
+                <div class="flex items-center space-x-3">
+                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div>
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Rendering diagram...</span>
+                </div>
+            </div>
+            <div class="mermaid my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-x-auto" id="${uniqueId}" style="display: none;">${cleanCode}</div>
+        </div>`;
+    });
+};
+
+// Render Mermaid diagrams after content is mounted
+const renderMermaidDiagrams = async () => {
+    await nextTick();
+    
+    if (!proseRef.value) return;
+    
+    // Find all .mermaid divs that haven't been rendered yet
+    const mermaidDivs = proseRef.value.querySelectorAll<HTMLElement>('.mermaid:not(.mermaid-rendered)');
+    
+    if (mermaidDivs.length === 0) return;
+    
+    // Hide all loading indicators and show mermaid divs
+    mermaidDivs.forEach(mermaidDiv => {
+        const container = mermaidDiv.closest('.mermaid-container') as HTMLElement;
+        if (container) {
+            const loadingDiv = container.querySelector('.mermaid-loading') as HTMLElement;
+            if (loadingDiv) {
+                loadingDiv.style.display = 'none';
+            }
+            mermaidDiv.style.display = 'block';
+        }
+    });
+    
+    try {
+        // Use mermaid.run() which automatically detects .mermaid divs and renders them
+        await mermaid.run();
+        
+        // Mark as rendered to avoid re-rendering
+        mermaidDivs.forEach(div => {
+            div.classList.add('mermaid-rendered');
+        });
+        
+        console.log(`✅ Rendered ${mermaidDivs.length} Mermaid diagram(s)`);
+    } catch (error) {
+        console.error('❌ Error rendering Mermaid diagrams:', error);
+    }
+};
+
+// Initialize Mermaid on mount
+onMounted(() => {
+    mermaid.initialize({ 
+        startOnLoad: false,
+        theme: 'default',
+        securityLevel: 'loose',
+        flowchart: {
+            useMaxWidth: false,
+            htmlLabels: true,
+            fontSize: 14,
+            curve: 'basis'
+        },
+        fontSize: 14,
+        fontFamily: 'Arial, sans-serif'
+    });
+    
+    // Render diagrams on mount
+    renderMermaidDiagrams();
+});
+
+// Watch for content changes and re-render diagrams
+watch([() => props.message.content, () => props.message.streamingContent], async () => {
+    await renderMermaidDiagrams();
+}, { immediate: false });
 
 // Smart auto-scroll: only scroll if user is near the bottom
 const shouldAutoScroll = () => {
