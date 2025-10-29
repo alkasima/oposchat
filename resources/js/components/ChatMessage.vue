@@ -431,7 +431,7 @@ const processMermaidDiagrams = (html: string): string => {
         // Already in code blocks, just format it properly
         return html.replace(codeBlockRegex, (match, diagramCode) => {
             const uniqueId = `mermaid-${props.message.id}-${Date.now()}-${uniqueIdCounter++}`;
-            const { mermaid: trimmedCode } = parseMermaidBlock(diagramCode.trim());
+            const { mermaid: trimmedCode, explanation } = parseMermaidBlock(diagramCode.trim());
             
             // If streaming, don't try to render incomplete diagrams
             if (isStreaming.value) {
@@ -445,14 +445,26 @@ const processMermaidDiagrams = (html: string): string => {
                 </div>`;
             }
             
-            return `<div class="mermaid-container">
+            // Prepare explanation paragraphs (plain text, no extra styling)
+            const escapedExplanation = (explanation || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+            const explanationHtml = escapedExplanation
+                .trim()
+                .split(/\n{2,}/)
+                .map(p => `<p>${p.replace(/\n+/g, ' ')}</p>`) 
+                .join('');
+
+            return `<div class=\"mermaid-container\"> 
                 <div class="mermaid-loading flex items-center justify-center my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600">
                     <div class="flex items-center space-x-3">
                         <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div>
                         <span class="text-sm text-gray-600 dark:text-gray-400">Rendering diagram...</span>
                     </div>
                 </div>
-                <div class="mermaid my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-x-auto" id="${uniqueId}" style="display: none;">${trimmedCode}</div>
+                <div class=\"mermaid my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-x-auto\" id=\"${uniqueId}\" style=\"display: none;\">${trimmedCode}</div>
+                ${explanationHtml ? `${explanationHtml}` : ''}
             </div>`;
         });
     }
@@ -477,6 +489,7 @@ const processMermaidDiagrams = (html: string): string => {
         // Combine the graph declaration with content and parse
         const parsed = parseMermaidBlock((graphDecl + diagramContent).trim());
         const cleanCode = parsed.mermaid;
+        const explanation = parsed.explanation;
         
         // If streaming, don't try to render incomplete diagrams
         if (isStreaming.value) {
@@ -490,14 +503,26 @@ const processMermaidDiagrams = (html: string): string => {
             </div>`;
         }
         
-        return `<div class="mermaid-container">
+        // Prepare explanation paragraphs (plain text, no extra styling)
+        const escapedExplanation = (explanation || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        const explanationHtml = escapedExplanation
+            .trim()
+            .split(/\n{2,}/)
+            .map(p => `<p>${p.replace(/\n+/g, ' ')}</p>`) 
+            .join('');
+
+        return `<div class=\"mermaid-container\"> 
             <div class="mermaid-loading flex items-center justify-center my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600">
                 <div class="flex items-center space-x-3">
                     <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div>
                     <span class="text-sm text-gray-600 dark:text-gray-400">Rendering diagram...</span>
                 </div>
             </div>
-            <div class="mermaid my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-x-auto" id="${uniqueId}" style="display: none;">${cleanCode}</div>
+            <div class=\"mermaid my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-x-auto\" id=\"${uniqueId}\" style=\"display: none;\">${cleanCode}</div>
+            ${explanationHtml ? `${explanationHtml}` : ''}
         </div>`;
     });
 };
@@ -805,6 +830,14 @@ watch(() => props.message.streamingContent, async () => {
 .message-content table {
     width: 100%;
     table-layout: auto;
+}
+
+/* Ensure explanation paragraphs after a diagram wrap like normal chat text */
+.message-content :deep(.mermaid ~ p),
+.streaming-content :deep(.mermaid ~ p) {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 /* Mermaid: improve arrow visibility in dark mode */
