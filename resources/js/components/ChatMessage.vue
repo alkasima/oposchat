@@ -341,6 +341,83 @@ const formatContent = (content: string | undefined, applyHeuristics = true): str
     return sanitized;
 };
 
+// Normalize and sanitize Mermaid text: decode entities, strip tags, normalize newlines,
+// and drop trailing narrative/explanation lines that aren't valid Mermaid syntax.
+const sanitizeMermaidText = (code: string): string => {
+    if (!code) return '';
+    // Decode common HTML entities first
+    let text = code
+        .replace(/&gt;/g, '>')
+        .replace(/&lt;/g, '<')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#039;/g, "'");
+    // Strip any residual HTML tags
+    text = text.replace(/<[^>]*>/g, '');
+    // Normalize CRLF to LF
+    text = text.replace(/\r\n?/g, '\n');
+    // Keep only contiguous Mermaid-relevant lines starting from header
+    const lines = text.split('\n');
+    const kept: string[] = [];
+    const isHeader = (l: string) => /^(\s*)?(graph|flowchart)\b/i.test(l.trim());
+    const isMermaidLine = (l: string) => {
+        const t = l.trim();
+        if (t === '') return true; // allow blank lines inside block
+        // Allow common mermaid directives and edge definitions
+        if (/^(subgraph|end|classDef|linkStyle|click|style|direction|%%)/i.test(t)) return true;
+        if (t.includes('--') || t.includes('==')) return true; // edges like A --> B or A --- B or A ==> B
+        return false;
+    };
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (i === 0) {
+            if (!isHeader(line)) return '';
+            kept.push(line);
+            continue;
+        }
+        if (isMermaidLine(line)) {
+            kept.push(line);
+        } else {
+            break; // stop at first narrative/non-mermaid line
+        }
+    }
+    return kept.join('\n').trim();
+};
+
+// Parse a raw Mermaid block into { mermaid, explanation }
+const parseMermaidBlock = (code: string): { mermaid: string; explanation: string } => {
+    if (!code) return { mermaid: '', explanation: '' };
+    // Decode entities and strip tags, normalize newlines
+    let text = code
+        .replace(/&gt;/g, '>')
+        .replace(/&lt;/g, '<')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#039;/g, "'")
+        .replace(/<[^>]*>/g, '')
+        .replace(/\r\n?/g, '\n');
+    const lines = text.split('\n');
+    const isHeader = (l: string) => /^(\s*)?(graph|flowchart)\b/i.test(l.trim());
+    const isMermaidLine = (l: string) => {
+        const t = l.trim();
+        if (t === '') return true;
+        if (/^(subgraph|end|classDef|linkStyle|click|style|direction|%%)/i.test(t)) return true;
+        if (t.includes('--') || t.includes('==')) return true;
+        return false;
+    };
+    // Find header
+    let start = -1;
+    for (let i = 0; i < lines.length; i++) {
+        if (isHeader(lines[i])) { start = i; break; }
+    }
+    if (start === -1) return { mermaid: '', explanation: text.trim() };
+    let end = start + 1;
+    while (end < lines.length && isMermaidLine(lines[end])) end++;
+    const mermaid = lines.slice(start, end).join('\n').trim();
+    const explanation = lines.slice(end).join('\n').trim();
+    return { mermaid, explanation };
+};
+
 // Process and wrap Mermaid diagrams
 const processMermaidDiagrams = (html: string): string => {
     // Detect Mermaid syntax patterns (with or without code blocks)
@@ -354,7 +431,7 @@ const processMermaidDiagrams = (html: string): string => {
         // Already in code blocks, just format it properly
         return html.replace(codeBlockRegex, (match, diagramCode) => {
             const uniqueId = `mermaid-${props.message.id}-${Date.now()}-${uniqueIdCounter++}`;
-            const trimmedCode = diagramCode.trim();
+            const { mermaid: trimmedCode, explanation } = parseMermaidBlock(diagramCode.trim());
             
             // If streaming, don't try to render incomplete diagrams
             if (isStreaming.value) {
@@ -368,6 +445,17 @@ const processMermaidDiagrams = (html: string): string => {
                 </div>`;
             }
             
+            // Render explanation as normal text paragraphs
+            const escapedExplanation = (explanation || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+            const explanationHtml = escapedExplanation
+                .trim()
+                .split(/\n{2,}/)
+                .map(p => `<p>${p.replace(/\n+/g, ' ')}</p>`) 
+                .join('');
+            
             return `<div class="mermaid-container">
                 <div class="mermaid-loading flex items-center justify-center my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600">
                     <div class="flex items-center space-x-3">
@@ -376,16 +464,32 @@ const processMermaidDiagrams = (html: string): string => {
                     </div>
                 </div>
                 <div class="mermaid my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-x-auto" id="${uniqueId}" style="display: none;">${trimmedCode}</div>
+                ${explanation ? `<div class=\"mermaid-explanation mt-2\">${explanationHtml}</div>` : ''}
             </div>`;
         });
     }
     
     // Look for standalone Mermaid syntax (flowchart/graph followed by node definitions)
-    const standaloneMermaidRegex = /(flowchart\s+TD|graph\s+TD|flowchart\s+LR|graph\s+LR)[\s\S]*?(?=\n\n|$)/g;
+    // Use a more comprehensive regex that captures the full diagram (greedy match)
+    // The key is matching everything up to paragraph breaks, double newlines, or end of content
+    const standaloneMermaidRegex = /(<p>|<br>|<br\s*\/>|\n)?(flowchart\s+(?:TD|LR|TB|BT)\s*;?|graph\s+(?:TD|LR|TB|BT)\s*;?)([\s\S]+)(?=(?:\n\n)|(?:<p[^>]*>)|(?:<\/p>)|<\/div>|$)/g;
     
-    return html.replace(standaloneMermaidRegex, (match) => {
+    return html.replace(standaloneMermaidRegex, (fullMatch, before, graphDecl, diagramContent, offset) => {
+        // Check if this match is already inside a mermaid-container (to avoid double-processing)
+        const beforeMatch = html.substring(0, offset);
+        const lastContainer = beforeMatch.lastIndexOf('mermaid-container');
+        const lastClosingDiv = beforeMatch.lastIndexOf('</div>', lastContainer);
+        const isAlreadyProcessed = lastContainer !== -1 && (lastClosingDiv === -1 || lastClosingDiv < lastContainer);
+        
+        if (isAlreadyProcessed) {
+            return fullMatch; // Return original, don't process again
+        }
+        
         const uniqueId = `mermaid-${props.message.id}-${Date.now()}-${uniqueIdCounter++}`;
-        const cleanCode = match.trim();
+        // Combine the graph declaration with content and parse
+        const parsed = parseMermaidBlock((graphDecl + diagramContent).trim());
+        const cleanCode = parsed.mermaid;
+        const explanation = parsed.explanation;
         
         // If streaming, don't try to render incomplete diagrams
         if (isStreaming.value) {
@@ -399,6 +503,17 @@ const processMermaidDiagrams = (html: string): string => {
             </div>`;
         }
         
+        // Render explanation as normal text paragraphs
+        const escapedExplanation = (explanation || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        const explanationHtml = escapedExplanation
+            .trim()
+            .split(/\n{2,}/)
+            .map(p => `<p>${p.replace(/\n+/g, ' ')}</p>`) 
+            .join('');
+        
         return `<div class="mermaid-container">
             <div class="mermaid-loading flex items-center justify-center my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600">
                 <div class="flex items-center space-x-3">
@@ -407,6 +522,7 @@ const processMermaidDiagrams = (html: string): string => {
                 </div>
             </div>
             <div class="mermaid my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-x-auto" id="${uniqueId}" style="display: none;">${cleanCode}</div>
+            ${explanation ? `<div class=\"mermaid-explanation mt-2\">${explanationHtml}</div>` : ''}
         </div>`;
     });
 };

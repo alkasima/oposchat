@@ -213,7 +213,7 @@ const handleChatSelected = async (chatId: string | null) => {
         isLoading.value = true;
         const chatData = await chatApi.getChat(chatId);
         currentChat.value = {
-            id: chatData.chat.id,
+            id: chatData.chat.id.toString(),
             title: chatData.chat.title,
             course_id: chatData.chat.course_id
         };
@@ -739,7 +739,7 @@ const handleCourseSelected = async (course: any) => {
             if (response.ok) {
                 const data = await response.json();
                 currentChat.value = {
-                    id: data.chat.id,
+                    id: data.chat.id.toString(),
                     title: data.chat.title,
                     course_id: data.chat.course_id
                 };
@@ -1374,7 +1374,7 @@ if (savedSidebarState === 'false') {
         <!-- Subscription Success Modal -->
         <SubscriptionSuccessModal 
             :show="showSuccessModal"
-            :subscription="subscription"
+            :subscription="{}"
             @close="showSuccessModal = false"
         />
 
