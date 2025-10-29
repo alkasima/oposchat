@@ -807,6 +807,21 @@ watch(() => props.message.streamingContent, async () => {
     table-layout: auto;
 }
 
+/* Mermaid: improve arrow visibility in dark mode */
+.dark .streaming-content :deep(.mermaid .edgePath path),
+.dark .message-content :deep(.mermaid .edgePath path) {
+    stroke: #ffffff !important;
+}
+.dark .streaming-content :deep(.mermaid .flowchart-link),
+.dark .message-content :deep(.mermaid .flowchart-link) {
+    stroke: #ffffff !important;
+}
+.dark .streaming-content :deep(.mermaid marker path),
+.dark .message-content :deep(.mermaid marker path) {
+    fill: #ffffff !important;
+    stroke: #ffffff !important;
+}
+
 
 
 /* Ensure tables in messages take full width */
