@@ -431,7 +431,7 @@ const processMermaidDiagrams = (html: string): string => {
         // Already in code blocks, just format it properly
         return html.replace(codeBlockRegex, (match, diagramCode) => {
             const uniqueId = `mermaid-${props.message.id}-${Date.now()}-${uniqueIdCounter++}`;
-            const { mermaid: trimmedCode, explanation } = parseMermaidBlock(diagramCode.trim());
+            const { mermaid: trimmedCode } = parseMermaidBlock(diagramCode.trim());
             
             // If streaming, don't try to render incomplete diagrams
             if (isStreaming.value) {
@@ -445,17 +445,6 @@ const processMermaidDiagrams = (html: string): string => {
                 </div>`;
             }
             
-            // Render explanation as normal text paragraphs
-            const escapedExplanation = (explanation || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
-            const explanationHtml = escapedExplanation
-                .trim()
-                .split(/\n{2,}/)
-                .map(p => `<p>${p.replace(/\n+/g, ' ')}</p>`) 
-                .join('');
-            
             return `<div class="mermaid-container">
                 <div class="mermaid-loading flex items-center justify-center my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600">
                     <div class="flex items-center space-x-3">
@@ -464,7 +453,6 @@ const processMermaidDiagrams = (html: string): string => {
                     </div>
                 </div>
                 <div class="mermaid my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-x-auto" id="${uniqueId}" style="display: none;">${trimmedCode}</div>
-                ${explanation ? `<div class=\"mermaid-explanation mt-2\">${explanationHtml}</div>` : ''}
             </div>`;
         });
     }
@@ -489,7 +477,6 @@ const processMermaidDiagrams = (html: string): string => {
         // Combine the graph declaration with content and parse
         const parsed = parseMermaidBlock((graphDecl + diagramContent).trim());
         const cleanCode = parsed.mermaid;
-        const explanation = parsed.explanation;
         
         // If streaming, don't try to render incomplete diagrams
         if (isStreaming.value) {
@@ -503,17 +490,6 @@ const processMermaidDiagrams = (html: string): string => {
             </div>`;
         }
         
-        // Render explanation as normal text paragraphs
-        const escapedExplanation = (explanation || '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-        const explanationHtml = escapedExplanation
-            .trim()
-            .split(/\n{2,}/)
-            .map(p => `<p>${p.replace(/\n+/g, ' ')}</p>`) 
-            .join('');
-        
         return `<div class="mermaid-container">
             <div class="mermaid-loading flex items-center justify-center my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600">
                 <div class="flex items-center space-x-3">
@@ -522,7 +498,6 @@ const processMermaidDiagrams = (html: string): string => {
                 </div>
             </div>
             <div class="mermaid my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-x-auto" id="${uniqueId}" style="display: none;">${cleanCode}</div>
-            ${explanation ? `<div class=\"mermaid-explanation mt-2\">${explanationHtml}</div>` : ''}
         </div>`;
     });
 };
@@ -831,6 +806,8 @@ watch(() => props.message.streamingContent, async () => {
     width: 100%;
     table-layout: auto;
 }
+
+
 
 /* Ensure tables in messages take full width */
 .streaming-content table,
