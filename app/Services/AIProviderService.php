@@ -726,6 +726,24 @@ you must create it dynamically from the syllabus, using creative organization an
 
 Model disclosure: You are running on {$this->getProvider()} model {$this->getModel()}.";
 
+            // Detect if the user is asking for a diagram-like deliverable (including Spanish synonyms)
+            $lastUserMessage = end($messages);
+            $lastUserText = ($lastUserMessage && ($lastUserMessage['role'] ?? '') === 'user') ? strtolower($lastUserMessage['content'] ?? '') : '';
+            $diagramSynonyms = [
+                'diagram', 'flowchart', 'flow chart', 'chart', 'graph', 'graphic', 'concept map',
+                'outline', 'sketch',
+                // Spanish
+                'diagrama', 'diagrama de flujo', 'esquema', 'mapa conceptual', 'mapa mental', 'croquis', 'gráfica', 'grafica', 'gráfico', 'grafico'
+            ];
+            $shouldForceMermaid = false;
+            foreach ($diagramSynonyms as $k) {
+                if ($lastUserText !== '' && strpos($lastUserText, $k) !== false) { $shouldForceMermaid = true; break; }
+            }
+
+            if ($shouldForceMermaid) {
+                $systemMessageContent .= "\n\nWHEN REQUESTING DIAGRAM-LIKE OUTPUT: If the user asks for any of these: outline, sketch, concept map, flowchart, chart, graph/graphic, or the Spanish terms (esquema, croquis, mapa conceptual, mapa mental, diagrama, gráfica), you MUST produce the output as a Mermaid diagram enclosed in a fenced code block with the language 'mermaid' (```mermaid ... ```). After the code block, include a brief explanation in plain paragraphs describing why each connection exists and how parts relate.";
+            }
+
             // Add context to system message if available and relevant
             if (!empty($contextData['context']) && $isRelevant) {
                 $contextText = implode(' ', $contextData['context']);
@@ -746,6 +764,21 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
             $modelName = $this->getModel();
             $providerName = $this->getProvider();
             $systemMessageContent .= "\n\nModel disclosure policy: You are running on {$providerName} model {$modelName}. If a user asks which model you are, reply exactly '{$modelName}'. Do not claim older models (e.g., GPT-3 or GPT-3.5).";
+
+            // Detect diagram-like requests even without namespaces and instruct Mermaid + explanation
+            $lastUserMessage = end($messages);
+            $lastUserText = ($lastUserMessage && ($lastUserMessage['role'] ?? '') === 'user') ? strtolower($lastUserMessage['content'] ?? '') : '';
+            $diagramSynonyms = [
+                'diagram', 'flowchart', 'flow chart', 'chart', 'graph', 'graphic', 'concept map',
+                'outline', 'sketch',
+                'diagrama', 'diagrama de flujo', 'esquema', 'mapa conceptual', 'mapa mental', 'croquis', 'gráfica', 'grafica', 'gráfico', 'grafico'
+            ];
+            foreach ($diagramSynonyms as $k) {
+                if ($lastUserText !== '' && strpos($lastUserText, $k) !== false) {
+                    $systemMessageContent .= "\n\nWHEN REQUESTING DIAGRAM-LIKE OUTPUT: If the user asks for any of these: outline, sketch, concept map, flowchart, chart, graph/graphic, or the Spanish terms (esquema, croquis, mapa conceptual, mapa mental, diagrama, gráfica), you MUST produce the output as a Mermaid diagram enclosed in a fenced code block with the language 'mermaid' (```mermaid ... ```). After the code block, include a brief explanation in plain paragraphs describing why each connection exists and how parts relate.";
+                    break;
+                }
+            }
         }
 
         $systemMessage = [

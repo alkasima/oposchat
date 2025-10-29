@@ -390,11 +390,8 @@ class StreamingChatService {
      * Process markdown tables
      */
     processMarkdownTables(content) {
-        console.log('Processing table content: - streamingChatService.js:340', content);
-
         // Check if content contains table-like structure
         if (!content.includes('|')) {
-            console.log('No pipe characters found, skipping table processing - streamingChatService.js:344');
             return content;
         }
 
@@ -419,13 +416,13 @@ class StreamingChatService {
             const startsOrEndsWithPipe = trimmed.startsWith('|') || trimmed.endsWith('|');
             return startsOrEndsWithPipe && pipeCount >= 2;
         };
-        console.log('Table lines: - streamingChatService.js:369', lines);
+        
 
         // Check if this looks like a markdown table
         const hasHeaders = lines.some(line => line.startsWith('|') && line.endsWith('|'));
         const hasSeparator = lines.some(line => line.includes('|') && (line.includes('-') || line.includes('=')));
 
-        console.log('Has headers: - streamingChatService.js:375', hasHeaders, 'Has separator:', hasSeparator);
+        
         const result = [];
         let i = 0;
         while (i < lines.length) {
@@ -456,8 +453,6 @@ class StreamingChatService {
 
     // Process standard markdown table format
     processStandardTable(content) {
-        console.log('Processing standard table format - streamingChatService.js:406');
-
         const lines = content.split('\n').filter(line => line.trim());
         if (lines.length < 2) return content;
 
@@ -519,11 +514,9 @@ class StreamingChatService {
 
     // Process single-line table format
     processSingleLineTableFormat(content) {
-        console.log('Processing singleline table format - streamingChatService.js:469');
-
         // Split by | and filter out empty parts
         const parts = content.split('|').filter(part => part.trim().length > 0);
-        console.log('Parts: - streamingChatService.js:473', parts);
+        
 
         // Find separator index
         let separatorIndex = -1;
@@ -534,7 +527,7 @@ class StreamingChatService {
             }
         }
 
-        console.log('Separator index: - streamingChatService.js:484', separatorIndex);
+        
 
         // If we found a separator, skip it
         let startIndex = 0;
@@ -558,7 +551,7 @@ class StreamingChatService {
             }
         }
 
-        console.log('Rows: - streamingChatService.js:508', rows);
+        
 
         if (rows.length < 2) return content;
 

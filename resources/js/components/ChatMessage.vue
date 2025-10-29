@@ -838,6 +838,8 @@ watch(() => props.message.streamingContent, async () => {
     white-space: normal;
     overflow-wrap: anywhere;
     word-break: break-word;
+    font-family: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    font-weight: 400;
 }
 
 /* Mermaid: improve arrow visibility in dark mode */

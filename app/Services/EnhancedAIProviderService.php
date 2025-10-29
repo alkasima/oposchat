@@ -27,7 +27,11 @@ class EnhancedAIProviderService extends AIProviderService
 
         // Create enhanced pedagogical system message
         if (!empty($namespaces)) {
-            $systemMessageContent = $this->createPedagogicalSystemMessage($contextData, $isRelevant);
+            // Detect if the user is asking for a diagram-like deliverable
+            $lastUserMessage = $messages[count($messages) - 1] ?? null;
+            $lastUserText = ($lastUserMessage && ($lastUserMessage['role'] ?? '') === 'user') ? strtolower($lastUserMessage['content'] ?? '') : '';
+
+            $systemMessageContent = $this->createPedagogicalSystemMessage($contextData, $isRelevant, $lastUserText);
         } else {
             $systemMessageContent = $options['system_message'] ?? config('ai.defaults.system_message');
         }
@@ -62,7 +66,11 @@ class EnhancedAIProviderService extends AIProviderService
 
         // Create enhanced pedagogical system message
         if (!empty($namespaces)) {
-            $systemMessageContent = $this->createPedagogicalSystemMessage($contextData, $isRelevant);
+            // Detect if the user is asking for a diagram-like deliverable
+            $lastUserMessage = $messages[count($messages) - 1] ?? null;
+            $lastUserText = ($lastUserMessage && ($lastUserMessage['role'] ?? '') === 'user') ? strtolower($lastUserMessage['content'] ?? '') : '';
+
+            $systemMessageContent = $this->createPedagogicalSystemMessage($contextData, $isRelevant, $lastUserText);
         } else {
             $systemMessageContent = $options['system_message'] ?? config('ai.defaults.system_message');
         }
@@ -81,7 +89,7 @@ class EnhancedAIProviderService extends AIProviderService
     /**
      * Create enhanced pedagogical system message
      */
-    private function createPedagogicalSystemMessage(array $contextData, bool $isRelevant): string
+    private function createPedagogicalSystemMessage(array $contextData, bool $isRelevant, string $lastUserText = ''): string
     {
         $baseMessage = "You are OposChat, a professional study assistant specialized in preparing students for oral and written exams.
 Your only source of knowledge is the retrieved syllabus passages that are provided to you.
@@ -116,6 +124,22 @@ you must create it dynamically from the syllabus, using creative organization an
 ✅ Goal: Make studying easier and more effective, while staying 100% faithful to the syllabus.
 
 Model disclosure: You are running on {$this->getProvider()} model {$this->getModel()}.";
+
+        // Detect if the user is asking for a diagram-like deliverable (including Spanish synonyms)
+        $diagramSynonyms = [
+            'diagram', 'flowchart', 'flow chart', 'chart', 'graph', 'graphic', 'concept map',
+            'outline', 'sketch',
+            // Spanish
+            'diagrama', 'diagrama de flujo', 'esquema', 'mapa conceptual', 'mapa mental', 'croquis', 'gráfica', 'grafica', 'gráfico', 'grafico'
+        ];
+        $shouldForceMermaid = false;
+        foreach ($diagramSynonyms as $k) {
+            if ($lastUserText !== '' && strpos($lastUserText, $k) !== false) { $shouldForceMermaid = true; break; }
+        }
+
+        if ($shouldForceMermaid) {
+            $baseMessage .= "\n\nWHEN REQUESTING DIAGRAM-LIKE OUTPUT: If the user asks for any of these: outline, sketch, concept map, flowchart, chart, graph/graphic, or the Spanish terms (esquema, croquis, mapa conceptual, mapa mental, diagrama, gráfica), you MUST produce the output as a Mermaid diagram enclosed in a fenced code block with the language 'mermaid' (```mermaid ... ```). After the code block, include a brief explanation in plain paragraphs describing why each connection exists and how parts relate.";
+        }
 
         // Add context if available and relevant
         if (!empty($contextData['context']) && $isRelevant) {
