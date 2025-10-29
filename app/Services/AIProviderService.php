@@ -767,6 +767,9 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
         $creativeKeywords = [
             'study guide', 'study plan', 'create a guide', 'make a guide',
             'diagram', 'create diagram', 'draw', 'visual', 'chart', 'flowchart',
+            // Spanish synonyms for diagram-like requests
+            'diagrama', 'diagrama de flujo', 'esquema', 'mapa conceptual', 'mapa mental',
+            'croquis', 'gráfica', 'grafica', 'gráfico', 'grafico',
             'outline', 'summary', 'overview', 'structure', 'organize',
             'prepare for exam', 'exam preparation', 'study strategy',
             'review', 'revision', 'consolidate', 'synthesize'
