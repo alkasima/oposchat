@@ -346,12 +346,28 @@ const processMermaidDiagrams = (html: string): string => {
     // Detect Mermaid syntax patterns (with or without code blocks)
     // Look for graph/flowchart syntax followed by node definitions
     
+    let uniqueIdCounter = 0;
+    
     // First, check if already in code blocks
     const codeBlockRegex = /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g;
     if (html.match(codeBlockRegex)) {
         // Already in code blocks, just format it properly
         return html.replace(codeBlockRegex, (match, diagramCode) => {
-            const uniqueId = `mermaid-${props.message.id}-${Date.now()}`;
+            const uniqueId = `mermaid-${props.message.id}-${Date.now()}-${uniqueIdCounter++}`;
+            const trimmedCode = diagramCode.trim();
+            
+            // If streaming, don't try to render incomplete diagrams
+            if (isStreaming.value) {
+                return `<div class="mermaid-container">
+                    <div class="mermaid-loading flex items-center justify-center my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600">
+                        <div class="flex items-center space-x-3">
+                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Generating diagram...</span>
+                        </div>
+                    </div>
+                </div>`;
+            }
+            
             return `<div class="mermaid-container">
                 <div class="mermaid-loading flex items-center justify-center my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600">
                     <div class="flex items-center space-x-3">
@@ -359,7 +375,7 @@ const processMermaidDiagrams = (html: string): string => {
                         <span class="text-sm text-gray-600 dark:text-gray-400">Rendering diagram...</span>
                     </div>
                 </div>
-                <div class="mermaid my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-x-auto" id="${uniqueId}" style="display: none;">${diagramCode.trim()}</div>
+                <div class="mermaid my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-x-auto" id="${uniqueId}" style="display: none;">${trimmedCode}</div>
             </div>`;
         });
     }
@@ -368,8 +384,20 @@ const processMermaidDiagrams = (html: string): string => {
     const standaloneMermaidRegex = /(flowchart\s+TD|graph\s+TD|flowchart\s+LR|graph\s+LR)[\s\S]*?(?=\n\n|$)/g;
     
     return html.replace(standaloneMermaidRegex, (match) => {
-        const uniqueId = `mermaid-${props.message.id}-${Date.now()}`;
+        const uniqueId = `mermaid-${props.message.id}-${Date.now()}-${uniqueIdCounter++}`;
         const cleanCode = match.trim();
+        
+        // If streaming, don't try to render incomplete diagrams
+        if (isStreaming.value) {
+            return `<div class="mermaid-container">
+                <div class="mermaid-loading flex items-center justify-center my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600">
+                    <div class="flex items-center space-x-3">
+                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div>
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Generating diagram...</span>
+                    </div>
+                </div>
+            </div>`;
+        }
         
         return `<div class="mermaid-container">
             <div class="mermaid-loading flex items-center justify-center my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600">
@@ -388,6 +416,9 @@ const renderMermaidDiagrams = async () => {
     await nextTick();
     
     if (!proseRef.value) return;
+    
+    // Don't render diagrams while streaming - wait for complete content
+    if (isStreaming.value) return;
     
     // Find all .mermaid divs that haven't been rendered yet
     const mermaidDivs = proseRef.value.querySelectorAll<HTMLElement>('.mermaid:not(.mermaid-rendered)');
@@ -418,6 +449,16 @@ const renderMermaidDiagrams = async () => {
         console.log(`✅ Rendered ${mermaidDivs.length} Mermaid diagram(s)`);
     } catch (error) {
         console.error('❌ Error rendering Mermaid diagrams:', error);
+        // Show error message to user
+        mermaidDivs.forEach(mermaidDiv => {
+            const container = mermaidDiv.closest('.mermaid-container') as HTMLElement;
+            if (container) {
+                const loadingDiv = container.querySelector('.mermaid-loading') as HTMLElement;
+                if (loadingDiv) {
+                    loadingDiv.innerHTML = '<span class="text-sm text-red-500 dark:text-red-400">Error rendering diagram</span>';
+                }
+            }
+        });
     }
 };
 
@@ -441,9 +482,26 @@ onMounted(() => {
     renderMermaidDiagrams();
 });
 
-// Watch for content changes and re-render diagrams
+// Watch for content changes and re-render diagrams when streaming completes
 watch([() => props.message.content, () => props.message.streamingContent], async () => {
+    // Wait a bit after streaming to ensure content is complete
+    if (isStreaming.value) {
+        return;
+    }
+    await nextTick();
     await renderMermaidDiagrams();
+}, { immediate: false });
+
+// Also watch for when streaming state changes from true to false
+watch(() => isStreaming.value, async (isCurrentlyStreaming, wasStreaming) => {
+    // When streaming completes (was streaming, now not streaming)
+    if (!isCurrentlyStreaming && wasStreaming) {
+        await nextTick();
+        // Small delay to ensure DOM is updated
+        setTimeout(() => {
+            renderMermaidDiagrams();
+        }, 100);
+    }
 }, { immediate: false });
 
 // Smart auto-scroll: only scroll if user is near the bottom
