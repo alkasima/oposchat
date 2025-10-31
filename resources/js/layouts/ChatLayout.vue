@@ -1242,7 +1242,7 @@ if (savedSidebarState === 'false') {
 <template>
     <Head title="OposChat - Dashboard" />
     
-    <div class="flex h-screen h-[100dvh] bg-gray-50 dark:bg-gray-900">
+    <div class="flex h-screen h-[100dvh] bg-gray-50 dark:bg-gray-900 overflow-hidden">
         <!-- Left Sidebar - Collapsible -->
         <div class="hidden lg:block">
             <ChatSidebar 
@@ -1284,7 +1284,7 @@ if (savedSidebarState === 'false') {
         </Transition>
 
         <!-- Main Chat Area -->
-        <div class="flex-1 flex flex-col">
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
             <!-- Chat Header -->
             <div class="bg-gradient-to-r from-white via-gray-50 to-white dark:from-gray-800 dark:via-gray-850 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
                 <div class="px-6 py-3">
@@ -1333,7 +1333,7 @@ if (savedSidebarState === 'false') {
 
 
             <!-- Chat Messages Area -->
-            <div ref="chatContainer" @scroll="handleScroll" class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 chat-scrollbar">
+            <div ref="chatContainer" @scroll="handleScroll" class="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 dark:bg-gray-900 chat-scrollbar">
                 <div class="max-w-4xl mx-auto px-6 py-6">
                     <!-- Loading State -->
                     <div v-if="isLoading" class="flex items-center justify-center py-12">

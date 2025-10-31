@@ -325,4 +325,24 @@
             background: inherit;
         }
     }
+    
+    /* Mobile-specific Mermaid diagram fixes */
+    @media (max-width: 768px) {
+        /* Ensure Mermaid SVGs don't overflow on mobile */
+        .mermaid svg {
+            max-width: 100% !important;
+            height: auto !important;
+        }
+        
+        /* Prevent prose content from causing horizontal scroll */
+        .prose {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        /* Ensure chat container doesn't allow horizontal scroll */
+        .chat-scrollbar {
+            overflow-x: hidden !important;
+        }
+    }
 }

@@ -647,12 +647,15 @@ const renderMermaidDiagrams = async () => {
 
 // Initialize Mermaid on mount
 onMounted(() => {
+    // Detect if we're on mobile
+    const isMobile = window.innerWidth <= 768;
+    
     mermaid.initialize({ 
         startOnLoad: false,
         theme: 'default',
         securityLevel: 'loose',
         flowchart: {
-            useMaxWidth: false,
+            useMaxWidth: isMobile, // Enable on mobile to prevent overflow
             htmlLabels: true,
             fontSize: 14,
             curve: 'basis'
@@ -752,7 +755,7 @@ const shouldAutoScroll = () => {
                 </span>
             </div>
             
-            <div ref="proseRef" class="prose prose-sm max-w-none text-gray-900 dark:text-white">
+            <div ref="proseRef" class="prose prose-sm max-w-none text-gray-900 dark:text-white w-full overflow-hidden">
                 <!-- Streaming content with real-time formatting -->
                 <div v-if="isStreaming && hasStreamingContent" 
                      class="streaming-content"
@@ -940,5 +943,56 @@ const shouldAutoScroll = () => {
 .message-content table {
     width: 100%;
     table-layout: auto;
+}
+
+/* Mermaid diagram styling for mobile */
+.message-content :deep(.mermaid-container),
+.streaming-content :deep(.mermaid-container) {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.message-content :deep(.mermaid),
+.streaming-content :deep(.mermaid) {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    /* Prevent horizontal scroll on mobile */
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile-specific fixes for Mermaid diagrams */
+@media (max-width: 768px) {
+    .message-content :deep(.mermaid-container),
+    .streaming-content :deep(.mermaid-container) {
+        margin-left: -0.5rem !important;
+        margin-right: -0.5rem !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+    
+    .message-content :deep(.mermaid),
+    .streaming-content :deep(.mermaid) {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding: 0 !important;
+        /* Ensure diagram doesn't cause horizontal overflow */
+        max-width: calc(100vw - 2rem);
+        width: 100%;
+    }
+    
+    .message-content :deep(.mermaid svg),
+    .streaming-content :deep(.mermaid svg) {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+    
+    /* Prevent prose from causing overflow */
+    .prose {
+        max-width: 100%;
+        overflow: hidden;
+    }
 }
 </style>
