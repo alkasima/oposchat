@@ -637,6 +637,8 @@ you must create it dynamically from the syllabus, using creative organization an
 ✅ Tone: Supportive, conversational, and educational (like a good teacher).
 ✅ Goal: Make studying easier and more effective, while staying 100% faithful to the syllabus.
 
+IMPORTANT: When responding in Spanish, always translate 'syllabus' to 'temario' (never leave 'syllabus' untranslated in Spanish responses).
+
 Model disclosure: You are running on {$this->getProvider()} model {$this->getModel()}.";
 
             // Add context to system message if available and relevant
@@ -723,6 +725,8 @@ you must create it dynamically from the syllabus, using creative organization an
 
 ✅ Tone: Supportive, conversational, and educational (like a good teacher).
 ✅ Goal: Make studying easier and more effective, while staying 100% faithful to the syllabus.
+
+IMPORTANT: When responding in Spanish, always translate 'syllabus' to 'temario' (never leave 'syllabus' untranslated in Spanish responses).
 
 Model disclosure: You are running on {$this->getProvider()} model {$this->getModel()}.";
 

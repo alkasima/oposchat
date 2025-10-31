@@ -130,10 +130,33 @@ const showSuccessModal = ref(false);
 const { isRecording, isSupported, error: recordingError, startRecording, stopRecording, checkSupport } = useAudioRecording();
 const isTranscribing = ref(false);
 
+// Mobile zoom/scroll fix
+let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+const handleMobileZoom = () => {
+    // Clear previous timeout
+    if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+    }
+    
+    // Debounce to avoid excessive calls
+    resizeTimeout = setTimeout(() => {
+        // Force recalculation of viewport on mobile to prevent input bar scrolling
+        if (window.innerWidth < 1024) {
+            const vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+    }, 150);
+};
+
 // Check audio recording support on mount
 onMounted(() => {
     checkSupport();
     window.addEventListener('resize', handleResize);
+    
+    // Add mobile zoom/scroll fix
+    handleMobileZoom();
+    window.addEventListener('resize', handleMobileZoom);
+    window.addEventListener('orientationchange', handleMobileZoom);
 });
 
 // Check for success parameter in URL or page props
@@ -165,6 +188,11 @@ const handleResize = () => {
 onUnmounted(() => {
     streamingChatService.stopAllStreaming();
     window.removeEventListener('resize', handleResize);
+    window.removeEventListener('resize', handleMobileZoom);
+    window.removeEventListener('orientationchange', handleMobileZoom);
+    if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+    }
 });
 
 // Subscription management
@@ -1214,7 +1242,7 @@ if (savedSidebarState === 'false') {
 <template>
     <Head title="OposChat - Dashboard" />
     
-    <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="flex h-screen h-[100dvh] bg-gray-50 dark:bg-gray-900">
         <!-- Left Sidebar - Collapsible -->
         <div class="hidden lg:block">
             <ChatSidebar 
@@ -1376,7 +1404,7 @@ if (savedSidebarState === 'false') {
             </div>
 
             <!-- Message Input -->
-            <div class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
+            <div class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 safe-area-inset-bottom chat-input-bar">
                 <div class="max-w-4xl mx-auto">
                     <!-- Selected File Display -->
                     <div v-if="selectedFile" class="mb-3 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">

@@ -304,4 +304,25 @@
     .dark .chat-scrollbar::-webkit-scrollbar-thumb:hover {
         background: rgb(75 85 99); /* gray-600 */
     }
+    
+    /* Safe area inset for mobile devices */
+    .safe-area-inset-bottom {
+        padding-bottom: env(safe-area-inset-bottom, 1rem);
+    }
+    
+    /* Fix mobile input bar to prevent scrolling issues */
+    @media (max-width: 1024px) {
+        /* Use dvh units for mobile to handle dynamic viewport properly */
+        .mobile-chat-container {
+            height: 100dvh;
+        }
+        
+        /* Prevent the input bar from being scrollable separately */
+        .chat-input-bar {
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+            background: inherit;
+        }
+    }
 }
