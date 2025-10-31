@@ -532,23 +532,25 @@ class AIProviderService
                 }
             }
 
-            // Check if we have sufficient relevant content with more flexible thresholds
+            // Check if we have sufficient relevant content with stricter thresholds
             $avgRelevance = !empty($relevanceScores) ? array_sum($relevanceScores) / count($relevanceScores) : 0;
-            $minRelevanceThreshold = 0.60; // Lowered threshold for better coverage
-            $minContextChunks = 1; // Reduced requirement for creative responses
-            $minHighRelevanceChunks = 1; // Require at least 1 highly relevant chunk (>= 0.70)
+            $maxRelevance = !empty($relevanceScores) ? max($relevanceScores) : 0;
+            
+            // Stricter thresholds: require higher relevance scores
+            $minRelevanceThreshold = 0.65; // Minimum average relevance
+            $minMaxRelevanceThreshold = 0.70; // At least one chunk must be highly relevant
+            $minContextChunks = 1;
+            $minHighRelevanceChunks = 1;
 
-            // Count highly relevant chunks
+            // Count highly relevant chunks (score >= 0.70)
             $highRelevanceChunks = array_filter($relevanceScores, function($score) {
                 return $score >= 0.70;
             });
 
-            // More flexible relevance determination for creative study assistance
-            // Allow responses if we have any relevant content, even if not highly relevant
+            // Stricter relevance determination: require both good average AND at least one highly relevant chunk
             $isRelevant = (count($context) >= $minContextChunks) && 
-                         (($avgRelevance >= $minRelevanceThreshold) || 
-                          (count($highRelevanceChunks) >= $minHighRelevanceChunks) ||
-                          (count($context) >= 3)); // Allow if we have 3+ chunks regardless of relevance
+                         ($maxRelevance >= $minMaxRelevanceThreshold) && 
+                         (($avgRelevance >= $minRelevanceThreshold) || count($highRelevanceChunks) >= $minHighRelevanceChunks);
 
             Log::info('Retrieved relevant context', [
                 'query' => $query,
@@ -646,12 +648,19 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
                 $contextText = implode(' ', $contextData['context']);
                 $systemMessageContent .= "\n\nRELEVANT SYLLABUS CONTENT:\n" . $contextText;
             } elseif (!empty($namespaces) && !$isRelevant) {
-                // More helpful out-of-scope instruction
-                $systemMessageContent .= "\n\nIMPORTANT: The user's question appears to be outside the scope of the uploaded course materials. However, try to be helpful by:
-1. Checking if the question can be answered using related syllabus content
-2. Suggesting how the user might rephrase their question to focus on syllabus topics
-3. Offering to help with study guides, summaries, or explanations of syllabus content instead
-4. Use phrases like 'Let's approach this based on what the syllabus covers' instead of saying 'not in syllabus'";
+                // Explicit instruction to state that the question is not in the syllabus
+                $systemMessageContent .= "\n\nCRITICAL: The user's question is NOT covered in the uploaded syllabus/course materials. 
+You MUST explicitly state this at the beginning of your response. Use one of these phrases:
+- 'The question you're asking isn't in the syllabus.' 
+- 'This topic is not covered in the syllabus content.'
+- 'Your question is not addressed in the uploaded course materials.'
+
+After stating this clearly, you can optionally:
+1. Suggest how the user might rephrase their question to focus on syllabus topics
+2. Offer to help with study guides, summaries, or explanations of syllabus content that IS available
+3. Mention that you can only answer questions based on the uploaded syllabus content
+
+NEVER try to answer the question as if it were in the syllabus. ALWAYS state clearly that it's not in the syllabus first.";
             }
         } else {
             // Use custom system message if provided in options, otherwise use default
@@ -753,12 +762,19 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
                 $contextText = implode(' ', $contextData['context']);
                 $systemMessageContent .= "\n\nRELEVANT SYLLABUS CONTENT:\n" . $contextText;
             } elseif (!empty($namespaces) && !$isRelevant) {
-                // More helpful out-of-scope instruction
-                $systemMessageContent .= "\n\nIMPORTANT: The user's question appears to be outside the scope of the uploaded course materials. However, try to be helpful by:
-1. Checking if the question can be answered using related syllabus content
-2. Suggesting how the user might rephrase their question to focus on syllabus topics
-3. Offering to help with study guides, summaries, or explanations of syllabus content instead
-4. Use phrases like 'Let's approach this based on what the syllabus covers' instead of saying 'not in syllabus'";
+                // Explicit instruction to state that the question is not in the syllabus
+                $systemMessageContent .= "\n\nCRITICAL: The user's question is NOT covered in the uploaded syllabus/course materials. 
+You MUST explicitly state this at the beginning of your response. Use one of these phrases:
+- 'The question you're asking isn't in the syllabus.' 
+- 'This topic is not covered in the syllabus content.'
+- 'Your question is not addressed in the uploaded course materials.'
+
+After stating this clearly, you can optionally:
+1. Suggest how the user might rephrase their question to focus on syllabus topics
+2. Offer to help with study guides, summaries, or explanations of syllabus content that IS available
+3. Mention that you can only answer questions based on the uploaded syllabus content
+
+NEVER try to answer the question as if it were in the syllabus. ALWAYS state clearly that it's not in the syllabus first.";
             }
         } else {
             // Use custom system message if provided in options, otherwise use default

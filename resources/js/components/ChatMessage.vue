@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick, onMounted } from 'vue';
-import { User, Bot, Copy, ThumbsUp, ThumbsDown, Square } from 'lucide-vue-next';
+import { User, Bot, Copy, ThumbsUp, ThumbsDown, Square, Maximize2, X } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
@@ -456,7 +456,12 @@ const processMermaidDiagrams = (html: string): string => {
                 .map(p => `<p>${p.replace(/\n+/g, ' ')}</p>`) 
                 .join('');
 
-            return `<div class=\"mermaid-container\"> 
+            return `<div class=\"mermaid-container relative\"> 
+                <button class="mermaid-fullscreen-btn absolute top-2 right-2 z-10 p-2 bg-white dark:bg-gray-800 rounded-md shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 opacity-70 hover:opacity-100 transition-opacity" data-mermaid-id="${uniqueId}" title="Enlarge diagram">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                    </svg>
+                </button>
                 <div class="mermaid-loading flex items-center justify-center my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600">
                     <div class="flex items-center space-x-3">
                         <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div>
@@ -514,7 +519,12 @@ const processMermaidDiagrams = (html: string): string => {
             .map(p => `<p>${p.replace(/\n+/g, ' ')}</p>`) 
             .join('');
 
-        return `<div class=\"mermaid-container\"> 
+        return `<div class=\"mermaid-container relative\"> 
+            <button class="mermaid-fullscreen-btn absolute top-2 right-2 z-10 p-2 bg-white dark:bg-gray-800 rounded-md shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 opacity-70 hover:opacity-100 transition-opacity" data-mermaid-id="${uniqueId}" title="Enlarge diagram">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                </svg>
+            </button>
             <div class="mermaid-loading flex items-center justify-center my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600">
                 <div class="flex items-center space-x-3">
                     <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div>
@@ -619,6 +629,10 @@ const renderMermaidDiagrams = async () => {
             div.classList.add('mermaid-rendered');
         });
         
+        // Setup fullscreen buttons after rendering
+        await nextTick();
+        setupFullscreenButtons();
+        
         // Emit event to notify ChatLayout that Mermaid rendering is complete
         window.dispatchEvent(new CustomEvent('mermaid-rendering-complete'));
         
@@ -645,6 +659,93 @@ const renderMermaidDiagrams = async () => {
     }
 };
 
+// Handle fullscreen for Mermaid diagrams
+const openMermaidFullscreen = (mermaidId: string) => {
+    const mermaidDiv = document.getElementById(mermaidId);
+    if (!mermaidDiv) return;
+    
+    // Create fullscreen overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'mermaid-fullscreen-overlay fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-8';
+    overlay.innerHTML = `
+        <div class="relative w-full h-full flex items-center justify-center">
+            <button class="mermaid-close-btn absolute top-4 right-4 z-60 p-3 bg-white dark:bg-gray-800 rounded-md shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300" title="Close">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+            <div class="mermaid-fullscreen-content w-full h-full overflow-auto p-8 bg-white dark:bg-gray-900 rounded-lg" style="max-width: 95vw; max-height: 95vh;">
+                <div class="mermaid-fullscreen-inner"></div>
+            </div>
+        </div>
+    `;
+    
+    // Clone the mermaid SVG content
+    const mermaidSvg = mermaidDiv.querySelector('svg');
+    if (mermaidSvg) {
+        const clone = mermaidSvg.cloneNode(true) as SVGElement;
+        clone.style.maxWidth = '100%';
+        clone.style.height = 'auto';
+        clone.style.width = 'auto';
+        
+        const innerDiv = overlay.querySelector('.mermaid-fullscreen-inner');
+        if (innerDiv) {
+            innerDiv.appendChild(clone);
+        }
+    }
+    
+    // Close button handler
+    const closeBtn = overlay.querySelector('.mermaid-close-btn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            document.body.removeChild(overlay);
+            document.body.style.overflow = '';
+        });
+    }
+    
+    // Close on overlay click (but not on content click)
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            document.body.removeChild(overlay);
+            document.body.style.overflow = '';
+        }
+    });
+    
+    // Close on Escape key
+    const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && document.body.contains(overlay)) {
+            document.body.removeChild(overlay);
+            document.body.style.overflow = '';
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+    
+    // Append to body and prevent scrolling
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+};
+
+// Setup fullscreen button handlers after diagrams are rendered
+const setupFullscreenButtons = () => {
+    if (!proseRef.value) return;
+    
+    // Remove old event listeners by replacing buttons
+    const buttons = proseRef.value.querySelectorAll('.mermaid-fullscreen-btn');
+    buttons.forEach(btn => {
+        const mermaidId = btn.getAttribute('data-mermaid-id');
+        if (mermaidId) {
+            btn.addEventListener('click', () => openMermaidFullscreen(mermaidId));
+            // Ensure button is visible
+            const container = btn.closest('.mermaid-container');
+            if (container) {
+                container.classList.add('group');
+            }
+        }
+    });
+};
+
 // Initialize Mermaid on mount
 onMounted(() => {
     // Detect if we're on mobile
@@ -665,7 +766,11 @@ onMounted(() => {
     });
     
     // Render diagrams on mount
-    renderMermaidDiagrams();
+    renderMermaidDiagrams().then(async () => {
+        // Setup fullscreen buttons after rendering
+        await nextTick();
+        setupFullscreenButtons();
+    });
 });
 
 // Debounce Mermaid rendering to avoid multiple renders
@@ -687,6 +792,8 @@ watch([() => props.message.content, () => props.message.streamingContent], async
     mermaidRenderTimeout = setTimeout(async () => {
         await nextTick();
         await renderMermaidDiagrams();
+        await nextTick();
+        setupFullscreenButtons();
     }, 300); // Wait 300ms after content stops changing
 }, { immediate: false });
 
@@ -701,8 +808,10 @@ watch(() => isStreaming.value, async (isCurrentlyStreaming, wasStreaming) => {
         
         await nextTick();
         // Small delay to ensure DOM is updated, then render
-        mermaidRenderTimeout = setTimeout(() => {
-            renderMermaidDiagrams();
+        mermaidRenderTimeout = setTimeout(async () => {
+            await renderMermaidDiagrams();
+            await nextTick();
+            setupFullscreenButtons();
         }, 300);
     }
 }, { immediate: false });
@@ -994,5 +1103,43 @@ const shouldAutoScroll = () => {
         max-width: 100%;
         overflow: hidden;
     }
+}
+
+/* Fullscreen button styles */
+.message-content :deep(.mermaid-container.group:hover .mermaid-fullscreen-btn),
+.streaming-content :deep(.mermaid-container.group:hover .mermaid-fullscreen-btn) {
+    opacity: 1 !important;
+}
+
+.message-content :deep(.mermaid-fullscreen-btn),
+.streaming-content :deep(.mermaid-fullscreen-btn) {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Fullscreen overlay styles */
+:deep(.mermaid-fullscreen-overlay) {
+    backdrop-filter: blur(4px);
+}
+
+:deep(.mermaid-fullscreen-content) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+:deep(.mermaid-fullscreen-inner) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+:deep(.mermaid-fullscreen-inner svg) {
+    max-width: 100%;
+    max-height: 100%;
 }
 </style>
