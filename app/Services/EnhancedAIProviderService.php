@@ -148,20 +148,29 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
             $contextText = implode(' ', $contextData['context']);
             $baseMessage .= "\n\nRELEVANT SYLLABUS CONTENT:\n" . $contextText;
             
-        } elseif (!$isRelevant) {
+        } elseif (!$isRelevant || empty($contextData['context'])) {
             // Explicit instruction to state that the question is not in the syllabus
-            $baseMessage .= "\n\nCRITICAL: The user's question is NOT covered in the uploaded syllabus/course materials. 
-You MUST explicitly state this at the beginning of your response. Use one of these phrases:
-- 'The question you're asking isn't in the syllabus.' 
-- 'This topic is not covered in the syllabus content.'
-- 'Your question is not addressed in the uploaded course materials.'
+            $baseMessage .= "\n\nCRITICAL INSTRUCTION - READ THIS CAREFULLY:
 
-After stating this clearly, you can optionally:
-1. Suggest how the user might rephrase their question to focus on syllabus topics
-2. Offer to help with study guides, summaries, or explanations of syllabus content that IS available
-3. Mention that you can only answer questions based on the uploaded syllabus content
+The user's question is NOT covered in the uploaded syllabus/course materials. The relevance score is too low to answer this question.
 
-NEVER try to answer the question as if it were in the syllabus. ALWAYS state clearly that it's not in the syllabus first.";
+YOU MUST:
+1. Start your response by explicitly stating: 'The question you're asking isn't in the syllabus' (or a similar clear statement)
+2. DO NOT attempt to answer the question at all
+3. DO NOT try to find related information or make connections to syllabus content
+4. DO NOT say things like 'Let's approach this based on what the syllabus covers'
+
+YOU MAY OPTIONALLY:
+- Suggest how the user might rephrase their question to focus on syllabus topics that ARE available
+- Offer to help with study guides, summaries, or explanations of syllabus content that IS in the uploaded materials
+- Remind the user that you can only answer questions based on the uploaded syllabus content
+
+EXAMPLE RESPONSES:
+✅ CORRECT: 'The question you're asking isn't in the syllabus. I can only help with topics covered in the SAT preparation materials that were uploaded. Would you like help with a different topic from the syllabus?'
+
+❌ WRONG: 'Let's address the topic of how to make bread based on the syllabus content...' (DON'T DO THIS!)
+
+REMEMBER: If the question isn't in the syllabus, state it clearly and do NOT answer it.";
         }
 
         return $baseMessage;
@@ -210,26 +219,37 @@ NEVER try to answer the question as if it were in the syllabus. ALWAYS state cle
                 }
             }
 
-            // Enhanced relevance scoring with stricter thresholds
+            // Enhanced relevance scoring with very strict thresholds
             $avgRelevance = !empty($relevanceScores) ? array_sum($relevanceScores) / count($relevanceScores) : 0;
             $maxRelevance = !empty($relevanceScores) ? max($relevanceScores) : 0;
             
-            // Stricter thresholds: require higher relevance scores
-            $minRelevanceThreshold = 0.65; // Minimum average relevance
-            $minMaxRelevanceThreshold = 0.70; // At least one chunk must be highly relevant
+            // Very strict thresholds: require high relevance scores for unrelated topics like "how to make bread"
+            $minRelevanceThreshold = 0.70; // Minimum average relevance - raised from 0.65
+            $minMaxRelevanceThreshold = 0.75; // At least one chunk must be highly relevant - raised from 0.70
             $minContextChunks = 1;
             $minHighRelevanceChunks = 1;
 
-            // Count highly relevant chunks (score >= 0.70)
+            // Count highly relevant chunks (score >= 0.75 for high relevance)
             $highRelevanceChunks = array_filter($relevanceScores, function($score) {
-                return $score >= 0.70;
+                return $score >= 0.75;
             });
 
-            // Stricter relevance determination: require both good average AND at least one highly relevant chunk
-            // OR if we have multiple chunks with decent scores
+            // Very strict relevance determination: 
+            // 1. Must have at least one chunk
+            // 2. Maximum relevance must be at least 0.75
+            // 3. Average relevance must be at least 0.70 OR we must have at least one highly relevant chunk (>= 0.75)
+            // If any of these fail, mark as NOT relevant
             $isRelevant = (count($context) >= $minContextChunks) && 
                          ($maxRelevance >= $minMaxRelevanceThreshold) && 
                          (($avgRelevance >= $minRelevanceThreshold) || count($highRelevanceChunks) >= $minHighRelevanceChunks);
+            
+            // If not relevant, clear context to ensure AI doesn't try to answer
+            if (!$isRelevant) {
+                $context = [];
+                $relevanceScores = [];
+                $avgRelevance = 0;
+                $maxRelevance = 0;
+            }
 
             Log::info('Enhanced context retrieval', [
                 'query' => $query,
