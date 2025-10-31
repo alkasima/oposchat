@@ -541,26 +541,86 @@ const renderMermaidDiagrams = async () => {
     
     if (mermaidDivs.length === 0) return;
     
+    // Emit event to notify ChatLayout that Mermaid is rendering
+    window.dispatchEvent(new CustomEvent('mermaid-rendering-start'));
+    
+    // Get the chat container to preserve scroll position
+    const chatContainer = document.querySelector('.chat-scrollbar') as HTMLElement;
+    let scrollTop = 0;
+    let scrollHeight = 0;
+    let isNearBottom = false;
+    
+    if (chatContainer) {
+        scrollTop = chatContainer.scrollTop;
+        scrollHeight = chatContainer.scrollHeight;
+        const clientHeight = chatContainer.clientHeight;
+        // Check if user is near bottom (within 200px)
+        isNearBottom = (scrollHeight - scrollTop - clientHeight) < 200;
+    }
+    
     // Hide all loading indicators and show mermaid divs
+    // First, set a minimum height to prevent layout shift
     mermaidDivs.forEach(mermaidDiv => {
         const container = mermaidDiv.closest('.mermaid-container') as HTMLElement;
         if (container) {
             const loadingDiv = container.querySelector('.mermaid-loading') as HTMLElement;
             if (loadingDiv) {
+                // Set minimum height based on loading div before hiding it
+                const minHeight = loadingDiv.offsetHeight || 200;
+                container.style.minHeight = `${minHeight}px`;
                 loadingDiv.style.display = 'none';
             }
             mermaidDiv.style.display = 'block';
+            // Set initial min-height for mermaid div
+            mermaidDiv.style.minHeight = '200px';
         }
     });
+    
+    // Preserve scroll position during rendering
+    const restoreScroll = () => {
+        if (chatContainer) {
+            if (isNearBottom) {
+                // If near bottom, scroll to bottom after render
+                requestAnimationFrame(() => {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                });
+            } else {
+                // Otherwise, maintain relative scroll position
+                const newScrollHeight = chatContainer.scrollHeight;
+                const heightDiff = newScrollHeight - scrollHeight;
+                if (heightDiff > 0) {
+                    chatContainer.scrollTop = scrollTop + heightDiff;
+                }
+            }
+        }
+    };
     
     try {
         // Use mermaid.run() which automatically detects .mermaid divs and renders them
         await mermaid.run();
         
+        // Wait for next frame to ensure rendering is complete
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        
+        // Remove min-height constraints now that rendering is complete
+        mermaidDivs.forEach(mermaidDiv => {
+            const container = mermaidDiv.closest('.mermaid-container') as HTMLElement;
+            if (container) {
+                container.style.minHeight = '';
+                mermaidDiv.style.minHeight = '';
+            }
+        });
+        
+        // Restore scroll position
+        restoreScroll();
+        
         // Mark as rendered to avoid re-rendering
         mermaidDivs.forEach(div => {
             div.classList.add('mermaid-rendered');
         });
+        
+        // Emit event to notify ChatLayout that Mermaid rendering is complete
+        window.dispatchEvent(new CustomEvent('mermaid-rendering-complete'));
         
         console.log(`✅ Rendered ${mermaidDivs.length} Mermaid diagram(s)`);
     } catch (error) {
@@ -569,12 +629,19 @@ const renderMermaidDiagrams = async () => {
         mermaidDivs.forEach(mermaidDiv => {
             const container = mermaidDiv.closest('.mermaid-container') as HTMLElement;
             if (container) {
+                container.style.minHeight = '';
+                mermaidDiv.style.minHeight = '';
                 const loadingDiv = container.querySelector('.mermaid-loading') as HTMLElement;
                 if (loadingDiv) {
                     loadingDiv.innerHTML = '<span class="text-sm text-red-500 dark:text-red-400">Error rendering diagram</span>';
+                    loadingDiv.style.display = 'block';
                 }
             }
         });
+        restoreScroll();
+        
+        // Emit event even on error
+        window.dispatchEvent(new CustomEvent('mermaid-rendering-complete'));
     }
 };
 
@@ -598,25 +665,42 @@ onMounted(() => {
     renderMermaidDiagrams();
 });
 
+// Debounce Mermaid rendering to avoid multiple renders
+let mermaidRenderTimeout: ReturnType<typeof setTimeout> | null = null;
+
 // Watch for content changes and re-render diagrams when streaming completes
 watch([() => props.message.content, () => props.message.streamingContent], async () => {
     // Wait a bit after streaming to ensure content is complete
     if (isStreaming.value) {
         return;
     }
-    await nextTick();
-    await renderMermaidDiagrams();
+    
+    // Clear any pending render
+    if (mermaidRenderTimeout) {
+        clearTimeout(mermaidRenderTimeout);
+    }
+    
+    // Debounce rendering to avoid rapid re-renders
+    mermaidRenderTimeout = setTimeout(async () => {
+        await nextTick();
+        await renderMermaidDiagrams();
+    }, 300); // Wait 300ms after content stops changing
 }, { immediate: false });
 
 // Also watch for when streaming state changes from true to false
 watch(() => isStreaming.value, async (isCurrentlyStreaming, wasStreaming) => {
     // When streaming completes (was streaming, now not streaming)
     if (!isCurrentlyStreaming && wasStreaming) {
+        // Clear any pending render
+        if (mermaidRenderTimeout) {
+            clearTimeout(mermaidRenderTimeout);
+        }
+        
         await nextTick();
-        // Small delay to ensure DOM is updated
-        setTimeout(() => {
+        // Small delay to ensure DOM is updated, then render
+        mermaidRenderTimeout = setTimeout(() => {
             renderMermaidDiagrams();
-        }, 100);
+        }, 300);
     }
 }, { immediate: false });
 
@@ -633,16 +717,8 @@ const shouldAutoScroll = () => {
     return (scrollHeight - scrollTop - clientHeight) < 100;
 };
 
-// Auto-scroll to bottom when streaming content changes (only if user is near bottom)
-watch(() => props.message.streamingContent, async () => {
-    if (isStreaming.value && shouldAutoScroll()) {
-        await nextTick();
-        const messageElement = document.querySelector(`[data-message-id="${props.message.id}"]`);
-        if (messageElement) {
-            messageElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
-        }
-    }
-}, { immediate: true });
+// Note: Auto-scrolling during streaming is handled by ChatLayout.vue
+// We don't need to handle scroll here to avoid conflicts and jitter
 </script>
 <template>
     <div class="group flex items-start space-x-4 py-4" :data-message-id="message.id">

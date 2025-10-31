@@ -179,22 +179,101 @@ const {
     fetchUsageData
 } = useSubscription();
 
-// Function to scroll to bottom of chat
-const scrollToBottom = async () => {
+// Track if user has manually scrolled up
+const userScrolledUp = ref(false);
+const lastScrollPosition = ref(0);
+
+// Check if user is near the bottom of the chat
+const isNearBottom = () => {
+    const container = chatContainer.value || document.querySelector('.chat-scrollbar');
+    if (!container) return true;
+    
+    const scrollTop = container.scrollTop;
+    const scrollHeight = container.scrollHeight;
+    const clientHeight = container.clientHeight;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    
+    // Consider "near bottom" if within 150px
+    return distanceFromBottom < 150;
+};
+
+// Track scroll position to detect user scrolling up
+// Use throttle to avoid too many calls
+let scrollCheckTimeout: ReturnType<typeof setTimeout> | null = null;
+const handleScroll = () => {
+    // Throttle scroll checks
+    if (scrollCheckTimeout) {
+        return;
+    }
+    
+    scrollCheckTimeout = setTimeout(() => {
+        const container = chatContainer.value || document.querySelector('.chat-scrollbar');
+        if (!container) return;
+        
+        const scrollTop = container.scrollTop;
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+        const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+        
+        // During streaming, don't mark as "scrolled up" unless user is far from bottom (>200px)
+        // This allows auto-scroll to continue working during streaming
+        const threshold = messages.value.some(m => m.isStreaming) ? 200 : 150;
+        
+        // User scrolled up if they're more than threshold from bottom and scrolling up
+        userScrolledUp.value = distanceFromBottom > threshold && scrollTop < lastScrollPosition.value;
+        lastScrollPosition.value = scrollTop;
+        
+        scrollCheckTimeout = null;
+    }, 50);
+};
+
+// Debounced scroll function
+let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
+let lastScrollTime = 0;
+const SCROLL_THROTTLE_MS = 100; // Throttle scroll calls during streaming
+
+const scrollToBottom = async (force = false, instant = false) => {
+    // Don't auto-scroll if user has manually scrolled up (unless forced)
+    if (!force && userScrolledUp.value) {
+        return;
+    }
+    
+    // During streaming, use instant scroll and throttle more aggressively
+    const now = Date.now();
+    const timeSinceLastScroll = now - lastScrollTime;
+    
+    // If not instant and we recently scrolled, skip this call
+    if (!instant && timeSinceLastScroll < SCROLL_THROTTLE_MS && messages.value.some(m => m.isStreaming)) {
+        return;
+    }
+    
+    // Clear any pending scroll
+    if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+    }
+    
     await nextTick();
     
-    const attemptScroll = () => {
+    scrollTimeout = setTimeout(() => {
         const container = chatContainer.value || document.querySelector('.chat-scrollbar');
         if (container) {
-            container.scrollTop = container.scrollHeight;
-            console.log('Scrolled to bottom:', container.scrollTop, container.scrollHeight);
+            // During streaming, use instant scroll to prevent jitter
+            // Otherwise use smooth scroll
+            const scrollBehavior = (instant || messages.value.some(m => m.isStreaming)) ? 'auto' : 'smooth';
+            
+            container.scrollTo({
+                top: container.scrollHeight,
+                behavior: scrollBehavior
+            });
+            
+            lastScrollTime = Date.now();
+            
+            // Reset the user scrolled up flag if we're forcing scroll
+            if (force) {
+                userScrolledUp.value = false;
+            }
         }
-    };
-    
-    // Try multiple times with increasing delays
-    setTimeout(attemptScroll, 100);
-    setTimeout(attemptScroll, 300);
-    setTimeout(attemptScroll, 500);
+    }, instant ? 0 : 50);
 };
 
 // Handle chat selection from sidebar
@@ -227,7 +306,7 @@ const handleChatSelected = async (chatId: string | null) => {
         // Wait for messages to render and then scroll to bottom
         await nextTick();
         setTimeout(async () => {
-            await scrollToBottom();
+            await scrollToBottom(true); // Force scroll when loading a chat
         }, 200);
     } catch (error) {
         console.error('Failed to load chat:', error);
@@ -236,25 +315,67 @@ const handleChatSelected = async (chatId: string | null) => {
     }
 };
 
-// Watch for messages changes and scroll to bottom
-watch(() => messages.value.length, async () => {
-    if (messages.value.length > 0) {
-        await nextTick();
-        setTimeout(async () => {
+// Watch for new messages being added (only when not streaming to avoid jitter)
+watch(() => messages.value.length, async (newLength, oldLength) => {
+    // Only scroll on new messages, not content updates
+    if (newLength > oldLength && newLength > 0) {
+        // Check if we're near bottom before auto-scrolling
+        if (isNearBottom()) {
             await scrollToBottom();
-        }, 100);
+        }
     }
 }, { flush: 'post' });
 
-// Watch for when messages array changes (new chat loaded)
-watch(() => messages.value, async (newMessages) => {
-    if (newMessages && newMessages.length > 0) {
-        await nextTick();
-        setTimeout(async () => {
-            await scrollToBottom();
-        }, 300);
+// Track if Mermaid is rendering to prevent scroll conflicts
+const isMermaidRendering = ref(false);
+
+// Watch for Mermaid rendering state changes (via custom event from ChatMessage)
+const handleMermaidStart = () => {
+    isMermaidRendering.value = true;
+};
+
+const handleMermaidComplete = () => {
+    isMermaidRendering.value = false;
+    // After Mermaid rendering, scroll if near bottom
+    if (isNearBottom()) {
+        setTimeout(() => scrollToBottom(), 100);
     }
-}, { deep: true, flush: 'post' });
+};
+
+onMounted(() => {
+    window.addEventListener('mermaid-rendering-start', handleMermaidStart);
+    window.addEventListener('mermaid-rendering-complete', handleMermaidComplete);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('mermaid-rendering-start', handleMermaidStart);
+    window.removeEventListener('mermaid-rendering-complete', handleMermaidComplete);
+});
+
+// Watch for streaming state changes and scroll when streaming starts
+watch(() => messages.value.some(m => m.isStreaming), async (isStreaming, wasStreaming) => {
+    // Don't scroll if Mermaid is rendering
+    if (isMermaidRendering.value) return;
+    
+    // When streaming starts, immediately scroll to bottom and lock it there
+    if (isStreaming && !wasStreaming) {
+        // Reset scroll up flag to allow auto-scrolling during streaming
+        userScrolledUp.value = false;
+        // Immediately scroll to bottom with instant behavior
+        await nextTick();
+        scrollToBottom(true, true);
+    }
+    // When streaming completes, scroll to show final content (but wait for Mermaid to finish)
+    if (!isStreaming && wasStreaming && isNearBottom()) {
+        await nextTick();
+        // Wait a bit for Mermaid to start rendering if needed
+        setTimeout(() => {
+            if (!isMermaidRendering.value) {
+                scrollToBottom(false, false); // Use smooth scroll when complete
+            }
+        }, 400);
+    }
+});
 
 // Auto-load chat if provided via prop (from /chat/{id}) or restore from localStorage
 onMounted(async () => {
@@ -406,19 +527,45 @@ const sendMessage = async () => {
     messages.value.push(assistantMessage);
 
     try {
-        // Start streaming
-        streamingChatService.startStreaming(
-            currentChat.value.id,
-            fullMessageForAI,
-            // onChunk callback
-            (chunk, accumulatedContent, formattedContent) => {
-                // Update the streaming message content
-                const messageIndex = messages.value.findIndex(m => m.id === assistantMessage.id);
-                if (messageIndex !== -1) {
-                    messages.value[messageIndex].streamingContent = formattedContent;
-                    messages.value[messageIndex].content = accumulatedContent;
-                }
-            },
+            // Start streaming
+            streamingChatService.startStreaming(
+                currentChat.value.id,
+                fullMessageForAI,
+                // onChunk callback
+                (chunk, accumulatedContent, formattedContent) => {
+                    // Update the streaming message content
+                    const messageIndex = messages.value.findIndex(m => m.id === assistantMessage.id);
+                    if (messageIndex !== -1) {
+                        messages.value[messageIndex].streamingContent = formattedContent;
+                        messages.value[messageIndex].content = accumulatedContent;
+                        
+                        // During streaming, always keep scroll at bottom
+                        // Reset userScrolledUp flag during streaming to ensure continuous scrolling
+                        // This keeps the scroll locked at the bottom during streaming
+                        if (isNearBottom()) {
+                            userScrolledUp.value = false;
+                            // Use instant scroll during streaming to prevent jitter
+                            scrollToBottom(false, true);
+                        } else if (messages.value.some(m => m.isStreaming)) {
+                            // Even if not near bottom, if streaming just started, try to scroll
+                            // This handles cases where user might have scrolled slightly
+                            const distance = () => {
+                                const container = chatContainer.value || document.querySelector('.chat-scrollbar');
+                                if (!container) return Infinity;
+                                const scrollTop = container.scrollTop;
+                                const scrollHeight = container.scrollHeight;
+                                const clientHeight = container.clientHeight;
+                                return scrollHeight - scrollTop - clientHeight;
+                            };
+                            
+                            // If within 300px of bottom during streaming, auto-scroll
+                            if (distance() < 300) {
+                                userScrolledUp.value = false;
+                                scrollToBottom(false, true);
+                            }
+                        }
+                    }
+                },
             // onComplete callback
             async (messageId, finalContent) => {
                 // Update the message with final content and remove streaming state
@@ -1158,7 +1305,7 @@ if (savedSidebarState === 'false') {
 
 
             <!-- Chat Messages Area -->
-            <div ref="chatContainer" class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 chat-scrollbar">
+            <div ref="chatContainer" @scroll="handleScroll" class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 chat-scrollbar">
                 <div class="max-w-4xl mx-auto px-6 py-6">
                     <!-- Loading State -->
                     <div v-if="isLoading" class="flex items-center justify-center py-12">
