@@ -664,79 +664,369 @@ const openMermaidFullscreen = (mermaidId: string) => {
     const mermaidDiv = document.getElementById(mermaidId);
     if (!mermaidDiv) return;
     
+    // Clean up any existing overlay first
+    cleanupExistingOverlay();
+    
     // Create fullscreen overlay
     const overlay = document.createElement('div');
     overlay.className = 'mermaid-fullscreen-overlay fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-8';
-    overlay.innerHTML = `
-        <div class="relative w-full h-full flex items-center justify-center">
-            <button class="mermaid-close-btn absolute top-4 right-4 z-60 p-3 bg-white dark:bg-gray-800 rounded-md shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300" title="Close">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-            <div class="mermaid-fullscreen-content w-full h-full overflow-auto p-8 bg-white dark:bg-gray-900 rounded-lg" style="max-width: 95vw; max-height: 95vh;">
-                <div class="mermaid-fullscreen-inner"></div>
-            </div>
-        </div>
+    overlay.dataset.mermaidOverlay = 'true'; // Mark as our overlay
+    
+    // Create the close button first so we can attach a direct handler
+    const closeButton = document.createElement('button');
+    closeButton.className = 'mermaid-close-btn absolute top-4 right-4 z-[100] p-3 bg-white dark:bg-gray-800 rounded-md shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 cursor-pointer';
+    closeButton.title = 'Close';
+    closeButton.type = 'button';
+    closeButton.style.pointerEvents = 'auto !important';
+    closeButton.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
     `;
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'mermaid-fullscreen-content overflow-auto p-8 bg-white dark:bg-gray-900 rounded-lg';
+    contentDiv.style.maxWidth = '95vw';
+    contentDiv.style.maxHeight = '95vh';
+    
+    const innerDiv = document.createElement('div');
+    innerDiv.className = 'mermaid-fullscreen-inner';
+    
+    const containerDiv = document.createElement('div');
+    containerDiv.className = 'relative w-full h-full flex items-center justify-center';
+    
+    // Assemble the overlay
+    containerDiv.appendChild(closeButton);
+    contentDiv.appendChild(innerDiv);
+    containerDiv.appendChild(contentDiv);
+    overlay.appendChild(containerDiv);
     
     // Clone the mermaid SVG content
     const mermaidSvg = mermaidDiv.querySelector('svg');
     if (mermaidSvg) {
         const clone = mermaidSvg.cloneNode(true) as SVGElement;
-        clone.style.maxWidth = '100%';
+        
+        // Preserve original dimensions and viewBox
+        const originalWidth = mermaidSvg.getAttribute('width');
+        const originalHeight = mermaidSvg.getAttribute('height');
+        const viewBox = mermaidSvg.getAttribute('viewBox');
+        const computedStyle = window.getComputedStyle(mermaidSvg);
+        
+        // Always preserve viewBox if it exists
+        if (viewBox) {
+            clone.setAttribute('viewBox', viewBox);
+        }
+        
+        // Set dimensions - make responsive but preserve aspect ratio
+        clone.style.width = '100%';
         clone.style.height = 'auto';
-        clone.style.width = 'auto';
+        clone.style.maxWidth = '95vw';
+        clone.style.maxHeight = '95vh';
+        
+        // If we have explicit width/height, use them as fallback
+        if (originalWidth && !viewBox) {
+            clone.setAttribute('width', originalWidth);
+        }
+        if (originalHeight && !viewBox) {
+            clone.setAttribute('height', originalHeight);
+        }
+        
+        // Ensure SVG is visible and properly displayed
+        clone.style.display = 'block';
+        clone.style.visibility = 'visible';
+        clone.style.opacity = '1';
+        
+        // Function to make all arrows/edges adapt to theme - mobile light mode fix
+        const makeArrowsAdaptive = (svgElement: SVGElement) => {
+            // Determine if we're in dark mode
+            const isDarkMode = document.documentElement.classList.contains('dark') || 
+                              window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const arrowColor = isDarkMode ? '#ffffff' : '#000000';
+            
+            // Get all paths, lines, polylines, and polygons that have a stroke
+            const allShapes = svgElement.querySelectorAll('path, line, polyline, polygon, g');
+            
+            allShapes.forEach((el) => {
+                const svgEl = el as SVGElement;
+                // Skip text elements
+                if (svgEl.tagName === 'text' || svgEl.tagName === 'tspan') {
+                    return;
+                }
+                
+                // Skip if inside a text element
+                if (svgEl.closest('text')) {
+                    return;
+                }
+                
+                const stroke = svgEl.getAttribute('stroke');
+                const tagName = svgEl.tagName.toLowerCase();
+                
+                // For paths, lines, polylines, polygons - make stroke adaptive if it exists
+                if ((tagName === 'path' || tagName === 'line' || tagName === 'polyline' || tagName === 'polygon') && stroke && stroke !== 'none') {
+                    svgEl.setAttribute('stroke', arrowColor);
+                    (svgEl as any).style.stroke = arrowColor;
+                }
+                
+                // For groups, check children
+                if (tagName === 'g') {
+                    const children = svgEl.querySelectorAll('path, line, polyline, polygon');
+                    children.forEach((child) => {
+                        const childSvgEl = child as SVGElement;
+                        const childStroke = childSvgEl.getAttribute('stroke');
+                        if (childStroke && childStroke !== 'none') {
+                            childSvgEl.setAttribute('stroke', arrowColor);
+                            (svgEl as any).style.stroke = arrowColor;
+                        }
+                    });
+                }
+            });
+            
+            // Also force all paths and lines with stroke to be adaptive (catch-all)
+            const allPathsAndLines = svgElement.querySelectorAll('path[stroke], line[stroke], polyline[stroke], polygon[stroke]');
+            allPathsAndLines.forEach((el) => {
+                const svgEl = el as SVGElement;
+                if (svgEl.closest('text')) return; // Skip if inside text
+                const stroke = svgEl.getAttribute('stroke');
+                if (stroke && stroke !== 'none') {
+                    svgEl.setAttribute('stroke', arrowColor);
+                    (svgEl as any).style.stroke = arrowColor;
+                }
+            });
+        };
+        
+        // Apply adaptive arrows before appending
+        makeArrowsAdaptive(clone);
         
         const innerDiv = overlay.querySelector('.mermaid-fullscreen-inner');
         if (innerDiv) {
+            // Clear any existing content
+            innerDiv.innerHTML = '';
+            
+            // Append the cloned SVG
             innerDiv.appendChild(clone);
+            
+            // Ensure the SVG has dimensions
+            requestAnimationFrame(() => {
+                // Check if SVG has content
+                if (!clone.querySelector('path, line, polyline, polygon, circle, rect, ellipse')) {
+                    console.warn('Mermaid SVG clone appears to be empty');
+                }
+                
+                // Make arrows adaptive
+                makeArrowsAdaptive(clone);
+                
+                // Also apply after a short delay to catch any elements that might be styled later
+                setTimeout(() => {
+                    makeArrowsAdaptive(clone);
+                    // Force all stroke attributes one more time
+                    const allStrokedElements = clone.querySelectorAll('path, line, polyline, polygon');
+                    allStrokedElements.forEach((el: Element) => {
+                        const svgEl = el as SVGElement;
+                        if (svgEl.closest('text')) return;
+                        const computedStyle = window.getComputedStyle(svgEl);
+                        const strokeValue = svgEl.getAttribute('stroke') || computedStyle.stroke;
+                        if (strokeValue && strokeValue !== 'none' && strokeValue !== 'transparent') {
+                            const isDarkMode = document.documentElement.classList.contains('dark') || 
+                                              window.matchMedia('(prefers-color-scheme: dark)').matches;
+                            const arrowColor = isDarkMode ? '#ffffff' : '#000000';
+                            svgEl.setAttribute('stroke', arrowColor);
+                            svgEl.style.setProperty('stroke', arrowColor, 'important');
+                        }
+                    });
+                }, 100);
+            });
+        } else {
+            console.error('Could not find .mermaid-fullscreen-inner element');
         }
+    } else {
+        console.error('Could not find SVG element in mermaid div');
     }
     
-    // Close button handler
-    const closeBtn = overlay.querySelector('.mermaid-close-btn');
-    if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            document.body.removeChild(overlay);
-            document.body.style.overflow = '';
-        });
+    // Add comprehensive CSS to force adaptive arrows (add to document head if not exists)
+    if (!document.getElementById('mermaid-fullscreen-styles')) {
+        const style = document.createElement('style');
+        style.id = 'mermaid-fullscreen-styles';
+        style.textContent = `
+            /* Force ALL paths, lines, polylines with stroke to be dark in fullscreen (light mode) */
+            .mermaid-fullscreen-inner svg path[stroke] {
+                stroke: #000000 !important;
+            }
+            .mermaid-fullscreen-inner svg line[stroke] {
+                stroke: #000000 !important;
+            }
+            .mermaid-fullscreen-inner svg polyline[stroke] {
+                stroke: #000000 !important;
+            }
+            .mermaid-fullscreen-inner svg polygon[stroke] {
+                stroke: #000000 !important;
+            }
+            /* Handle nested elements in groups */
+            .mermaid-fullscreen-inner svg g path[stroke],
+            .mermaid-fullscreen-inner svg g line[stroke],
+            .mermaid-fullscreen-inner svg g polyline[stroke] {
+                stroke: #000000 !important;
+            }
+            /* Mermaid-specific classes */
+            .mermaid-fullscreen-inner svg .edge-thickness-normal,
+            .mermaid-fullscreen-inner svg .edge-pattern-solid,
+            .mermaid-fullscreen-inner svg path.flowchart-link,
+            .mermaid-fullscreen-inner svg path.flowchart-arrowheadPath {
+                stroke: #000000 !important;
+            }
+            /* Override with white arrows in dark mode */
+            @media (prefers-color-scheme: dark) {
+                .mermaid-fullscreen-inner svg path[stroke],
+                .mermaid-fullscreen-inner svg line[stroke],
+                .mermaid-fullscreen-inner svg polyline[stroke],
+                .mermaid-fullscreen-inner svg polygon[stroke],
+                .mermaid-fullscreen-inner svg g path[stroke],
+                .mermaid-fullscreen-inner svg g line[stroke],
+                .mermaid-fullscreen-inner svg g polyline[stroke],
+                .mermaid-fullscreen-inner svg .edge-thickness-normal,
+                .mermaid-fullscreen-inner svg .edge-pattern-solid,
+                .mermaid-fullscreen-inner svg path.flowchart-link,
+                .mermaid-fullscreen-inner svg path.flowchart-arrowheadPath {
+                    stroke: #ffffff !important;
+                }
+            }
+        `;
+        document.head.appendChild(style);
     }
     
-    // Close on overlay click (but not on content click)
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-            document.body.removeChild(overlay);
-            document.body.style.overflow = '';
-        }
-    });
+    // Track if overlay is already being closed to prevent multiple close attempts
+    let isClosing = false;
     
-    // Close on Escape key
-    const handleEscape = (e: KeyboardEvent) => {
-        if (e.key === 'Escape' && document.body.contains(overlay)) {
-            document.body.removeChild(overlay);
-            document.body.style.overflow = '';
-            document.removeEventListener('keydown', handleEscape);
+    // Function to close the overlay - simple and direct
+    const closeOverlay = () => {
+        if (isClosing) return;
+        isClosing = true;
+        
+        try {
+            // Remove all event listeners
+            closeButton.removeEventListener('click', closeButtonClickHandler);
+            overlay.removeEventListener('click', overlayClickHandler);
+            document.removeEventListener('keydown', escapeKeyHandler);
+            
+            // Check if overlay still exists and is attached to DOM
+            if (overlay && document.body.contains(overlay)) {
+                // Remove overlay from DOM
+                document.body.removeChild(overlay);
+                document.body.style.overflow = '';
+                
+                // Clear active overlay reference
+                if (activeOverlay === overlay) {
+                    activeOverlay = null;
+                }
+            }
+        } catch (e) {
+            // Already removed or error occurred
+            console.log('Overlay already removed or error:', e);
+        }
+        
+        isClosing = false;
+    };
+    
+    // Define handlers with proper references for removal
+    const closeButtonClickHandler = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeOverlay();
+    };
+    
+    const overlayClickHandler = (e: Event) => {
+        if (isClosing) return;
+        
+        const target = e.target as HTMLElement;
+        
+        // If clicking on content area, don't close
+        if (target.closest('.mermaid-fullscreen-content')) {
+            return;
+        }
+        
+        // If clicking directly on overlay background, close
+        if (target === overlay) {
+            closeOverlay();
         }
     };
-    document.addEventListener('keydown', handleEscape);
+    
+    const escapeKeyHandler = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            closeOverlay();
+        }
+    };
+    
+    // Add all event listeners
+    closeButton.addEventListener('click', closeButtonClickHandler);
+    overlay.addEventListener('click', overlayClickHandler);
+    document.addEventListener('keydown', escapeKeyHandler);
     
     // Append to body and prevent scrolling
     document.body.appendChild(overlay);
     document.body.style.overflow = 'hidden';
+    
+    // Track this overlay as active
+    activeOverlay = overlay;
+};
+
+// Store references to buttons and their handlers to prevent duplicate event listeners
+const buttonHandlers = new Map<Element, (event: Event) => void>();
+
+// Track active overlay to prevent multiple instances
+let activeOverlay: HTMLElement | null = null;
+
+// Clean up any existing overlay before creating a new one
+const cleanupExistingOverlay = () => {
+    if (activeOverlay) {
+        try {
+            if (document.body.contains(activeOverlay)) {
+                document.body.removeChild(activeOverlay);
+            }
+        } catch (e) {
+            // Error handling for overlay removal
+        }
+        activeOverlay = null;
+        
+        // Also remove any mermaid overlays that might be lingering
+        const lingeringOverlays = document.querySelectorAll('[data-mermaid-overlay="true"]');
+        lingeringOverlays.forEach(overlay => {
+            try {
+                document.body.removeChild(overlay);
+            } catch (e) {
+                // Ignore errors for already removed elements
+            }
+        });
+    }
 };
 
 // Setup fullscreen button handlers after diagrams are rendered
 const setupFullscreenButtons = () => {
     if (!proseRef.value) return;
     
-    // Remove old event listeners by replacing buttons
+    // First, remove any existing event listeners
+    buttonHandlers.forEach((handler, btn) => {
+        btn.removeEventListener('click', handler);
+    });
+    buttonHandlers.clear();
+    
+    // Get all fullscreen buttons
     const buttons = proseRef.value.querySelectorAll('.mermaid-fullscreen-btn');
     buttons.forEach(btn => {
         const mermaidId = btn.getAttribute('data-mermaid-id');
         if (mermaidId) {
-            btn.addEventListener('click', () => openMermaidFullscreen(mermaidId));
+            // Create a unique handler for this button
+            const clickHandler = (event: Event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                openMermaidFullscreen(mermaidId);
+            };
+            
+            // Store the handler reference so we can remove it later
+            buttonHandlers.set(btn, clickHandler);
+            
+            // Add the new event listener
+            btn.addEventListener('click', clickHandler, { passive: false });
+            
             // Ensure button is visible
             const container = btn.closest('.mermaid-container');
             if (container) {
@@ -758,10 +1048,8 @@ onMounted(() => {
         flowchart: {
             useMaxWidth: isMobile, // Enable on mobile to prevent overflow
             htmlLabels: true,
-            fontSize: 14,
             curve: 'basis'
         },
-        fontSize: 14,
         fontFamily: 'Arial, sans-serif'
     });
     
@@ -1128,6 +1416,7 @@ const shouldAutoScroll = () => {
     display: flex;
     align-items: center;
     justify-content: center;
+    margin: 0 auto;
 }
 
 :deep(.mermaid-fullscreen-inner) {
@@ -1136,10 +1425,42 @@ const shouldAutoScroll = () => {
     justify-content: center;
     width: 100%;
     height: 100%;
+    min-width: 200px;
+    min-height: 200px;
 }
 
 :deep(.mermaid-fullscreen-inner svg) {
     max-width: 100%;
     max-height: 100%;
+    width: auto;
+    height: auto;
+    display: block;
+    visibility: visible;
+}
+
+/* Force arrows/paths in fullscreen to adapt to theme - mobile light mode fix */
+:deep(.mermaid-fullscreen-inner svg path[stroke]),
+:deep(.mermaid-fullscreen-inner svg line[stroke]),
+:deep(.mermaid-fullscreen-inner svg polyline[stroke]),
+:deep(.mermaid-fullscreen-inner svg polygon[stroke]),
+:deep(.mermaid-fullscreen-inner svg g path[stroke]),
+:deep(.mermaid-fullscreen-inner svg g line[stroke]),
+:deep(.mermaid-fullscreen-inner svg g polyline[stroke]),
+:deep(.mermaid-fullscreen-inner svg g polygon[stroke]) {
+    stroke: #000000 !important; /* Dark arrows for light mode */
+}
+
+/* White arrows only in dark mode */
+@media (prefers-color-scheme: dark) {
+    :deep(.mermaid-fullscreen-inner svg path[stroke]),
+    :deep(.mermaid-fullscreen-inner svg line[stroke]),
+    :deep(.mermaid-fullscreen-inner svg polyline[stroke]),
+    :deep(.mermaid-fullscreen-inner svg polygon[stroke]),
+    :deep(.mermaid-fullscreen-inner svg g path[stroke]),
+    :deep(.mermaid-fullscreen-inner svg g line[stroke]),
+    :deep(.mermaid-fullscreen-inner svg g polyline[stroke]),
+    :deep(.mermaid-fullscreen-inner svg g polygon[stroke]) {
+        stroke: #ffffff !important;
+    }
 }
 </style>

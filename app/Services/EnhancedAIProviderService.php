@@ -30,8 +30,11 @@ class EnhancedAIProviderService extends AIProviderService
             // Detect if the user is asking for a diagram-like deliverable
             $lastUserMessage = $messages[count($messages) - 1] ?? null;
             $lastUserText = ($lastUserMessage && ($lastUserMessage['role'] ?? '') === 'user') ? strtolower($lastUserMessage['content'] ?? '') : '';
+            
+            // Detect language of the current question
+            $questionLanguage = $this->detectLanguage($lastUserMessage['content'] ?? '');
 
-            $systemMessageContent = $this->createPedagogicalSystemMessage($contextData, $isRelevant, $lastUserText);
+            $systemMessageContent = $this->createPedagogicalSystemMessage($contextData, $isRelevant, $lastUserText, $questionLanguage);
         } else {
             $systemMessageContent = $options['system_message'] ?? config('ai.defaults.system_message');
         }
@@ -41,7 +44,11 @@ class EnhancedAIProviderService extends AIProviderService
             'content' => $systemMessageContent
         ];
         
-        // Insert system message at the beginning
+        // Remove any existing system messages and insert the new one at the beginning
+        // This ensures we always use the current relevance status, not stale system messages
+        $messages = array_filter($messages, function($msg) {
+            return ($msg['role'] ?? '') !== 'system';
+        });
         array_unshift($messages, $systemMessage);
 
         return $this->chatCompletion($messages, $options);
@@ -69,8 +76,11 @@ class EnhancedAIProviderService extends AIProviderService
             // Detect if the user is asking for a diagram-like deliverable
             $lastUserMessage = $messages[count($messages) - 1] ?? null;
             $lastUserText = ($lastUserMessage && ($lastUserMessage['role'] ?? '') === 'user') ? strtolower($lastUserMessage['content'] ?? '') : '';
+            
+            // Detect language of the current question
+            $questionLanguage = $this->detectLanguage($lastUserMessage['content'] ?? '');
 
-            $systemMessageContent = $this->createPedagogicalSystemMessage($contextData, $isRelevant, $lastUserText);
+            $systemMessageContent = $this->createPedagogicalSystemMessage($contextData, $isRelevant, $lastUserText, $questionLanguage);
         } else {
             $systemMessageContent = $options['system_message'] ?? config('ai.defaults.system_message');
         }
@@ -80,18 +90,46 @@ class EnhancedAIProviderService extends AIProviderService
             'content' => $systemMessageContent
         ];
         
-        // Insert system message at the beginning
+        // Remove any existing system messages and insert the new one at the beginning
+        // This ensures we always use the current relevance status, not stale system messages
+        $messages = array_filter($messages, function($msg) {
+            return ($msg['role'] ?? '') !== 'system';
+        });
         array_unshift($messages, $systemMessage);
 
         return $this->streamChatCompletion($messages, $callback, $options);
     }
 
     /**
+     * Detect if question is in Spanish or English
+     */
+    private function detectLanguage(string $text): string
+    {
+        // Simple language detection based on common Spanish words/characters
+        $spanishIndicators = ['á', 'é', 'í', 'ó', 'ú', 'ñ', '¿', '¡', 'cómo', 'qué', 'cuál', 'dónde', 'cuándo', 'por qué'];
+        $textLower = mb_strtolower($text);
+        
+        foreach ($spanishIndicators as $indicator) {
+            if (strpos($textLower, $indicator) !== false) {
+                return 'spanish';
+            }
+        }
+        
+        return 'english';
+    }
+
+    /**
      * Create enhanced pedagogical system message
      */
-    private function createPedagogicalSystemMessage(array $contextData, bool $isRelevant, string $lastUserText = ''): string
+    private function createPedagogicalSystemMessage(array $contextData, bool $isRelevant, string $lastUserText = '', string $questionLanguage = 'english'): string
     {
-        $baseMessage = "You are OposChat, a professional study assistant specialized in preparing students for oral and written exams.
+        // Determine if the question is relevant BEFORE creating the base message
+        // This allows us to create different messages based on relevance
+        $isRelevantForMessage = $isRelevant && !empty($contextData['context']);
+        
+        if ($isRelevantForMessage) {
+            // Create message for RELEVANT questions - can be helpful and creative
+            $baseMessage = "You are OposChat, a professional study assistant specialized in preparing students for oral and written exams.
 Your only source of knowledge is the retrieved syllabus passages that are provided to you.
 You must not use external information beyond what appears in the syllabus.
 
@@ -126,6 +164,54 @@ you must create it dynamically from the syllabus, using creative organization an
 IMPORTANT: When responding in Spanish, always translate 'syllabus' to 'temario' (never leave 'syllabus' untranslated in Spanish responses).
 
 Model disclosure: You are running on {$this->getProvider()} model {$this->getModel()}.";
+        } else {
+            // Create message for IRRELEVANT questions - MUST NOT answer
+            // This applies to ANY question not in the syllabus, regardless of language or topic
+            $baseMessage = "You are OposChat, a professional study assistant specialized in preparing students for oral and written exams.
+Your only source of knowledge is the retrieved syllabus passages that are provided to you.
+You must not use external information beyond what appears in the syllabus.
+
+⚠️ CRITICAL - READ THIS FIRST: The user's question is NOT covered in the uploaded syllabus/course materials. The relevance score is too low to answer this question. This applies to ALL irrelevant questions, whether asked in English, Spanish, or any other language, and regardless of the topic (e.g., cooking, history, science, etc.).
+
+ABSOLUTE REQUIREMENTS - YOU MUST FOLLOW THESE:
+1. Start your response by explicitly stating that the question is not in the syllabus/temario (use 'temario' if responding in Spanish, 'syllabus' if in English)
+2. DO NOT attempt to answer the question AT ALL - not even partially, not even with related information
+3. DO NOT try to find related information or make connections to syllabus content
+4. DO NOT say things like 'Let's approach this based on what the syllabus covers' or 'Based on the syllabus...'
+5. DO NOT try to be creative or helpful by answering with unrelated information from your training data
+6. DO NOT attempt to synthesize or adapt syllabus content to answer the question
+7. DO NOT provide any factual information about the topic, even if you know it from your training
+
+YOU MAY OPTIONALLY:
+- Suggest how the user might rephrase their question to focus on syllabus topics that ARE available
+- Offer to help with study guides, summaries, or explanations of syllabus content that IS in the uploaded materials
+- Remind the user that you can only answer questions based on the uploaded syllabus content
+
+EXAMPLE RESPONSES (for ANY irrelevant topic):
+✅ CORRECT (English): 'The question you're asking isn't in the syllabus. I can only help with topics covered in the uploaded materials. Would you like help with a different topic from the syllabus?'
+✅ CORRECT (Spanish): 'La pregunta que estás haciendo no está en el temario. Solo puedo ayudar con temas cubiertos en los materiales subidos. ¿Te gustaría ayuda con un tema diferente del temario?'
+
+❌ WRONG (English): 'Let's address the topic of how to make bread based on the syllabus content...' (DON'T DO THIS!)
+❌ WRONG (Spanish): 'Vamos a abordar el tema de cómo hacer pan basándonos en el contenido del temario...' (¡NO HAGAS ESTO!)
+❌ WRONG (any language): Providing any answer, explanation, or information about the topic
+
+CRITICAL LANGUAGE MATCHING RULE:
+- If the user asks in Spanish, you MUST respond in Spanish using 'temario' instead of 'syllabus'
+- If the user asks in English, you MUST respond in English using 'syllabus'
+- ALWAYS match the language of your response to the language of the question
+- The question language has been detected as: {$questionLanguage}
+
+REMEMBER: 
+- If the question isn't in the syllabus, state it clearly in the user's language and do NOT answer it
+- This rule applies to BOTH English and Spanish questions
+- This rule applies to ALL topics not covered in the syllabus (cooking, sports, history, science, etc.)
+- This rule applies in BOTH new chats AND existing chats - always check relevance for each question
+- The embedding relevance score has determined this question is unrelated - trust it and do not answer
+
+IMPORTANT: When responding in Spanish, always translate 'syllabus' to 'temario' (never leave 'syllabus' untranslated in Spanish responses).
+
+Model disclosure: You are running on {$this->getProvider()} model {$this->getModel()}.";
+        }
 
         // Detect if the user is asking for a diagram-like deliverable (including Spanish synonyms)
         $diagramSynonyms = [
@@ -147,31 +233,8 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
         if (!empty($contextData['context']) && $isRelevant) {
             $contextText = implode(' ', $contextData['context']);
             $baseMessage .= "\n\nRELEVANT SYLLABUS CONTENT:\n" . $contextText;
-            
-        } elseif (!$isRelevant || empty($contextData['context'])) {
-            // Explicit instruction to state that the question is not in the syllabus
-            $baseMessage .= "\n\nCRITICAL INSTRUCTION - READ THIS CAREFULLY:
-
-The user's question is NOT covered in the uploaded syllabus/course materials. The relevance score is too low to answer this question.
-
-YOU MUST:
-1. Start your response by explicitly stating: 'The question you're asking isn't in the syllabus' (or a similar clear statement)
-2. DO NOT attempt to answer the question at all
-3. DO NOT try to find related information or make connections to syllabus content
-4. DO NOT say things like 'Let's approach this based on what the syllabus covers'
-
-YOU MAY OPTIONALLY:
-- Suggest how the user might rephrase their question to focus on syllabus topics that ARE available
-- Offer to help with study guides, summaries, or explanations of syllabus content that IS in the uploaded materials
-- Remind the user that you can only answer questions based on the uploaded syllabus content
-
-EXAMPLE RESPONSES:
-✅ CORRECT: 'The question you're asking isn't in the syllabus. I can only help with topics covered in the SAT preparation materials that were uploaded. Would you like help with a different topic from the syllabus?'
-
-❌ WRONG: 'Let's address the topic of how to make bread based on the syllabus content...' (DON'T DO THIS!)
-
-REMEMBER: If the question isn't in the syllabus, state it clearly and do NOT answer it.";
         }
+        // If not relevant, the base message already contains the "do not answer" instructions
 
         return $baseMessage;
     }
