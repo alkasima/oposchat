@@ -26,6 +26,7 @@ class EnhancedAIProviderService extends AIProviderService
         }
 
         // Create enhanced pedagogical system message
+        // ALWAYS use enhanced system message when namespaces are provided, regardless of options
         if (!empty($namespaces)) {
             // Detect if the user is asking for a diagram-like deliverable
             $lastUserMessage = $messages[count($messages) - 1] ?? null;
@@ -34,7 +35,18 @@ class EnhancedAIProviderService extends AIProviderService
             // Detect language of the current question
             $questionLanguage = $this->detectLanguage($lastUserMessage['content'] ?? '');
 
+            // ALWAYS create our own system message - ignore any system_message from options
             $systemMessageContent = $this->createPedagogicalSystemMessage($contextData, $isRelevant, $lastUserText, $questionLanguage);
+            
+            // Log for debugging
+            Log::info('EnhancedAIProviderService: Using enhanced system message', [
+                'is_relevant' => $isRelevant,
+                'question_language' => $questionLanguage,
+                'context_chunks' => count($contextData['context'] ?? []),
+                'avg_relevance' => $contextData['avg_relevance'] ?? 0,
+                'max_relevance' => !empty($contextData['relevance_scores']) ? max($contextData['relevance_scores']) : 0,
+                'system_message_preview' => substr($systemMessageContent, 0, 200) . '...'
+            ]);
         } else {
             $systemMessageContent = $options['system_message'] ?? config('ai.defaults.system_message');
         }
@@ -44,11 +56,12 @@ class EnhancedAIProviderService extends AIProviderService
             'content' => $systemMessageContent
         ];
         
-        // Remove any existing system messages and insert the new one at the beginning
+        // Remove ANY existing system messages and insert the new one at the beginning
         // This ensures we always use the current relevance status, not stale system messages
-        $messages = array_filter($messages, function($msg) {
+        // CRITICAL: This must happen to override any system messages from buildExamSpecificSystemMessage
+        $messages = array_values(array_filter($messages, function($msg) {
             return ($msg['role'] ?? '') !== 'system';
-        });
+        }));
         array_unshift($messages, $systemMessage);
 
         return $this->chatCompletion($messages, $options);
@@ -72,6 +85,7 @@ class EnhancedAIProviderService extends AIProviderService
         }
 
         // Create enhanced pedagogical system message
+        // ALWAYS use enhanced system message when namespaces are provided, regardless of options
         if (!empty($namespaces)) {
             // Detect if the user is asking for a diagram-like deliverable
             $lastUserMessage = $messages[count($messages) - 1] ?? null;
@@ -80,7 +94,18 @@ class EnhancedAIProviderService extends AIProviderService
             // Detect language of the current question
             $questionLanguage = $this->detectLanguage($lastUserMessage['content'] ?? '');
 
+            // ALWAYS create our own system message - ignore any system_message from options
             $systemMessageContent = $this->createPedagogicalSystemMessage($contextData, $isRelevant, $lastUserText, $questionLanguage);
+            
+            // Log for debugging
+            Log::info('EnhancedAIProviderService: Using enhanced system message', [
+                'is_relevant' => $isRelevant,
+                'question_language' => $questionLanguage,
+                'context_chunks' => count($contextData['context'] ?? []),
+                'avg_relevance' => $contextData['avg_relevance'] ?? 0,
+                'max_relevance' => !empty($contextData['relevance_scores']) ? max($contextData['relevance_scores']) : 0,
+                'system_message_preview' => substr($systemMessageContent, 0, 200) . '...'
+            ]);
         } else {
             $systemMessageContent = $options['system_message'] ?? config('ai.defaults.system_message');
         }
@@ -90,11 +115,12 @@ class EnhancedAIProviderService extends AIProviderService
             'content' => $systemMessageContent
         ];
         
-        // Remove any existing system messages and insert the new one at the beginning
+        // Remove ANY existing system messages and insert the new one at the beginning
         // This ensures we always use the current relevance status, not stale system messages
-        $messages = array_filter($messages, function($msg) {
+        // CRITICAL: This must happen to override any system messages from buildExamSpecificSystemMessage
+        $messages = array_values(array_filter($messages, function($msg) {
             return ($msg['role'] ?? '') !== 'system';
-        });
+        }));
         array_unshift($messages, $systemMessage);
 
         return $this->streamChatCompletion($messages, $callback, $options);
@@ -105,14 +131,52 @@ class EnhancedAIProviderService extends AIProviderService
      */
     private function detectLanguage(string $text): string
     {
-        // Simple language detection based on common Spanish words/characters
-        $spanishIndicators = ['á', 'é', 'í', 'ó', 'ú', 'ñ', '¿', '¡', 'cómo', 'qué', 'cuál', 'dónde', 'cuándo', 'por qué'];
-        $textLower = mb_strtolower($text);
+        if (empty($text)) {
+            return 'english';
+        }
         
+        // Simple language detection based on common Spanish words/characters
+        $spanishIndicators = [
+            // Accented characters
+            'á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü',
+            // Spanish punctuation
+            '¿', '¡',
+            // Common Spanish question words
+            'cómo', 'qué', 'cuál', 'cuáles', 'dónde', 'cuándo', 'por qué', 'quién', 'quiénes',
+            // Common Spanish words
+            'se', 'hace', 'hacer', 'está', 'estás', 'están', 'son', 'tiene', 'tienen',
+            'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas',
+            'del', 'al', 'de', 'en', 'con', 'por', 'para',
+            'es', 'son', 'está', 'están', 'tiene', 'tienen'
+        ];
+        
+        $textLower = mb_strtolower(trim($text));
+        
+        // Count Spanish indicators
+        $spanishCount = 0;
         foreach ($spanishIndicators as $indicator) {
             if (strpos($textLower, $indicator) !== false) {
-                return 'spanish';
+                $spanishCount++;
             }
+        }
+        
+        // If we find multiple Spanish indicators, it's definitely Spanish
+        // Also check for common Spanish patterns
+        $spanishPatterns = [
+            '/\b(cómo|qué|cuál|dónde|cuándo|por qué|quién)\b/iu',
+            '/\b(se|hace|hacer|está|estás|están)\b/iu',
+            '/\b(del|al|de la|de los|de las)\b/iu'
+        ];
+        
+        foreach ($spanishPatterns as $pattern) {
+            if (preg_match($pattern, $textLower)) {
+                $spanishCount += 2;
+            }
+        }
+        
+        // If we have strong Spanish indicators, return Spanish
+        if ($spanishCount >= 2 || strpos($textLower, '¿') !== false || strpos($textLower, '¡') !== false) {
+            return 'spanish';
         }
         
         return 'english';
