@@ -107,6 +107,21 @@ class ChatApiService {
             throw error;
         }
     }
+
+    /**
+     * Submit feedback for a message
+     */
+    async submitFeedback(messageId, feedback) {
+        try {
+            const response = await axios.post(`/api/messages/${messageId}/feedback`, {
+                feedback: feedback // 'positive' or 'negative'
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error submitting feedback:', error);
+            throw error;
+        }
+    }
 }
 
 export default new ChatApiService();

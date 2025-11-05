@@ -51,6 +51,67 @@ class ChatController extends Controller
     }
 
     /**
+     * Submit feedback for a message
+     */
+    public function submitFeedback(Request $request, $messageId): JsonResponse
+    {
+        if (!Auth::check()) {
+            abort(401, 'Unauthorized');
+        }
+
+        // Find the message - handle both integer IDs and UUIDs/temporary IDs
+        $message = null;
+        
+        // Try to find by numeric ID first
+        if (is_numeric($messageId)) {
+            $message = Message::find($messageId);
+        }
+        
+        // If not found and it looks like a UUID, try to find by streaming_session_id
+        if (!$message && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $messageId)) {
+            $message = Message::where('streaming_session_id', $messageId)->first();
+        }
+        
+        // If still not found, try to find by streaming_session_id even if not a UUID format
+        if (!$message) {
+            $message = Message::where('streaming_session_id', $messageId)->first();
+        }
+
+        if (!$message) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Message not found. Please wait for the message to finish generating before submitting feedback.'
+            ], 404);
+        }
+
+        // Verify the message belongs to the user's chat
+        if ($message->chat->user_id !== Auth::id()) {
+            abort(403, 'Forbidden');
+        }
+
+        $request->validate([
+            'feedback' => 'required|in:positive,negative',
+        ]);
+
+        $feedback = $request->input('feedback');
+        
+        // Store feedback in message metadata
+        $metadata = $message->metadata ?? [];
+        $metadata['feedback'] = $feedback;
+        $metadata['feedback_submitted_at'] = now()->toISOString();
+        
+        $message->update([
+            'metadata' => $metadata,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Feedback submitted successfully',
+            'feedback' => $feedback,
+        ]);
+    }
+
+    /**
      * Get user's chats for sidebar
      */
     public function index(): JsonResponse

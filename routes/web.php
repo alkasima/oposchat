@@ -139,6 +139,7 @@ Route::middleware(['auth', 'verified'])->prefix('api')->group(function () {
     Route::get('/chats/{chat}', [App\Http\Controllers\ChatController::class, 'show']);
     Route::get('/chats/{chat}/export', [App\Http\Controllers\ChatController::class, 'exportChat'])->middleware('premium');
     Route::post('/chats/{chat}/messages', [App\Http\Controllers\ChatController::class, 'sendMessage'])->middleware('usage.limit:chat_messages');
+    Route::post('/messages/{message}/feedback', [App\Http\Controllers\ChatController::class, 'submitFeedback']);
     Route::delete('/chats/{chat}', [App\Http\Controllers\ChatController::class, 'destroy']);
     
     // Courses API routes
