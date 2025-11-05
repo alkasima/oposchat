@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick, onMounted } from 'vue';
-import { User, Bot, Copy, ThumbsUp, ThumbsDown, Square, Maximize2, X } from 'lucide-vue-next';
+import { User, Bot, Copy, Square, Maximize2, X } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import { useToast } from '@/composables/useToast';
-import chatApi from '@/services/chatApi';
 import mermaid from 'mermaid';
 
 interface Props {
@@ -18,10 +16,6 @@ interface Props {
         isStreaming?: boolean;
         streamingContent?: string;
         sessionId?: string;
-        metadata?: {
-            feedback?: 'positive' | 'negative';
-            [key: string]: any;
-        };
     };
     onStopStreaming?: (sessionId: string) => void;
 }
@@ -29,13 +23,7 @@ interface Props {
 const props = defineProps<Props>();
 
 // Toast composable
-const { success, error } = useToast();
-
-// Feedback state
-const feedbackStatus = ref<'positive' | 'negative' | null>(
-    props.message.metadata?.feedback || null
-);
-const isSubmittingFeedback = ref(false);
+const { success } = useToast();
 
 // Template ref for the prose content area
 const proseRef = ref<HTMLElement | null>(null);
@@ -108,52 +96,6 @@ const stopStreaming = () => {
     }
 };
 
-// Submit feedback for a message
-const submitFeedback = async (feedbackType: 'positive' | 'negative') => {
-    // Don't submit if already submitted or currently submitting
-    if (feedbackStatus.value === feedbackType || isSubmittingFeedback.value) {
-        return;
-    }
-
-    // Convert message ID to string for checking
-    const messageId = props.message.id;
-    const messageIdStr = messageId ? String(messageId) : '';
-
-    // Don't submit if message is still streaming (wait for real ID)
-    if (isStreaming.value || (messageIdStr && (messageIdStr.startsWith('streaming-') || messageIdStr.startsWith('temp-')))) {
-        error('Please wait for the message to finish generating before submitting feedback.');
-        return;
-    }
-
-    // Check if message ID is valid (not null, undefined, or empty)
-    if (!messageId || !messageIdStr) {
-        error('Message ID is not available. Please wait for the message to finish generating.');
-        return;
-    }
-
-    isSubmittingFeedback.value = true;
-
-    try {
-        const result = await chatApi.submitFeedback(messageId, feedbackType);
-        console.log('Feedback submitted successfully:', result);
-        feedbackStatus.value = feedbackType;
-        success(feedbackType === 'positive' ? 'Thank you for your positive feedback!' : 'Thank you for your feedback. We\'ll work to improve!');
-    } catch (err: any) {
-        console.error('Failed to submit feedback:', err);
-        // Extract error message from various possible formats
-        let errorMessage = 'Failed to submit feedback. Please try again.';
-        if (err?.response?.data?.message) {
-            errorMessage = err.response.data.message;
-        } else if (err?.message) {
-            errorMessage = err.message;
-        } else if (typeof err === 'string') {
-            errorMessage = err;
-        }
-        error(errorMessage);
-    } finally {
-        isSubmittingFeedback.value = false;
-    }
-};
 
 
 // Process LaTeX/math notation
@@ -1262,54 +1204,6 @@ const shouldAutoScroll = () => {
                     Copy
                 </Button>
                 
-                <!-- Feedback buttons (only show when not streaming) -->
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger as-child>
-                            <Button 
-                                v-if="!isStreaming" 
-                                @click="submitFeedback('positive')"
-                                size="sm" 
-                                variant="ghost" 
-                                :disabled="isSubmittingFeedback || feedbackStatus === 'positive'"
-                                :class="[
-                                    'h-8 px-2',
-                                    feedbackStatus === 'positive' 
-                                        ? 'text-green-600 hover:text-green-700' 
-                                        : 'text-gray-500 hover:text-gray-700'
-                                ]">
-                                <ThumbsUp class="w-3 h-3" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>Good response</p>
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-                
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger as-child>
-                            <Button 
-                                v-if="!isStreaming" 
-                                @click="submitFeedback('negative')"
-                                size="sm" 
-                                variant="ghost" 
-                                :disabled="isSubmittingFeedback || feedbackStatus === 'negative'"
-                                :class="[
-                                    'h-8 px-2',
-                                    feedbackStatus === 'negative' 
-                                        ? 'text-red-600 hover:text-red-700' 
-                                        : 'text-gray-500 hover:text-gray-700'
-                                ]">
-                                <ThumbsDown class="w-3 h-3" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>Bad response</p>
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
             </div>
             
             <!-- Message Actions for User -->
