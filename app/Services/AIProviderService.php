@@ -86,6 +86,11 @@ class AIProviderService
                     throw new Exception("Unsupported AI provider for streaming: {$this->provider}");
             }
         } catch (Exception $e) {
+            // Don't fallback if streaming was stopped by user - re-throw the exception
+            if (strpos($e->getMessage(), 'Streaming stopped by user') !== false) {
+                throw $e;
+            }
+            
             Log::error('Streaming completion failed, falling back to regular completion', [
                 'provider' => $this->provider,
                 'error' => $e->getMessage()

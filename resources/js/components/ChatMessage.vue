@@ -76,8 +76,23 @@ const copyMessage = async () => {
 };
 
 const stopStreaming = () => {
-    if (props.message.sessionId && props.onStopStreaming) {
-        props.onStopStreaming(props.message.sessionId);
+    console.log('Stop button clicked', {
+        sessionId: props.message.sessionId,
+        hasCallback: !!props.onStopStreaming,
+        message: props.message
+    });
+    
+    // Always call the callback if it exists, even if sessionId is missing
+    // The callback will handle finding the streaming message
+    if (props.onStopStreaming) {
+        // Pass sessionId if available, otherwise pass empty string or undefined
+        // The stopStreaming function in ChatLayout will find the streaming message
+        props.onStopStreaming(props.message.sessionId || '');
+    } else {
+        console.error('Cannot stop streaming: callback not provided', {
+            sessionId: props.message.sessionId,
+            hasCallback: !!props.onStopStreaming
+        });
     }
 };
 
@@ -1170,10 +1185,11 @@ const shouldAutoScroll = () => {
             <div v-if="!isUser" class="flex items-center space-x-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
                 <!-- Stop streaming button -->
                 <Button v-if="isStreaming" 
-                        @click="stopStreaming" 
+                        @click.stop="stopStreaming" 
                         size="sm" 
                         variant="ghost" 
-                        class="h-8 px-2 text-red-500 hover:text-red-700">
+                        class="h-8 px-2 text-red-500 hover:text-red-700"
+                        type="button">
                     <Square class="w-3 h-3 mr-1" />
                     Stop
                 </Button>

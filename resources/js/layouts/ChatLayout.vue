@@ -243,11 +243,11 @@ const handleScroll = () => {
         const clientHeight = container.clientHeight;
         const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
         
-        // During streaming, don't mark as "scrolled up" unless user is far from bottom (>200px)
-        // This allows auto-scroll to continue working during streaming
-        const threshold = messages.value.some(m => m.isStreaming) ? 200 : 150;
+        // Use consistent threshold - respect user scroll intent at all times
+        const threshold = 150;
         
         // User scrolled up if they're more than threshold from bottom and scrolling up
+        // This works the same way whether streaming or not - always respect user intent
         userScrolledUp.value = distanceFromBottom > threshold && scrollTop < lastScrollPosition.value;
         lastScrollPosition.value = scrollTop;
         
@@ -567,30 +567,11 @@ const sendMessage = async () => {
                         messages.value[messageIndex].streamingContent = formattedContent;
                         messages.value[messageIndex].content = accumulatedContent;
                         
-                        // During streaming, always keep scroll at bottom
-                        // Reset userScrolledUp flag during streaming to ensure continuous scrolling
-                        // This keeps the scroll locked at the bottom during streaming
-                        if (isNearBottom()) {
-                            userScrolledUp.value = false;
+                        // Only auto-scroll if user is near bottom and hasn't manually scrolled up
+                        // This allows users to scroll up and read previous messages during streaming
+                        if (isNearBottom() && !userScrolledUp.value) {
                             // Use instant scroll during streaming to prevent jitter
                             scrollToBottom(false, true);
-                        } else if (messages.value.some(m => m.isStreaming)) {
-                            // Even if not near bottom, if streaming just started, try to scroll
-                            // This handles cases where user might have scrolled slightly
-                            const distance = () => {
-                                const container = chatContainer.value || document.querySelector('.chat-scrollbar');
-                                if (!container) return Infinity;
-                                const scrollTop = container.scrollTop;
-                                const scrollHeight = container.scrollHeight;
-                                const clientHeight = container.clientHeight;
-                                return scrollHeight - scrollTop - clientHeight;
-                            };
-                            
-                            // If within 300px of bottom during streaming, auto-scroll
-                            if (distance() < 300) {
-                                userScrolledUp.value = false;
-                                scrollToBottom(false, true);
-                            }
                         }
                     }
                 },
@@ -657,15 +638,24 @@ const sendMessage = async () => {
         );
 
         // Update session ID for the streaming message
-        setTimeout(() => {
+        // Try to get sessionId immediately, then check again after a short delay
+        const trySetSessionId = () => {
             const sessionId = streamingChatService.getSessionId(currentChat.value!.id);
             if (sessionId) {
                 const messageIndex = messages.value.findIndex(m => m.id === assistantMessage.id);
                 if (messageIndex !== -1) {
                     messages.value[messageIndex].sessionId = sessionId;
+                    console.log('Session ID set on message:', sessionId);
                 }
             }
-        }, 100);
+        };
+        
+        // Try immediately
+        trySetSessionId();
+        
+        // Also try after a delay in case session hasn't started yet
+        setTimeout(trySetSessionId, 100);
+        setTimeout(trySetSessionId, 500);
 
     } catch (error) {
         console.error('Failed to start streaming:', error);
@@ -681,21 +671,74 @@ const sendMessage = async () => {
 };
 
 // Stop streaming for a specific message
-const stopStreaming = async (sessionId: string) => {
+const stopStreaming = async (sessionId?: string) => {
+    console.log('stopStreaming called', { sessionId, chatId: currentChat.value?.id, allMessages: messages.value.map(m => ({ id: m.id, sessionId: m.sessionId, isStreaming: m.isStreaming })) });
+    
+    if (!currentChat.value?.id) {
+        console.error('Cannot stop streaming: no current chat');
+        return;
+    }
+    
     try {
-        await streamingChatService.stopStreaming(currentChat.value!.id);
+        // Find the message by sessionId, or if sessionId is not provided/found, find the currently streaming message
+        let messageIndex = -1;
+        let actualSessionId = sessionId || '';
         
-        // Find and update the streaming message
-        const messageIndex = messages.value.findIndex(m => m.sessionId === sessionId);
+        if (sessionId) {
+            messageIndex = messages.value.findIndex(m => m.sessionId === sessionId);
+        }
+        
+        // If not found by sessionId, try to find the currently streaming message
+        if (messageIndex === -1) {
+            messageIndex = messages.value.findIndex(m => m.isStreaming);
+            if (messageIndex !== -1) {
+                // Get sessionId from the service if not provided
+                actualSessionId = sessionId || streamingChatService.getSessionId(currentChat.value.id) || '';
+                if (actualSessionId) {
+                    messages.value[messageIndex].sessionId = actualSessionId;
+                }
+            }
+        } else {
+            // Found by sessionId, use it
+            actualSessionId = sessionId || '';
+        }
+        
+        console.log('Message index found:', messageIndex, 'SessionId:', actualSessionId);
+        
+        // Immediately mark the message as not streaming to prevent further updates
         if (messageIndex !== -1) {
             messages.value[messageIndex].isStreaming = false;
-            messages.value[messageIndex].streamingContent = '';
-            messages.value[messageIndex].sessionId = '';
+            // Keep the current content, just stop the streaming indicator
+            // streamingContent will be kept to show the partial message
         }
+        
+        // Stop the streaming service (closes EventSource and sends stop request to server)
+        // Pass both chatId and sessionId to ensure we can stop even if connection doesn't have sessionId yet
+        await streamingChatService.stopStreaming(currentChat.value.id, actualSessionId || undefined);
+        
+        // Clear session ID after a short delay to allow the stopped event to be processed
+        setTimeout(() => {
+            if (messageIndex !== -1 && messageIndex < messages.value.length) {
+                messages.value[messageIndex].sessionId = '';
+            }
+        }, 100);
         
         isTyping.value = false;
     } catch (error) {
         console.error('Failed to stop streaming:', error);
+        // Still update the UI even if the request fails
+        let messageIndex = -1;
+        if (sessionId) {
+            messageIndex = messages.value.findIndex(m => m.sessionId === sessionId);
+        }
+        if (messageIndex === -1) {
+            messageIndex = messages.value.findIndex(m => m.isStreaming);
+        }
+        if (messageIndex !== -1) {
+            messages.value[messageIndex].isStreaming = false;
+            messages.value[messageIndex].sessionId = '';
+        }
+        isTyping.value = false;
     }
 };
 

@@ -126,12 +126,24 @@ class StreamingChatController extends Controller
             $systemMessage = $this->buildExamSpecificSystemMessage($chat);
 
             $chunkCount = 0;
+            $isStopped = false;
             
             try {
                 // Stream AI response with course context
                 $this->aiProviderService->streamChatCompletionWithContext(
                     $messages,
-                    function (string $chunk) use ($sessionId, &$chunkCount) {
+                    function (string $chunk) use ($sessionId, &$chunkCount, &$isStopped) {
+                        // Check if session was stopped before processing this chunk
+                        // Use fresh() to bypass cache and get the latest status
+                        $session = \App\Models\StreamingSession::find($sessionId);
+                        if ($session) {
+                            $session->refresh(); // Refresh to get latest status from database
+                            if ($session->isStopped()) {
+                                $isStopped = true;
+                                throw new \Exception('Streaming stopped by user');
+                            }
+                        }
+                        
                         $chunkCount++;
                         
                         // Debug logging
@@ -171,6 +183,34 @@ class StreamingChatController extends Controller
                 }
                 
             } catch (\Exception $e) {
+                // Check if this exception was caused by user stopping the stream
+                // Check for both our explicit stop exception and the case where processStreamChunk
+                // throws because the session is no longer active (stopped)
+                $isStopException = $isStopped || 
+                    strpos($e->getMessage(), 'Streaming stopped by user') !== false ||
+                    strpos($e->getMessage(), 'Streaming session not found or not active') !== false;
+                
+                if ($isStopException) {
+                    // Verify session is actually stopped
+                    $session = \App\Models\StreamingSession::find($sessionId);
+                    if ($session) {
+                        $session->refresh();
+                        if ($session->isStopped()) {
+                            \Log::info('Streaming stopped by user', ['session_id' => $sessionId]);
+                            // Finalize with partial content - message already saved by stopStreamingSession
+                            $message = \App\Models\Message::where('streaming_session_id', $sessionId)->first();
+                            if ($message) {
+                                $this->sendSSEEvent('stopped', [
+                                    'session_id' => $sessionId,
+                                    'message_id' => $message->id,
+                                    'message' => 'Streaming stopped by user'
+                                ]);
+                                return;
+                            }
+                        }
+                    }
+                }
+                
                 \Log::error('AI streaming failed, using fallback', ['error' => $e->getMessage()]);
                 
                 // Fallback response
@@ -200,15 +240,18 @@ class StreamingChatController extends Controller
                 }
             }
 
-            // Finalize the streaming message
-            $message = $this->streamingMessageService->finalizeStreamingMessage($sessionId);
+            // Check if session was stopped before finalizing
+            if (!$isStopped) {
+                // Finalize the streaming message
+                $message = $this->streamingMessageService->finalizeStreamingMessage($sessionId);
 
-            // Send completion event
-            $this->sendSSEEvent('completed', [
-                'session_id' => $sessionId,
-                'message_id' => $message->id,
-                'message' => 'Streaming completed successfully'
-            ]);
+                // Send completion event
+                $this->sendSSEEvent('completed', [
+                    'session_id' => $sessionId,
+                    'message_id' => $message->id,
+                    'message' => 'Streaming completed successfully'
+                ]);
+            }
 
         } catch (\Exception $e) {
             // Send error event

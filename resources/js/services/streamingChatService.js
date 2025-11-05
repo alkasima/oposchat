@@ -73,6 +73,11 @@ class StreamingChatService {
 
         // Handle incoming chunks
         this.eventSource.addEventListener('chunk', (event) => {
+            // Don't process chunks if we've already completed or stopped
+            if (isComplete) {
+                return;
+            }
+            
             const data = JSON.parse(event.data);
             const chunk = data.content;
             
@@ -89,6 +94,16 @@ class StreamingChatService {
             const data = JSON.parse(event.data);
             isComplete = true;
             console.log('Streaming completed: - streamingChatService.js:91', data.message_id);
+            onComplete(data.message_id, accumulatedContent);
+            this.cleanup(chatId);
+        });
+
+        // Handle stopped event (when user clicks STOP button)
+        this.eventSource.addEventListener('stopped', (event) => {
+            const data = JSON.parse(event.data);
+            isComplete = true;
+            console.log('Streaming stopped by user: - streamingChatService.js', data.message_id);
+            // Call onComplete with the accumulated content so far
             onComplete(data.message_id, accumulatedContent);
             this.cleanup(chatId);
         });
@@ -132,31 +147,49 @@ class StreamingChatService {
 
     /**
      * Stop streaming for a specific chat
+     * @param {string} chatId - The chat ID
+     * @param {string} [sessionId] - Optional session ID to stop (if not provided, uses sessionId from connection)
      */
-    async stopStreaming(chatId) {
+    async stopStreaming(chatId, sessionId = null) {
+        console.log('stopStreaming service called', { chatId, sessionId, connections: Array.from(this.activeConnections.keys()) });
+        
         const connection = this.activeConnections.get(chatId);
         if (connection) {
-            // Close the EventSource
+            console.log('Connection found', { hasEventSource: !!connection.eventSource, connectionSessionId: connection.sessionId });
+            
+            // Close the EventSource immediately to stop receiving chunks
             if (connection.eventSource) {
+                console.log('Closing EventSource');
                 connection.eventSource.close();
             }
 
+            // Use provided sessionId or the one from connection
+            const sessionIdToUse = sessionId || connection.sessionId;
+            console.log('Session ID to use for stop request:', sessionIdToUse);
+
             // Send stop request to server if we have a session ID
-            if (connection.sessionId) {
+            if (sessionIdToUse) {
                 try {
+                    console.log('Sending stop request to server');
                     await axios.post('/api/chats/stream/stop', {
-                        session_id: connection.sessionId
+                        session_id: sessionIdToUse
                     }, {
                         headers: {
                             'X-CSRF-TOKEN': getCsrfToken()
                         }
                     });
+                    console.log('Stop request sent successfully');
                 } catch (error) {
                     console.error('Error stopping streaming: - streamingChatService.js:155', error);
                 }
+            } else {
+                console.warn('No session ID available to stop streaming');
             }
 
             this.activeConnections.delete(chatId);
+            console.log('Connection removed from activeConnections');
+        } else {
+            console.warn('No active connection found for chatId:', chatId);
         }
     }
 

@@ -189,7 +189,44 @@ class EnhancedAIProviderService extends AIProviderService
     {
         // Determine if the question is relevant BEFORE creating the base message
         // This allows us to create different messages based on relevance
-        $isRelevantForMessage = $isRelevant && !empty($contextData['context']);
+        // CRITICAL: Must check both isRelevant flag AND that we have actual context chunks
+        // Also double-check that relevance scores are actually high enough
+        $hasContext = !empty($contextData['context']) && is_array($contextData['context']) && count($contextData['context']) > 0;
+        $hasHighRelevance = false;
+        
+        // Check relevance scores to ensure they're actually high enough
+        // This is a DOUBLE-CHECK to catch any edge cases where isRelevant might be incorrectly set to true
+        if (!empty($contextData['relevance_scores']) && is_array($contextData['relevance_scores'])) {
+            $maxScore = max($contextData['relevance_scores']);
+            $avgScore = array_sum($contextData['relevance_scores']) / count($contextData['relevance_scores']);
+            $highScoreCount = count(array_filter($contextData['relevance_scores'], function($s) { return $s >= 0.75; }));
+            
+            // Only consider relevant if ALL of these are true:
+            // - max score >= 0.75 (at least one highly relevant chunk)
+            // - avg score >= 0.70 (overall relevance is high)
+            // - at least 1 high relevance chunk
+            $hasHighRelevance = $maxScore >= 0.75 && $avgScore >= 0.70 && $highScoreCount >= 1;
+            
+            // Extra strict check for borderline cases
+            if ($hasHighRelevance && ($maxScore < 0.76 || $avgScore < 0.71)) {
+                // For borderline scores, require at least 2 high relevance chunks
+                $hasHighRelevance = $highScoreCount >= 2;
+            }
+        }
+        
+        // Question is ONLY relevant if: isRelevant flag is true AND we have context AND scores are high
+        // This triple-check ensures we never accidentally mark irrelevant questions as relevant
+        $isRelevantForMessage = $isRelevant && $hasContext && $hasHighRelevance;
+        
+        // Log the final decision for debugging
+        if (!$isRelevantForMessage && $isRelevant) {
+            Log::warning('Relevance override: Question marked relevant but failed double-check', [
+                'isRelevant_flag' => $isRelevant,
+                'hasContext' => $hasContext,
+                'hasHighRelevance' => $hasHighRelevance,
+                'final_decision' => 'not_relevant'
+            ]);
+        }
         
         if ($isRelevantForMessage) {
             // Create message for RELEVANT questions - can be helpful and creative
@@ -361,14 +398,29 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
                 return $score >= 0.75;
             });
 
-            // Very strict relevance determination: 
+            // VERY STRICT relevance determination - ALL conditions must be met:
             // 1. Must have at least one chunk
             // 2. Maximum relevance must be at least 0.75
-            // 3. Average relevance must be at least 0.70 OR we must have at least one highly relevant chunk (>= 0.75)
-            // If any of these fail, mark as NOT relevant
+            // 3. Average relevance must be at least 0.70 AND we must have at least one highly relevant chunk (>= 0.75)
+            // Changed OR to AND - both conditions must be true for relevance
             $isRelevant = (count($context) >= $minContextChunks) && 
                          ($maxRelevance >= $minMaxRelevanceThreshold) && 
-                         (($avgRelevance >= $minRelevanceThreshold) || count($highRelevanceChunks) >= $minHighRelevanceChunks);
+                         ($avgRelevance >= $minRelevanceThreshold) && 
+                         (count($highRelevanceChunks) >= $minHighRelevanceChunks);
+            
+            // Additional safety check: if max relevance is below 0.76 or avg is below 0.71, be extra strict
+            // This catches borderline cases where scores might be slightly above threshold but still not truly relevant
+            if ($isRelevant && ($maxRelevance < 0.76 || $avgRelevance < 0.71)) {
+                // Double-check: require at least 2 high relevance chunks for borderline cases
+                if (count($highRelevanceChunks) < 2) {
+                    $isRelevant = false;
+                    Log::warning('Relevance check failed: borderline scores require 2+ high relevance chunks', [
+                        'max_relevance' => $maxRelevance,
+                        'avg_relevance' => $avgRelevance,
+                        'high_relevance_chunks' => count($highRelevanceChunks)
+                    ]);
+                }
+            }
             
             // If not relevant, clear context to ensure AI doesn't try to answer
             if (!$isRelevant) {
@@ -376,6 +428,10 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
                 $relevanceScores = [];
                 $avgRelevance = 0;
                 $maxRelevance = 0;
+                Log::info('Question marked as NOT relevant - context cleared', [
+                    'query_preview' => substr($query, 0, 100),
+                    'final_decision' => 'not_relevant'
+                ]);
             }
 
             Log::info('Enhanced context retrieval', [
