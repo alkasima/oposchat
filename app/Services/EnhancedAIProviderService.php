@@ -21,7 +21,8 @@ class EnhancedAIProviderService extends AIProviderService
             $lastUserMessage = end($messages);
             if ($lastUserMessage && $lastUserMessage['role'] === 'user') {
                 $contextData = $this->getRelevantContext($lastUserMessage['content'], $namespaces);
-                $isRelevant = $contextData['is_relevant'] ?? true;
+                // Default to false (not relevant) if is_relevant is not set - this is safer
+                $isRelevant = $contextData['is_relevant'] ?? false;
             }
         }
 
@@ -80,7 +81,8 @@ class EnhancedAIProviderService extends AIProviderService
             $lastUserMessage = end($messages);
             if ($lastUserMessage && $lastUserMessage['role'] === 'user') {
                 $contextData = $this->getRelevantContext($lastUserMessage['content'], $namespaces);
-                $isRelevant = $contextData['is_relevant'] ?? true;
+                // Default to false (not relevant) if is_relevant is not set - this is safer
+                $isRelevant = $contextData['is_relevant'] ?? false;
             }
         }
 
@@ -212,10 +214,20 @@ class EnhancedAIProviderService extends AIProviderService
                 // For borderline scores, require at least 2 high relevance chunks
                 $hasHighRelevance = $highScoreCount >= 2;
             }
+        } else {
+            // If we have no relevance scores at all, we can't verify relevance
+            // This should only happen if there are no search results, which means NOT relevant
+            $hasHighRelevance = false;
+            Log::warning('No relevance scores available - marking as NOT relevant', [
+                'query_preview' => substr($lastUserText, 0, 100),
+                'has_context' => $hasContext,
+                'context_chunks' => count($contextData['context'] ?? [])
+            ]);
         }
         
         // Question is ONLY relevant if: isRelevant flag is true AND we have context AND scores are high
         // This triple-check ensures we never accidentally mark irrelevant questions as relevant
+        // CRITICAL: If we don't have high relevance scores, mark as NOT relevant regardless of isRelevant flag
         $isRelevantForMessage = $isRelevant && $hasContext && $hasHighRelevance;
         
         // Log the final decision for debugging
@@ -345,8 +357,17 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
      */
     public function getRelevantContext(string $query, array $namespaces = []): array
     {
+        // Always return a structured array, even when empty
+        $emptyResult = [
+            'context' => [],
+            'relevance_scores' => [],
+            'avg_relevance' => 0,
+            'max_relevance' => 0,
+            'is_relevant' => false
+        ];
+
         if (empty($namespaces)) {
-            return [];
+            return $emptyResult;
         }
 
         try {
@@ -356,8 +377,11 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
             
             $embedding = $this->generateEmbedding($query);
             if (!$embedding) {
-                Log::warning('Failed to generate embedding for query', ['query' => $query]);
-                return [];
+                Log::warning('Failed to generate embedding for query', [
+                    'query' => $query,
+                    'language' => $this->detectLanguage($query)
+                ]);
+                return $emptyResult;
             }
 
             // Search for more context chunks for better synthesis
@@ -367,9 +391,11 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
             if (!$searchResults['success'] || empty($searchResults['results'])) {
                 Log::warning('No relevant context found', [
                     'query' => $query,
+                    'query_preview' => substr($query, 0, 100),
+                    'language' => $this->detectLanguage($query),
                     'namespaces' => $namespaces
                 ]);
-                return [];
+                return $emptyResult;
             }
 
             // Extract and format relevant content with relevance scores
@@ -430,16 +456,22 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
                 $maxRelevance = 0;
                 Log::info('Question marked as NOT relevant - context cleared', [
                     'query_preview' => substr($query, 0, 100),
+                    'language' => $this->detectLanguage($query),
+                    'max_relevance' => $maxRelevance,
+                    'avg_relevance' => $avgRelevance,
+                    'high_relevance_chunks' => count($highRelevanceChunks),
                     'final_decision' => 'not_relevant'
                 ]);
             }
 
             Log::info('Enhanced context retrieval', [
                 'query' => $query,
+                'query_preview' => substr($query, 0, 100),
+                'language' => $this->detectLanguage($query),
                 'namespaces' => $namespaces,
                 'context_chunks' => count($context),
                 'avg_relevance' => $avgRelevance,
-                'max_relevance' => max($relevanceScores),
+                'max_relevance' => !empty($relevanceScores) ? max($relevanceScores) : 0,
                 'high_relevance_chunks' => count($highRelevanceChunks),
                 'is_relevant' => $isRelevant
             ]);
@@ -454,10 +486,13 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
         } catch (Exception $e) {
             Log::error('Failed to get relevant context', [
                 'query' => $query,
+                'query_preview' => substr($query, 0, 100),
+                'language' => $this->detectLanguage($query),
                 'namespaces' => $namespaces,
                 'error' => $e->getMessage()
             ]);
-            return [];
+            // Return empty result with is_relevant = false on error
+            return $emptyResult;
         }
     }
 
