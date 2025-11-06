@@ -126,7 +126,7 @@ class AIProviderService
                 'Authorization' => 'Bearer ' . $this->config['api_key'],
                 'Content-Type' => 'application/json',
                 'Accept' => 'text/event-stream',
-            ])->timeout(120)->withOptions([
+            ])->timeout(1200)->withOptions([
                 'stream' => true,
                 'read_timeout' => 120,
             ])->post('https://api.openai.com/v1/chat/completions', $payload);
@@ -287,7 +287,7 @@ class AIProviderService
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $this->config['api_key'],
             'Content-Type' => 'application/json',
-        ])->timeout(60)->post('https://api.openai.com/v1/chat/completions', $payload);
+        ])->timeout(600)->post('https://api.openai.com/v1/chat/completions', $payload);
 
         if (!$response->successful()) {
             Log::error('OpenAI API Error', [
@@ -387,7 +387,7 @@ class AIProviderService
         
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
-        ])->timeout(60)->post($url . '?key=' . $this->config['api_key'], $payload);
+        ])->timeout(600)->post($url . '?key=' . $this->config['api_key'], $payload);
 
         if (!$response->successful()) {
             Log::error('Gemini API Error', [

@@ -295,7 +295,7 @@ class DocumentProcessingService
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . config('services.openai.api_key'),
                 'Content-Type' => 'application/json',
-            ])->timeout(60)->post('https://api.openai.com/v1/embeddings', [
+            ])->timeout(600)->post('https://api.openai.com/v1/embeddings', [
                 'model' => 'text-embedding-ada-002',
                 'input' => $text
             ]);

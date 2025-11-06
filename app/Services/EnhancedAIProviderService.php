@@ -9,6 +9,14 @@ use Exception;
 class EnhancedAIProviderService extends AIProviderService
 {
     /**
+     * Constructor - call parent to initialize config
+     */
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
+    /**
      * Enhanced chat completion with pedagogical approach
      */
     public function chatCompletionWithContext(array $messages, array $namespaces = [], array $options = []): array
