@@ -206,21 +206,32 @@ class EnhancedAIProviderService extends AIProviderService
         
         // Check relevance scores to ensure they're actually high enough
         // This is a DOUBLE-CHECK to catch any edge cases where isRelevant might be incorrectly set to true
-        if (!empty($contextData['relevance_scores']) && is_array($contextData['relevance_scores'])) {
+        // Uses the SAME strict thresholds as getRelevantContext() to ensure consistency
+        if (!empty($contextData['relevance_scores']) && is_array($contextData['relevance_scores']) && count($contextData['relevance_scores']) > 0) {
             $maxScore = max($contextData['relevance_scores']);
             $avgScore = array_sum($contextData['relevance_scores']) / count($contextData['relevance_scores']);
-            $highScoreCount = count(array_filter($contextData['relevance_scores'], function($s) { return $s >= 0.75; }));
+            $highScoreCount = count(array_filter($contextData['relevance_scores'], function($s) { return $s >= 0.77; }));
+            $veryHighScoreCount = count(array_filter($contextData['relevance_scores'], function($s) { return $s >= 0.80; }));
             
-            // Only consider relevant if ALL of these are true:
-            // - max score >= 0.75 (at least one highly relevant chunk)
-            // - avg score >= 0.70 (overall relevance is high)
-            // - at least 1 high relevance chunk
-            $hasHighRelevance = $maxScore >= 0.75 && $avgScore >= 0.70 && $highScoreCount >= 1;
+            // Use the SAME strict thresholds as getRelevantContext():
+            // - max score >= 0.77 (at least one highly relevant chunk)
+            // - avg score >= 0.72 (overall relevance is high)
+            // - at least 1 high relevance chunk (>= 0.77)
+            $hasHighRelevance = $maxScore >= 0.77 && $avgScore >= 0.72 && $highScoreCount >= 1;
             
-            // Extra strict check for borderline cases
-            if ($hasHighRelevance && ($maxScore < 0.76 || $avgScore < 0.71)) {
-                // For borderline scores, require at least 2 high relevance chunks
-                $hasHighRelevance = $highScoreCount >= 2;
+            // Extra strict check for borderline cases (0.77-0.80 range)
+            if ($hasHighRelevance && $maxScore >= 0.77 && $maxScore < 0.80) {
+                // For borderline scores, require avg >= 0.75 AND (3+ high chunks OR 1+ very high chunk)
+                if ($avgScore < 0.75 || ($highScoreCount < 3 && $veryHighScoreCount < 1)) {
+                    $hasHighRelevance = false;
+                }
+            }
+            
+            // Additional check: if max < 0.80 or avg < 0.75, require 3+ high chunks
+            if ($hasHighRelevance && ($maxScore < 0.80 || $avgScore < 0.75)) {
+                if ($highScoreCount < 3) {
+                    $hasHighRelevance = false;
+                }
             }
         } else {
             // If we have no relevance scores at all, we can't verify relevance
@@ -228,8 +239,10 @@ class EnhancedAIProviderService extends AIProviderService
             $hasHighRelevance = false;
             Log::warning('No relevance scores available - marking as NOT relevant', [
                 'query_preview' => substr($lastUserText, 0, 100),
+                'language' => $questionLanguage,
                 'has_context' => $hasContext,
-                'context_chunks' => count($contextData['context'] ?? [])
+                'context_chunks' => count($contextData['context'] ?? []),
+                'isRelevant_flag' => $isRelevant
             ]);
         }
         
@@ -417,44 +430,80 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
                 }
             }
 
-            // Enhanced relevance scoring with very strict thresholds
+            // Enhanced relevance scoring with VERY STRICT thresholds to prevent false positives
             $avgRelevance = !empty($relevanceScores) ? array_sum($relevanceScores) / count($relevanceScores) : 0;
             $maxRelevance = !empty($relevanceScores) ? max($relevanceScores) : 0;
             
-            // Very strict thresholds: require high relevance scores for unrelated topics like "how to make bread"
-            $minRelevanceThreshold = 0.70; // Minimum average relevance - raised from 0.65
-            $minMaxRelevanceThreshold = 0.75; // At least one chunk must be highly relevant - raised from 0.70
+            // MUCH STRICTER thresholds to prevent false positives like "colors" or "photosynthesis" matching constitution
+            // The issue: vector embeddings can find semantic similarity even for completely unrelated topics
+            // Solution: Require very high scores AND multiple high-relevance chunks
+            $minRelevanceThreshold = 0.72; // Minimum average relevance - raised from 0.70
+            $minMaxRelevanceThreshold = 0.77; // At least one chunk must be highly relevant - raised from 0.75
             $minContextChunks = 1;
             $minHighRelevanceChunks = 1;
 
-            // Count highly relevant chunks (score >= 0.75 for high relevance)
+            // Count highly relevant chunks (score >= 0.77 for high relevance - raised from 0.75)
             $highRelevanceChunks = array_filter($relevanceScores, function($score) {
-                return $score >= 0.75;
+                return $score >= 0.77;
             });
+            $highRelevanceChunkCount = count($highRelevanceChunks);
+            
+            // Count very highly relevant chunks (score >= 0.80 for very high relevance)
+            $veryHighRelevanceChunks = array_filter($relevanceScores, function($score) {
+                return $score >= 0.80;
+            });
+            $veryHighRelevanceChunkCount = count($veryHighRelevanceChunks);
 
             // VERY STRICT relevance determination - ALL conditions must be met:
             // 1. Must have at least one chunk
-            // 2. Maximum relevance must be at least 0.75
-            // 3. Average relevance must be at least 0.70 AND we must have at least one highly relevant chunk (>= 0.75)
-            // Changed OR to AND - both conditions must be true for relevance
+            // 2. Maximum relevance must be at least 0.77 (raised from 0.75)
+            // 3. Average relevance must be at least 0.72 (raised from 0.70)
+            // 4. Must have at least one highly relevant chunk (>= 0.77)
             $isRelevant = (count($context) >= $minContextChunks) && 
                          ($maxRelevance >= $minMaxRelevanceThreshold) && 
                          ($avgRelevance >= $minRelevanceThreshold) && 
-                         (count($highRelevanceChunks) >= $minHighRelevanceChunks);
+                         ($highRelevanceChunkCount >= $minHighRelevanceChunks);
             
-            // Additional safety check: if max relevance is below 0.76 or avg is below 0.71, be extra strict
-            // This catches borderline cases where scores might be slightly above threshold but still not truly relevant
-            if ($isRelevant && ($maxRelevance < 0.76 || $avgRelevance < 0.71)) {
-                // Double-check: require at least 2 high relevance chunks for borderline cases
-                if (count($highRelevanceChunks) < 2) {
+            // EXTRA STRICT: For scores in the borderline range (0.77-0.80), require even higher standards
+            // This prevents false positives from barely-passing scores
+            if ($isRelevant && $maxRelevance >= 0.77 && $maxRelevance < 0.80) {
+                // For borderline scores, require BOTH:
+                // - avg >= 0.75 (very high average), AND
+                // - at least 3 high relevance chunks (>= 0.77), OR at least 1 very high relevance chunk (>= 0.80)
+                if ($avgRelevance < 0.75 || ($highRelevanceChunkCount < 3 && $veryHighRelevanceChunkCount < 1)) {
                     $isRelevant = false;
-                    Log::warning('Relevance check failed: borderline scores require 2+ high relevance chunks', [
+                    Log::warning('Relevance check failed: scores in 0.77-0.80 range require higher standards', [
                         'max_relevance' => $maxRelevance,
                         'avg_relevance' => $avgRelevance,
-                        'high_relevance_chunks' => count($highRelevanceChunks)
+                        'high_relevance_chunks' => $highRelevanceChunkCount,
+                        'very_high_relevance_chunks' => $veryHighRelevanceChunkCount,
+                        'query_preview' => substr($query, 0, 100),
+                        'language' => $this->detectLanguage($query),
+                        'reason' => 'Max relevance between 0.77-0.80 requires avg >= 0.75 AND (3+ high chunks OR 1+ very high chunk)'
                     ]);
                 }
             }
+            
+            // Additional safety check: if max relevance is below 0.80 OR avg is below 0.75, be extra strict
+            // This catches borderline cases where scores might be slightly above threshold but still not truly relevant
+            if ($isRelevant && ($maxRelevance < 0.80 || $avgRelevance < 0.75)) {
+                // For scores below 0.80 max or 0.75 avg, require at least 3 high relevance chunks
+                if ($highRelevanceChunkCount < 3) {
+                    $isRelevant = false;
+                    Log::warning('Relevance check failed: borderline scores require 3+ high relevance chunks', [
+                        'max_relevance' => $maxRelevance,
+                        'avg_relevance' => $avgRelevance,
+                        'high_relevance_chunks' => $highRelevanceChunkCount,
+                        'query_preview' => substr($query, 0, 100),
+                        'language' => $this->detectLanguage($query)
+                    ]);
+                }
+            }
+            
+            // Store max relevance BEFORE clearing (for logging)
+            $originalMaxRelevance = !empty($relevanceScores) ? max($relevanceScores) : 0;
+            $originalAvgRelevance = $avgRelevance;
+            $originalHighRelevanceChunks = $highRelevanceChunkCount;
             
             // If not relevant, clear context to ensure AI doesn't try to answer
             if (!$isRelevant) {
@@ -465,10 +514,11 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
                 Log::info('Question marked as NOT relevant - context cleared', [
                     'query_preview' => substr($query, 0, 100),
                     'language' => $this->detectLanguage($query),
-                    'max_relevance' => $maxRelevance,
-                    'avg_relevance' => $avgRelevance,
-                    'high_relevance_chunks' => count($highRelevanceChunks),
-                    'final_decision' => 'not_relevant'
+                    'max_relevance' => $originalMaxRelevance,
+                    'avg_relevance' => $originalAvgRelevance,
+                    'high_relevance_chunks' => $originalHighRelevanceChunks,
+                    'final_decision' => 'not_relevant',
+                    'reason' => 'Relevance scores below threshold or insufficient high-relevance chunks'
                 ]);
             }
 
@@ -478,16 +528,17 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
                 'language' => $this->detectLanguage($query),
                 'namespaces' => $namespaces,
                 'context_chunks' => count($context),
-                'avg_relevance' => $avgRelevance,
-                'max_relevance' => !empty($relevanceScores) ? max($relevanceScores) : 0,
-                'high_relevance_chunks' => count($highRelevanceChunks),
+                'avg_relevance' => $isRelevant ? $avgRelevance : $originalAvgRelevance,
+                'max_relevance' => $isRelevant ? (!empty($relevanceScores) ? max($relevanceScores) : 0) : $originalMaxRelevance,
+                'high_relevance_chunks' => $isRelevant ? count($highRelevanceChunks) : $originalHighRelevanceChunks,
                 'is_relevant' => $isRelevant
             ]);
 
             return [
                 'context' => $context,
                 'relevance_scores' => $relevanceScores,
-                'avg_relevance' => $avgRelevance,
+                'avg_relevance' => $isRelevant ? $avgRelevance : $originalAvgRelevance,
+                'max_relevance' => $isRelevant ? (!empty($relevanceScores) ? max($relevanceScores) : 0) : $originalMaxRelevance,
                 'is_relevant' => $isRelevant
             ];
 
