@@ -34,7 +34,9 @@ class EmailVerificationController extends Controller
         }
 
         // Check if token is expired (24 hours)
+        
         if ($user->verification_email_sent_at && 
+            
             $user->verification_email_sent_at->addHours(24)->isPast()) {
             return redirect()->route('email.verify.error')
                 ->with('error', 'Este enlace ya no es válido o ha caducado. Por favor, solicita un nuevo enlace de verificación.');
