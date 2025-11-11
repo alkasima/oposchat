@@ -3,12 +3,17 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Cashier\Billable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\EmailVerification;
 
 class User extends Authenticatable
 {
@@ -321,5 +326,71 @@ class User extends Authenticatable
         // For now, we'll use the existing usage service logic
         // This can be enhanced later with more sophisticated usage tracking
         return true;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Email verification helpers
+    |--------------------------------------------------------------------------
+    */
+
+    public function needsEmailVerification(): bool
+    {
+        return is_null($this->email_verified_at);
+    }
+
+    public function generateEmailVerificationToken(): string
+    {
+        $token = hash('sha256', $this->id.'|'.Str::uuid().'|'.now()->timestamp);
+        $this->email_verification_token = $token;
+        $this->verification_email_sent_at = now();
+        $this->verification_attempts = (int)($this->verification_attempts ?? 0);
+        $this->save();
+        return $token;
+    }
+
+    public function getEmailVerificationUrl(): string
+    {
+        $token = $this->email_verification_token ?: $this->generateEmailVerificationToken();
+        return URL::temporarySignedRoute(
+            'email.verify',
+            now()->addHours(24),
+            ['token' => $token]
+        );
+    }
+
+    public function verifyEmail(string $token): bool
+    {
+        if (!$this->email_verification_token || !hash_equals($this->email_verification_token, $token)) {
+            return false;
+        }
+
+        // Expire after 24 hours
+        if ($this->verification_email_sent_at instanceof Carbon &&
+            $this->verification_email_sent_at->addHours(24)->isPast()) {
+            return false;
+        }
+
+        $this->email_verified_at = now();
+        $this->email_verification_token = null;
+        $this->verification_attempts = 0;
+        $this->save();
+        return true;
+    }
+
+    public function canResendVerificationEmail(): bool
+    {
+        // Allow if never sent, or last sent > 12 minutes ago
+        if (!$this->verification_email_sent_at) {
+            return true;
+        }
+        return $this->verification_email_sent_at->diffInMinutes(now()) >= 12;
+    }
+
+    public function resendVerificationEmail(): void
+    {
+        $this->generateEmailVerificationToken();
+        $verificationUrl = $this->getEmailVerificationUrl();
+        Mail::to($this->email)->send(new EmailVerification($this, $verificationUrl));
     }
 }

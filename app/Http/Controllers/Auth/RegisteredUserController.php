@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\EmailVerification;
 
 class RegisteredUserController extends Controller
 {
@@ -42,10 +44,16 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        event(new Registered($user));
+        // Generate email verification token and send email
+        $user->generateEmailVerificationToken();
+        $verificationUrl = $user->getEmailVerificationUrl();
+        Mail::to($user)->send(new EmailVerification($user, $verificationUrl));
+
+        event(new Registered($user)); // keep event for any listeners
 
         Auth::login($user);
 
-        return to_route('dashboard');
+        // Redirect to verification notice page
+        return to_route('verification.notice');
     }
 }

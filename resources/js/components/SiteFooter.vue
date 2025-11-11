@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
+import CookieConsent from '@/components/CookieConsent.vue';
 </script>
 
 <template>
@@ -63,6 +64,9 @@ import { Link } from '@inertiajs/vue3';
                 </p>
             </div>
         </div>
+
+        <!-- Cookie consent banner/manager -->
+        <CookieConsent />
     </footer>
 </template>
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
+import CookieConsent from '@/components/CookieConsent.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
 const page = usePage();
@@ -101,5 +102,8 @@ defineProps<{
                 <slot />
             </div>
         </div>
+
+        <!-- Cookie consent banner -->
+        <CookieConsent />
     </div>
 </template>

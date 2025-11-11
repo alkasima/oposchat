@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\StreamingChatController;
 use App\Models\Course;
+use App\Http\Controllers\EmailVerificationController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome');
@@ -206,3 +207,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
+
+// Public email verification routes (token-based, 24h expiry)
+Route::middleware(['signed', 'throttle:6,1'])->group(function () {
+    Route::get('/email/verify-link', [EmailVerificationController::class, 'verify'])->name('email.verify');
+});
+
+Route::get('/email/verify/success', [EmailVerificationController::class, 'success'])->name('email.verify.success');
+Route::get('/email/verify/error', [EmailVerificationController::class, 'error'])->name('email.verify.error');
+Route::post('/email/verify/resend', [EmailVerificationController::class, 'resend'])->name('email.verify.resend');

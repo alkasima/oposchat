@@ -230,9 +230,9 @@ const passwordsMatch = computed(() => {
                 <!-- Terms and Privacy -->
                 <div class="text-xs text-gray-500 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
                     Creando la cuenta, estas de acuerdo con nuestros
-                    <TextLink href="#" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Terminos de servicio</TextLink>
+                    <TextLink :href="route('legal.terms')" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Terminos de servicio</TextLink>
                     y 
-                    <TextLink href="#" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Politica de privacidad</TextLink>.
+                    <TextLink :href="route('legal.privacy')" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Politica de privacidad</TextLink>.
                 </div>
 
                 <!-- Submit Button -->
