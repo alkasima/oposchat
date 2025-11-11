@@ -14,6 +14,11 @@ Route::get('/test', function () {
     return Inertia::render('Test');
 })->name('test');
 
+Route::get('/phpinfo', function () {
+    phpinfo();
+});
+
+
 Route::get('/pricing', function () {
     return Inertia::render('Pricing');
 })->name('pricing');
