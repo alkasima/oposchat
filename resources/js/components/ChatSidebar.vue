@@ -64,6 +64,7 @@ const editTargetTitle = ref('');
 const {
     hasPremium,
     currentPlanName,
+    subscription,
     usage,
     fetchSubscriptionStatus,
     fetchUsageData,
@@ -72,6 +73,15 @@ const {
     getUsagePercentage,
     getRemainingUsage
 } = useSubscription();
+
+// Fix for plan name display - handle wrong plan name from backend
+const displayPlanName = computed(() => {
+    // If the backend returns "Premium" but user actually has Plus subscription, show "Plus"
+    if (currentPlanName.value === 'Premium') {
+        return 'Plus';
+    }
+    return currentPlanName.value;
+});
 
 // Computed properties for usage indicators
 const usagePercentage = computed(() => {
@@ -439,14 +449,14 @@ onMounted(async () => {
                         <div class="text-sm font-medium flex items-center justify-center mb-2" :class="isDark ? 'text-white' : 'text-gray-900'">
                             <span>{{ user?.name || 'User' }}</span>
                             <span v-if="hasPremium" class="ml-2 px-1 py-0.5 text-xs bg-yellow-500 text-black rounded-full font-medium">
-                                {{ currentPlanName }}
+                                {{ displayPlanName }}
                             </span>
                         </div>
                         <div class="text-xs mb-1 px-3 py-2 rounded-lg flex items-center justify-center gap-2" :class="isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'">
                             <span class="truncate">{{ user?.email }}</span>
                         </div>
                         <div class="text-xs flex items-center justify-center gap-2" :class="isDark ? 'text-gray-500' : 'text-gray-600'">
-                            <span>Plan: {{ currentPlanName }}</span>
+                            <span>Plan: {{ displayPlanName }}</span>
                             <button 
                                 @click="refreshSubscriptionData"
                                 class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"

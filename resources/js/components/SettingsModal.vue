@@ -213,11 +213,12 @@ const loadSubscriptionData = async () => {
             {
                 key: 'academy',
                 name: 'Academy',
-                description: 'For institutions and large organizations',
-                price: 500,
+                description: 'For teams and organizations',
+                price: null,
                 currency: 'EUR',
                 interval: 'month',
-                stripe_price_id: 'price_1RuE5gAVc1w1yLTUacademy', // Academy plan €500/month
+                stripe_price_id: null,
+                contact_sales: true,
                 features: [
                     'Unlimited messages',
                     'Upload files',
@@ -289,6 +290,13 @@ const handleUpgrade = async (planKey: string) => {
     const plan = availablePlans.value.find(p => p.key === planKey);
     if (!plan) {
         console.error('Plan not found:', planKey);
+        return;
+    }
+    
+    // Handle Academy plan (contact sales)
+    if (plan.contact_sales || !plan.stripe_price_id) {
+        // Redirect to academy contact page
+        router.visit('/academy-contact');
         return;
     }
     
@@ -850,8 +858,13 @@ onUnmounted(() => {
 
                                 <div class="flex items-center justify-between mb-4">
                                     <div class="flex items-baseline space-x-1">
-                                        <span class="text-2xl font-bold text-gray-900 dark:text-white">${{ plan.price }}</span>
-                                        <span class="text-gray-600 dark:text-gray-400">USD / {{ plan.interval }}</span>
+                                        <span v-if="plan.contact_sales || plan.price === null" class="text-lg font-semibold text-gray-900 dark:text-white">
+                                            Precio personalizado
+                                        </span>
+                                        <template v-else>
+                                            <span class="text-2xl font-bold text-gray-900 dark:text-white">${{ plan.price }}</span>
+                                            <span class="text-gray-600 dark:text-gray-400">USD / {{ plan.interval }}</span>
+                                        </template>
                                     </div>
                                 </div>
 
@@ -866,7 +879,7 @@ onUnmounted(() => {
                                     :variant="plan.key === 'pro' ? 'default' : 'outline'"
                                 >
                                     <Loader2 v-if="isUpgrading" class="w-4 h-4 mr-2 animate-spin" />
-                                    {{ isUpgrading ? 'Processing...' : `Upgrade to ${plan.name}` }}
+                                    {{ isUpgrading ? 'Processing...' : (plan.contact_sales || !plan.stripe_price_id ? 'Consultar precio' : `Upgrade to ${plan.name}`) }}
                                 </Button>
                             </div>
                         </div>

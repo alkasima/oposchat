@@ -128,6 +128,7 @@ Route::middleware(['auth', 'verified'])->prefix('api')->group(function () {
         Route::get('/status', [App\Http\Controllers\SubscriptionController::class, 'status']);
         Route::get('/plans', [App\Http\Controllers\SubscriptionController::class, 'plans']);
         Route::post('/checkout', [App\Http\Controllers\SubscriptionController::class, 'createCheckoutSession']);
+        Route::post('/upgrade', [App\Http\Controllers\SubscriptionController::class, 'upgrade']);
         Route::post('/confirm', [App\Http\Controllers\SubscriptionController::class, 'confirmCheckout']);
         Route::post('/refresh', [App\Http\Controllers\SubscriptionController::class, 'refreshSubscriptionStatus']);
         Route::post('/refresh-plan', [App\Http\Controllers\SubscriptionController::class, 'refreshUserPlan']);

@@ -24,11 +24,23 @@ class SubscriptionService
         }
 
         // Create subscription record
+        $priceId = $stripeSubscription->items->data[0]->price->id;
+        
+        Log::info('Creating subscription with price_id', [
+            'stripe_subscription_id' => $stripeSubscription->id,
+            'extracted_price_id' => $priceId,
+            'all_items' => collect($stripeSubscription->items->data)->map(fn($item) => [
+                'id' => $item->id,
+                'price_id' => $item->price->id,
+                'quantity' => $item->quantity
+            ])->toArray()
+        ]);
+        
         $subscription = Subscription::create([
             'user_id' => $user->id,
             'stripe_subscription_id' => $stripeSubscription->id,
             'stripe_customer_id' => $stripeSubscription->customer,
-            'stripe_price_id' => $stripeSubscription->items->data[0]->price->id,
+            'stripe_price_id' => $priceId,
             'status' => $stripeSubscription->status,
             'current_period_start' => $stripeSubscription->current_period_start ? 
                 now()->createFromTimestamp($stripeSubscription->current_period_start) : null,

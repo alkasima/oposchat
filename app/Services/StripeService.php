@@ -6,6 +6,7 @@ use Stripe\Stripe;
 use Stripe\Customer;
 use Stripe\Subscription;
 use Stripe\Invoice;
+use Stripe\Price;
 use Stripe\Checkout\Session;
 use Stripe\Checkout\Session as CheckoutSession;
 use Stripe\BillingPortal\Session as PortalSession;
@@ -83,6 +84,22 @@ class StripeService
     }
 
     /**
+     * Retrieve a price by ID
+     */
+    public function retrievePriceById(string $priceId): Price
+    {
+        try {
+            return Price::retrieve($priceId);
+        } catch (ApiErrorException $e) {
+            Log::error('Stripe price retrieval failed', [
+                'error' => $e->getMessage(),
+                'price_id' => $priceId
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * Retrieve a Stripe customer by ID
      *
      * @param string $customerId
@@ -114,7 +131,7 @@ class StripeService
     public function createCheckoutSession(array $sessionData): Session
     {
         try {
-            return Session::create([
+            $payload = [
                 'customer' => $sessionData['customer_id'],
                 'payment_method_types' => ['card'],
                 'line_items' => $sessionData['line_items'],
@@ -122,8 +139,12 @@ class StripeService
                 'success_url' => $sessionData['success_url'],
                 'cancel_url' => $sessionData['cancel_url'],
                 'metadata' => $sessionData['metadata'] ?? [],
-                'subscription_data' => $sessionData['subscription_data'] ?? null,
-            ]);
+            ];
+            if (!empty($sessionData['subscription_data'])) {
+                $payload['subscription_data'] = $sessionData['subscription_data'];
+            }
+
+            return Session::create($payload);
         } catch (RateLimitException $e) {
             Log::warning('Stripe rate limit exceeded during checkout session creation', [
                 'error' => $e->getMessage(),

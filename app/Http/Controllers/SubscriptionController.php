@@ -30,6 +30,7 @@ class SubscriptionController extends Controller
      */
     public function plans(): JsonResponse
     {
+        
         try {
             $plans = config('subscription.plans');
             $freePlan = config('subscription.free_plan');
@@ -51,6 +52,177 @@ class SubscriptionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve subscription plans'
+            ], 500);
+        }
+    }
+
+    /**
+     * Upgrade current subscription to a different price with proration
+     * - Preserves current billing cycle (billing_cycle_anchor unchanged)
+     * - Charges or credits the prorated difference immediately via latest invoice
+     */
+    public function upgrade(Request $request): JsonResponse
+    {
+        $request->validate([
+            'price_id' => 'required|string'
+        ]);
+
+
+        try {
+            $user = Auth::user();
+
+            // If no active subscription, fall back to checkout flow
+            $active = $user->activeSubscription();
+            if (!$active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No active subscription found. Use checkout to start a subscription.',
+                    'error_code' => 'no_active_subscription'
+                ], 400);
+            }
+
+            // If target price is already active, no-op with success
+            if ($active->stripe_price_id === $request->price_id) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'status' => 'no_change',
+                        'subscription_id' => $active->stripe_subscription_id,
+                        'plan_name' => $user->getCurrentPlanName(),
+                        'plan_key' => $user->getCurrentPlanKey(),
+                        'subscription_status' => $active->status,
+                    ]
+                ]);
+            }
+
+            // Validate target price exists and is recurring
+            try {
+                $price = $this->stripeService->retrievePriceById($request->price_id);
+                if (($price->type ?? null) !== 'recurring') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Selected plan is not a recurring price. Please choose a subscription plan.',
+                        'error_code' => 'price_not_recurring'
+                    ], 400);
+                }
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Selected plan not found. Please refresh the page and try again.',
+                    'error_code' => 'price_not_found'
+                ], 400);
+            }
+
+            // Find the existing subscription item to update (local first, then Stripe fallback)
+            $item = $active->items()->first();
+            $stripeItemId = $item?->stripe_subscription_item_id;
+            if (!$stripeItemId) {
+                try {
+                    $stripeSubLive = $this->stripeService->retrieveSubscriptionById($active->stripe_subscription_id);
+                    if (!empty($stripeSubLive->items->data[0]?->id)) {
+                        $stripeItemId = $stripeSubLive->items->data[0]->id;
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Failed to retrieve Stripe subscription for item fallback', [
+                        'subscription_id' => $active->stripe_subscription_id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+            if (!$stripeItemId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Could not locate subscription item to upgrade. Please try again in a moment or contact support.',
+                    'error_code' => 'subscription_item_missing'
+                ], 400);
+            }
+
+            // Update the subscription in Stripe to new price with proration
+            $stripeSub = $this->stripeService->updateSubscription($active->stripe_subscription_id, [
+                'items' => [[
+                    'id' => $stripeItemId,
+                    'price' => $request->price_id,
+                    'quantity' => 1,
+                ]],
+                'proration_behavior' => 'create_prorations',
+                // Keep existing billing cycle anchor by omitting this param (default behavior)
+                // Use a safer payment behavior to avoid immediate failures if payment method requires action
+                'payment_behavior' => 'pending_if_incomplete',
+            ]);
+
+            // Attempt to fetch the latest invoice to allow user to pay any prorated difference immediately
+            $redirectUrl = null;
+            if (!empty($stripeSub->latest_invoice)) {
+                try {
+                    $invoice = $this->stripeService->retrieveInvoiceById($stripeSub->latest_invoice);
+                    // If there is an invoice with amount_due, provide hosted invoice URL so user can pay now if needed
+                    if ($invoice && isset($invoice->hosted_invoice_url)) {
+                        $redirectUrl = $invoice->hosted_invoice_url;
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Failed to retrieve latest invoice after upgrade', [
+                        'subscription_id' => $active->stripe_subscription_id,
+                        'latest_invoice' => $stripeSub->latest_invoice,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            // Locally, we rely on webhooks to update, but also try to refresh immediately
+            $result = \DB::transaction(function () use ($stripeSub) {
+                $subscriptionService = app(\App\Services\SubscriptionService::class);
+                return $subscriptionService->handleImmediatePaymentSuccess($stripeSub);
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'status' => 'upgraded',
+                    'subscription_id' => $stripeSub->id,
+                    'redirect_url' => $redirectUrl,
+                    'plan_name' => $result['plan_name'] ?? null,
+                    'plan_key' => $result['plan_key'] ?? null,
+                    'subscription_status' => $result['subscription_status'] ?? null,
+                ]
+            ]);
+        } catch (InvalidRequestException $e) {
+            Log::error('Stripe invalid request during subscription upgrade', [
+                'user_id' => Auth::id(),
+                'price_id' => $request->price_id,
+                'error' => $e->getMessage(),
+                'error_code' => $e->getError()->code ?? null,
+                'param' => $e->getError()->param ?? null
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $this->getStripeErrorMessage($e),
+                'error_code' => $e->getError()->code ?? 'invalid_request_error'
+            ], 400);
+        } catch (ApiErrorException $e) {
+            Log::error('Stripe API error during subscription upgrade', [
+                'user_id' => Auth::id(),
+                'price_id' => $request->price_id,
+                'error' => $e->getMessage(),
+                'error_code' => $e->getError()->code ?? null
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $this->getStripeErrorMessage($e),
+                'error_code' => $e->getError()->code ?? 'stripe_error'
+            ], 400);
+        } catch (Exception $e) {
+            Log::error('Failed to upgrade subscription', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to upgrade subscription. Please try again.',
+                'error_code' => 'upgrade_failed'
             ], 500);
         }
     }
@@ -157,13 +329,14 @@ class SubscriptionController extends Controller
         try {
             $user = Auth::user();
             
-            // Check if user already has an active subscription
-            if ($user->hasActiveSubscription()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User already has an active subscription'
-                ], 400);
-            }
+            // If user already has an active subscription, they should use the upgrade endpoint
+            // if ($user->hasActiveSubscription()) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => 'User already has an active subscription. Use upgrade endpoint.',
+            //         'error_code' => 'has_active_subscription'
+            //     ], 400);
+            // }
 
             // Ensure user has a Stripe customer ID
             if (!$user->hasStripeId()) {
@@ -285,6 +458,8 @@ class SubscriptionController extends Controller
         try {
             $user = Auth::user();
 
+            
+
             // Retrieve checkout session and subscription from Stripe using service (ensures API key)
             $session = $this->stripeService->retrieveCheckoutSession($validated['session_id']);
 
@@ -321,6 +496,7 @@ class SubscriptionController extends Controller
                 }
                 
                 // Handle immediate payment success (bypasses webhook)
+                
                 return $subscriptionService->handleImmediatePaymentSuccess($stripeSubscription, $invoice);
             });
 

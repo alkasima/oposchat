@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head, usePage, router } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -129,6 +129,13 @@ const loadData = async () => {
         loading.value = true;
         error.value = null;
 
+        // First try to refresh subscription data from Stripe to fix any sync issues
+        try {
+            await refreshSubscriptionData();
+        } catch (refreshError) {
+            console.warn('Failed to refresh subscription data, continuing with cached data:', refreshError);
+        }
+
         // Load live subscription status from API
         const subResp = await stripeService.getSubscriptionStatus();
         subscriptionData.value = subResp;
@@ -158,7 +165,27 @@ const loadData = async () => {
 const handleUpgrade = async (plan: any) => {
     try {
         processingUpgrade.value = true;
-        await stripeService.redirectToCheckout(plan.stripe_price_id);
+        
+        // Handle Academy plan (contact sales)
+        if (plan.contact_sales || !plan.stripe_price_id) {
+            // Redirect to academy contact page
+            router.visit('/academy-contact');
+            return;
+        }
+        
+        if (hasActiveSubscription.value) {
+            const res = await stripeService.upgrade(plan.stripe_price_id);
+            if (res?.redirect_url) {
+                window.location.href = res.redirect_url;
+                return;
+            }
+            // No redirect required; refresh data and show success
+            await loadData();
+            showSuccessModal.value = true;
+            return;
+        } else {
+            await stripeService.redirectToCheckout(plan.stripe_price_id);
+        }
     } catch (err) {
         console.error('Failed to start upgrade process:', err);
         error.value = err instanceof Error ? err.message : 'Failed to start upgrade process';
@@ -176,6 +203,43 @@ const handleManageSubscription = async () => {
         error.value = err instanceof Error ? err.message : 'Failed to access subscription management';
     } finally {
         processingUpgrade.value = false;
+    }
+};
+
+const handleRefreshSubscription = async () => {
+    try {
+        await refreshSubscriptionData();
+        await loadData();
+        console.log('Subscription data refreshed successfully');
+    } catch (err) {
+        console.error('Failed to refresh subscription:', err);
+        error.value = err instanceof Error ? err.message : 'Failed to refresh subscription data';
+    }
+};
+
+const refreshSubscriptionData = async () => {
+    try {
+        const response = await fetch('/api/subscriptions/refresh', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            },
+            credentials: 'same-origin'
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                console.log('Subscription data refreshed successfully:', data.data);
+                return data.data;
+            }
+        }
+        throw new Error('Failed to refresh subscription data');
+    } catch (err) {
+        console.error('Error refreshing subscription data:', err);
+        throw err;
     }
 };
 
@@ -274,7 +338,7 @@ onMounted(() => {
                         </div>
 
                         <!-- Manage Subscription Button for Active Subscribers -->
-                        <div v-if="hasActiveSubscription" class="mt-6">
+                        <div v-if="hasActiveSubscription" class="mt-6 space-y-3">
                             <Button 
                                 @click="handleManageSubscription" 
                                 variant="outline"
@@ -284,6 +348,15 @@ onMounted(() => {
                                 <Settings class="w-4 h-4 mr-2" />
                                 <Loader2 v-if="processingUpgrade" class="w-4 h-4 mr-2 animate-spin" />
                                 Manage Subscription
+                            </Button>
+                            <Button 
+                                @click="handleRefreshSubscription" 
+                                variant="outline"
+                                :disabled="loading"
+                                class="w-full sm:w-auto ml-0 sm:ml-3"
+                            >
+                                <Loader2 v-if="loading" class="w-4 h-4 mr-2 animate-spin" />
+                                Refresh Subscription Data
                             </Button>
                         </div>
                     </div>
@@ -331,10 +404,15 @@ onMounted(() => {
                         <div class="text-center mb-6">
                             <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">{{ plan.name }}</h3>
                             <div class="flex items-baseline justify-center space-x-2">
-                                <span class="text-3xl font-bold text-gray-900 dark:text-white">
-                                    {{ formatPrice(plan.price, plan.currency) }}
+                                <span v-if="plan.contact_sales || plan.price === null" class="text-lg font-semibold text-gray-900 dark:text-white">
+                                    Precio personalizado
                                 </span>
-                                <span class="text-gray-600 dark:text-gray-400">/ {{ plan.interval }}</span>
+                                <template v-else>
+                                    <span class="text-3xl font-bold text-gray-900 dark:text-white">
+                                        {{ formatPrice(plan.price, plan.currency) }}
+                                    </span>
+                                    <span class="text-gray-600 dark:text-gray-400">/ {{ plan.interval }}</span>
+                                </template>
                             </div>
                         </div>
 
@@ -358,7 +436,7 @@ onMounted(() => {
                             <Loader2 v-if="processingUpgrade" class="w-4 h-4 mr-2 animate-spin" />
                             <Crown v-else-if="plan.popular" class="w-4 h-4 mr-2" />
                             <Zap v-else class="w-4 h-4 mr-2" />
-                            {{ hasActiveSubscription ? `Switch to ${plan.name}` : `Upgrade to ${plan.name}` }}
+                            {{ plan.contact_sales || !plan.stripe_price_id ? 'Consultar precio' : (hasActiveSubscription ? `Switch to ${plan.name}` : `Upgrade to ${plan.name}`) }}
                         </Button>
                     </Card>
                 </div>

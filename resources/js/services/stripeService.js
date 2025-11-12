@@ -38,6 +38,32 @@ class StripeService {
     }
 
     /**
+     * Upgrade existing subscription to a new price (prorated)
+     */
+    async upgrade(priceId) {
+        this.setLoading(true);
+        this.clearError();
+
+        try {
+            const response = await axios.post(`${this.baseUrl}/upgrade`, {
+                price_id: priceId,
+            });
+
+            if (!response.data.success) {
+                throw new Error(response.data.message || 'Failed to upgrade subscription');
+            }
+
+            return response.data.data;
+        } catch (error) {
+            const errorMessage = this.extractErrorMessage(error);
+            this.setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
+    /**
      * Create a Stripe checkout session for subscription
      * @param {string} priceId - Stripe price ID for the subscription plan
      * @param {string} successUrl - URL to redirect to after successful payment
@@ -154,14 +180,27 @@ class StripeService {
 
         try {
             const checkoutData = await this.createCheckoutSession(
-                priceId, 
-                defaultSuccessUrl, 
+                priceId,
+                defaultSuccessUrl,
                 defaultCancelUrl
             );
 
             // Redirect to Stripe Checkout
             window.location.href = checkoutData.checkout_url;
         } catch (error) {
+            // If backend indicates user already has active subscription, use upgrade flow
+            const errorCode = error?.response?.data?.error_code;
+            const message = (error && error.message) || '';
+            const isActiveSub = errorCode === 'has_active_subscription' || message.toLowerCase().includes('active subscription');
+            if (isActiveSub) {
+                const upgradeData = await this.upgrade(priceId);
+                if (upgradeData?.redirect_url) {
+                    window.location.href = upgradeData.redirect_url;
+                    return;
+                }
+                // No redirect needed; rely on webhooks/polling
+                return upgradeData;
+            }
             console.error('Failed to redirect to checkout:', error);
             throw error;
         }

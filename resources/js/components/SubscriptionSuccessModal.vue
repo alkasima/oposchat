@@ -78,13 +78,21 @@ const emit = defineEmits<{
 const planName = computed(() => {
   // Map price IDs to plan names
   const planMap: Record<string, string> = {
-    'price_1RuE5gAVc1w1yLTUdkry1i2o': 'Pro Plan',
-    'price_1RuE5gAVc1w1yLTUopmMCnBb': 'Team Plan'
+    'price_1RuE5gAVc1w1yLTUdkry1i2o': 'Plus Plan',
+    'price_1RuE5gAVc1w1yLTUopmMCnBb': 'Plus Plan'
   }
   
   // Try to get plan from subscription data
   const priceId = props.subscription?.subscription?.stripe_price_id || props.subscription?.plan
-  return planMap[priceId] || 'Premium Plan'
+  const mappedPlan = planMap[priceId];
+  
+  // If we have a mapped plan, use it. Otherwise, if it says "Premium Plan", correct it to "Plus Plan"
+  if (mappedPlan) {
+    return mappedPlan;
+  }
+  
+  // Fallback: if backend says "Premium Plan", correct it to "Plus Plan"
+  return 'Plus Plan';
 })
 
 const startChatting = () => {
