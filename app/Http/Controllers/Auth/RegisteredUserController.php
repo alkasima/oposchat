@@ -12,8 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\EmailVerification;
+use Illuminate\Support\Facades\Http;
 
 class RegisteredUserController extends Controller
 {
@@ -47,7 +46,29 @@ class RegisteredUserController extends Controller
         // Generate email verification token and send email
         $user->generateEmailVerificationToken();
         $verificationUrl = $user->getEmailVerificationUrl();
-        Mail::to($user)->send(new EmailVerification($user, $verificationUrl));
+        $html = view('emails.email-verification', [
+            'user' => $user,
+            'verificationUrl' => $verificationUrl,
+        ])->render();
+
+        $payload = [
+            'from' => [
+                'email' => config('services.email_api.from_email'),
+                'name' => config('services.email_api.from_name'),
+            ],
+            'to' => [[
+                'email' => $user->email,
+                'name' => $user->name,
+            ]],
+            'subject' => 'Confirma tu correo y activa tu cuenta en OposChat',
+            'html_part' => $html,
+            'text_part_auto' => true,
+        ];
+
+        Http::withHeaders([
+            'content-type' => 'application/json',
+            'x-auth-token' => config('services.email_api.token'),
+        ])->post(config('services.email_api.url'), $payload);
 
         event(new Registered($user)); // keep event for any listeners
 

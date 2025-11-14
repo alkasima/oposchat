@@ -25,12 +25,24 @@ const submit = () => {
         </div>
 
         <form @submit.prevent="submit" class="space-y-6 text-center">
-            <Button :disabled="form.processing" variant="secondary">
+            <Button
+                :disabled="form.processing"
+                variant="outline"
+                size="lg"
+                class="px-8 rounded-full shadow-sm font-medium bg-slate-800 text-white hover:bg-slate-900 border-transparent"
+            >
                 <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
                 Reenviar correo de verificación.
             </Button>
 
-            <TextLink :href="route('logout')" method="post" as="button" class="mx-auto block text-sm"> Salir </TextLink>
+            <TextLink
+                :href="route('logout')"
+                method="post"
+                as="button"
+                class="mx-auto block text-sm text-red-500 hover:text-red-600 underline underline-offset-4"
+            >
+                Salir
+            </TextLink>
         </form>
     </AuthLayout>
 </template>

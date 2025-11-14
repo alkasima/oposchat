@@ -25,6 +25,13 @@ return [
         'from_address' => env('AWS_SES_FROM_ADDRESS', env('MAIL_FROM_ADDRESS', 'soporte@oposchat.com')),
     ],
 
+    'email_api' => [
+        'url' => env('EMAIL_API_URL', 'https://oposchat.ipzmarketing.com/api/v1/send_emails'),
+        'token' => env('EMAIL_API_TOKEN'),
+        'from_email' => env('EMAIL_API_FROM_EMAIL', 'soporte@oposchat.com'),
+        'from_name' => env('EMAIL_API_FROM_NAME', 'Oposchat'),
+    ],
+
     'resend' => [
         'key' => env('RESEND_KEY'),
     ],

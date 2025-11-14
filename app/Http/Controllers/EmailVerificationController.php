@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Mail\EmailVerification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Http;
+
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -106,7 +106,29 @@ class EmailVerificationController extends Controller
             
             $verificationUrl = $user->getEmailVerificationUrl();
             
-            Mail::to($user)->send(new EmailVerification($user, $verificationUrl));
+            $html = view('emails.email-verification', [
+                'user' => $user,
+                'verificationUrl' => $verificationUrl,
+            ])->render();
+
+            $payload = [
+                'from' => [
+                    'email' => config('services.email_api.from_email'),
+                    'name' => config('services.email_api.from_name'),
+                ],
+                'to' => [[
+                    'email' => $user->email,
+                    'name' => $user->name,
+                ]],
+                'subject' => 'Confirma tu correo y activa tu cuenta en OposChat',
+                'html_part' => $html,
+                'text_part_auto' => true,
+            ];
+
+            Http::withHeaders([
+                'content-type' => 'application/json',
+                'x-auth-token' => config('services.email_api.token'),
+            ])->post(config('services.email_api.url'), $payload);
             
             RateLimiter::hit($key, 3600); // 1 hour cooldown
 

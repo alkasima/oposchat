@@ -12,8 +12,6 @@ use Laravel\Cashier\Billable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\EmailVerification;
 
 class User extends Authenticatable
 {
@@ -392,6 +390,6 @@ class User extends Authenticatable
     {
         $this->generateEmailVerificationToken();
         $verificationUrl = $this->getEmailVerificationUrl();
-        Mail::to($this->email)->send(new EmailVerification($this, $verificationUrl));
+        // Email sending is handled in the controller via the external email API
     }
 }
