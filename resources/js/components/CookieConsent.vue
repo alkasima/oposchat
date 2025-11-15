@@ -88,11 +88,13 @@ onMounted(() => {
 				<a :href="route('legal.cookies')" class="text-blue-600 hover:underline">Política de cookies</a>.
 			</p>
 			<div class="flex gap-2 shrink-0">
-				<button class="px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-700"
+				<button
+					class="px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-700 bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-transparent dark:text-gray-200"
 					@click="rejectAll">
 					Rechazar opcionales
 				</button>
-				<button class="px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-700"
+				<button
+					class="px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-700 bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-transparent dark:text-gray-200"
 					@click="showManager = true">
 					Gestionar
 				</button>
@@ -139,11 +141,14 @@ onMounted(() => {
 			</div>
 
 			<div class="mt-6 flex justify-end gap-2">
-				<button class="px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-700"
+				<button
+					class="px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-700 bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-transparent dark:text-gray-200"
 					@click="showManager=false">
 					Cancelar
 				</button>
-				<button class="px-3 py-2 text-sm rounded-md" @click="rejectAll">
+				<button
+					class="px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-700 bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-transparent dark:text-gray-200"
+					@click="rejectAll">
 					Rechazar opcionales
 				</button>
 				<button class="px-3 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700"
