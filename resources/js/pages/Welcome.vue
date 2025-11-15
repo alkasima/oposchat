@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, onMounted } from 'vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import SiteFooter from '@/components/SiteFooter.vue';
+import stripeService from '@/services/stripeService';
 
 const isMenuOpen = ref(false);
 const openFaq = ref(null);
@@ -75,6 +76,63 @@ const openMoreInfo = ref<string | null>(null);
 
 const toggleMoreInfo = (id: string) => {
     openMoreInfo.value = openMoreInfo.value === id ? null : id;
+};
+
+// Subscription helpers for homepage pricing section
+const page = usePage();
+
+const managePlanFromHome = async () => {
+    // Only for authenticated users
+    if (!page.props.auth?.user) {
+        router.visit(route('login'));
+        return;
+    }
+
+    try {
+        await stripeService.redirectToPortal();
+    } catch (error) {
+        console.error('Failed to open Stripe customer portal from homepage:', error);
+    }
+};
+
+const upgradeToPremiumFromHome = async () => {
+    if (!page.props.auth?.user) {
+        router.visit(route('register'));
+        return;
+    }
+
+    try {
+        const plans = await stripeService.getPlans();
+        const premiumPlan = plans.plans?.premium;
+        const priceId = premiumPlan?.stripe_price_id;
+        if (!priceId) {
+            console.error('Premium price ID not found in plans config');
+            return;
+        }
+        await stripeService.redirectToCheckout(priceId);
+    } catch (error) {
+        console.error('Failed to start Premium checkout from homepage:', error);
+    }
+};
+
+const upgradeToPlusFromHome = async () => {
+    if (!page.props.auth?.user) {
+        router.visit(route('register'));
+        return;
+    }
+
+    try {
+        const plans = await stripeService.getPlans();
+        const plusPlan = plans.plans?.plus;
+        const priceId = plusPlan?.stripe_price_id;
+        if (!priceId) {
+            console.error('Plus price ID not found in plans config');
+            return;
+        }
+        await stripeService.redirectToCheckout(priceId);
+    } catch (error) {
+        console.error('Failed to start Plus checkout from homepage:', error);
+    }
 };
 
 const faqData = [
@@ -481,13 +539,14 @@ const faqData = [
                                 >
                                     Start Free Trial
                                 </Link>
-                                <Link 
+                                <button
                                     v-else
-                                    :href="route('dashboard')"
+                                    type="button"
+                                    @click="$page.props.auth.user?.subscription_type === 'premium' ? managePlanFromHome() : upgradeToPremiumFromHome()"
                                     class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-blue-600 hover:to-purple-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
-                                    Mejorar al Premium
-                                </Link>
+                                    {{ $page.props.auth.user?.subscription_type === 'premium' ? 'Manage Plan' : 'Mejorar al Premium' }}
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -539,13 +598,14 @@ const faqData = [
                                 >
                                     Empieza gratis
                                 </Link>
-                                <Link 
+                                <button
                                     v-else
-                                    :href="route('dashboard')"
+                                    type="button"
+                                    @click="$page.props.auth.user?.subscription_type === 'plus' ? managePlanFromHome() : upgradeToPlusFromHome()"
                                     class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
-                                    Mejorar al Plus
-                                </Link>
+                                    {{ $page.props.auth.user?.subscription_type === 'plus' ? 'Manage Plan' : 'Mejorar al Plus' }}
+                                </button>
                             </div>
                         </div>
                     </div>

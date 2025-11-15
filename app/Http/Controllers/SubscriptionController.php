@@ -738,8 +738,19 @@ class SubscriptionController extends Controller
 
             // Get the latest subscription from Stripe
             $stripeCustomer = $this->stripeService->retrieveCustomer($user->stripe_customer_id);
-            $subscriptions = $stripeCustomer->subscriptions->data;
-            
+
+            // Some API responses may not include embedded subscriptions; guard against null
+            $subscriptions = $stripeCustomer->subscriptions->data ?? null;
+
+            // If subscriptions are not embedded, fetch them explicitly via the Subscriptions API
+            if ($subscriptions === null) {
+                $subscriptions = \Stripe\Subscription::all([
+                    'customer' => $user->stripe_customer_id,
+                    'status' => 'all',
+                    'limit' => 10,
+                ])->data;
+            }
+
             if (empty($subscriptions)) {
                 return response()->json([
                     'success' => false,
@@ -747,7 +758,7 @@ class SubscriptionController extends Controller
                 ], 404);
             }
 
-            // Get the most recent active subscription
+            // Get the most recent active/trialing subscription
             $latestSubscription = null;
             foreach ($subscriptions as $subscription) {
                 if (in_array($subscription->status, ['active', 'trialing'])) {

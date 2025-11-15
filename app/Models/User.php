@@ -28,6 +28,7 @@ class User extends Authenticatable
         'email',
         'password',
         'stripe_customer_id',
+        'subscription_type',
     ];
 
     /**
@@ -52,6 +53,14 @@ class User extends Authenticatable
             'verification_email_sent_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Get the user's subscription type, defaulting to 'free' when not set.
+     */
+    public function getSubscriptionTypeAttribute($value): string
+    {
+        return $value ?? 'free';
     }
 
     /**
@@ -107,8 +116,12 @@ class User extends Authenticatable
      */
     public function activeSubscription(): ?Subscription
     {
+        // When a user has multiple active/trialing subscriptions (e.g. upgraded from Premium to Plus),
+        // always treat the most recent one as the current plan.
         return $this->subscriptions()
             ->whereIn('status', ['active', 'trialing'])
+            ->orderByDesc('current_period_start')
+            ->orderByDesc('created_at')
             ->first();
     }
 

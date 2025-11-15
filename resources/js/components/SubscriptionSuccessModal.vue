@@ -20,15 +20,11 @@
             <span class="font-semibold text-gray-900 dark:text-white">{{ planName }}</span>
           </div>
         </div>
-        <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center justify-between">
           <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Status:</span>
           <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">
             Active
           </span>
-        </div>
-        <div class="flex items-center justify-between">
-          <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Features:</span>
-          <span class="text-sm text-gray-900 dark:text-white">Unlimited Access</span>
         </div>
       </div>
 
@@ -64,6 +60,7 @@ interface Props {
     plan?: string
     status?: string
   }
+  planName?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -76,23 +73,16 @@ const emit = defineEmits<{
 }>()
 
 const planName = computed(() => {
-  // Map price IDs to plan names
-  const planMap: Record<string, string> = {
-    'price_1RuE5gAVc1w1yLTUdkry1i2o': 'Plus Plan',
-    'price_1RuE5gAVc1w1yLTUopmMCnBb': 'Plus Plan'
+  if (props.planName) {
+    return props.planName;
   }
-  
-  // Try to get plan from subscription data
-  const priceId = props.subscription?.subscription?.stripe_price_id || props.subscription?.plan
-  const mappedPlan = planMap[priceId];
-  
-  // If we have a mapped plan, use it. Otherwise, if it says "Premium Plan", correct it to "Plus Plan"
-  if (mappedPlan) {
-    return mappedPlan;
+
+  // Fallback: try subscription.plan or a generic label
+  const raw = (props.subscription as any)?.subscription?.plan_name || props.subscription?.plan || 'Free';
+  if (typeof raw === 'string' && raw.length > 0) {
+    return raw;
   }
-  
-  // Fallback: if backend says "Premium Plan", correct it to "Plus Plan"
-  return 'Plus Plan';
+  return 'Free';
 })
 
 const startChatting = () => {

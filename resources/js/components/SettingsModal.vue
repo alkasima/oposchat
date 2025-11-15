@@ -85,49 +85,61 @@ const tabs = [
 ];
 
 // Computed properties for subscription data
+const userSubscriptionType = computed(() => (user.value?.subscription_type as string) || 'free');
 const currentSubscription = computed(() => {
     return subscriptionData.value?.subscription || null;
 });
 
 const isSubscribed = computed(() => {
+    // Treat any non-free subscription_type as subscribed for display purposes
+    if (userSubscriptionType.value && userSubscriptionType.value !== 'free') {
+        return true;
+    }
     return currentSubscription.value && currentSubscription.value.is_active;
 });
 
 const subscriptionStatus = computed(() => {
-    if (!currentSubscription.value) return 'free';
+    if (!currentSubscription.value) {
+        return userSubscriptionType.value === 'free' ? 'free' : 'active';
+    }
     return currentSubscription.value.status;
 });
 
 const currentPlan = computed(() => {
-    if (!isSubscribed.value) {
+    // Determine plan key from user.subscription_type as the primary source of truth
+    const planKey = userSubscriptionType.value || 'free';
+
+    // Free plan display when user has no paid subscription
+    if (planKey === 'free') {
         return {
             name: 'Free',
             price: '$0',
             period: 'forever',
-                features: [
-                    '3 messages per day',
-                    'Community support'
-                ]
+            features: [
+                '3 messages per day',
+                'Community support'
+            ]
         };
     }
 
+    // Try to match planKey against availablePlans (keys configured in the modal)
+    const planDetails = availablePlans.value.find(plan => plan.key === planKey);
+
     const subscription = currentSubscription.value;
-    const priceId = subscription.stripe_price_id;
-    
-    // Find the plan details from available plans
-    const planDetails = availablePlans.value.find(plan => plan.stripe_price_id === priceId);
-    const planName = planDetails?.name || 'Unknown';
     const price = planDetails?.price ? `$${planDetails.price}` : '$0';
     const interval = planDetails?.interval || 'month';
     const features = planDetails?.features || [];
-    
+
+    // Fallback name: capitalize the key (e.g. 'premium' -> 'Premium')
+    const fallbackName = planKey.charAt(0).toUpperCase() + planKey.slice(1);
+
     return {
-        name: planName,
+        name: planDetails?.name || fallbackName,
         price: price,
         period: interval,
         features: features,
-        nextBillingDate: subscription.current_period_end,
-        cancelAtPeriodEnd: subscription.cancel_at_period_end
+        nextBillingDate: subscription?.current_period_end || null,
+        cancelAtPeriodEnd: subscription?.cancel_at_period_end || false
     };
 });
 

@@ -74,14 +74,17 @@ const {
     getRemainingUsage
 } = useSubscription();
 
-// Fix for plan name display - handle wrong plan name from backend
+// Use subscription_type stored on the user model as the source of truth for plan
+const userSubscriptionType = computed(() => (user.value?.subscription_type as string) || 'free');
+
+// Normalized display name for the current plan (e.g. 'free' -> 'Free')
 const displayPlanName = computed(() => {
-    // If the backend returns "Premium" but user actually has Plus subscription, show "Plus"
-    if (currentPlanName.value === 'Premium') {
-        return 'Plus';
-    }
-    return currentPlanName.value;
+    const key = userSubscriptionType.value || 'free';
+    return key.charAt(0).toUpperCase() + key.slice(1);
 });
+
+// Whether user is on a paid plan (any non-free subscription_type)
+const hasPaidPlan = computed(() => userSubscriptionType.value !== 'free');
 
 // Computed properties for usage indicators
 const usagePercentage = computed(() => {
@@ -448,7 +451,7 @@ onMounted(async () => {
                     <div v-if="!isCollapsed" class="flex-1 text-center">
                         <div class="text-sm font-medium flex items-center justify-center mb-2" :class="isDark ? 'text-white' : 'text-gray-900'">
                             <span>{{ user?.name || 'User' }}</span>
-                            <span v-if="hasPremium" class="ml-2 px-1 py-0.5 text-xs bg-yellow-500 text-black rounded-full font-medium">
+                            <span v-if="hasPaidPlan" class="ml-2 px-1 py-0.5 text-xs bg-yellow-500 text-black rounded-full font-medium">
                                 {{ displayPlanName }}
                             </span>
                         </div>

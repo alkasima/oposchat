@@ -74,6 +74,11 @@ class SubscriptionService
         // Clear usage cache for the user to ensure new limits take effect immediately
         $this->clearUsageCache($user);
 
+        // Persist current plan key on the user for easy access (e.g., 'free', 'premium', 'plus')
+        $user->refresh();
+        $planKey = $user->getCurrentPlanKey();
+        $user->forceFill(['subscription_type' => $planKey])->save();
+
         return $subscription;
     }
 
@@ -114,6 +119,14 @@ class SubscriptionService
         // Clear usage cache for the user to ensure new limits take effect immediately
         $this->clearUsageCache($subscription->user);
 
+        // Persist current plan key on the user for easy access
+        $user = $subscription->user;
+        if ($user) {
+            $user->refresh();
+            $planKey = $user->getCurrentPlanKey();
+            $user->forceFill(['subscription_type' => $planKey])->save();
+        }
+
         return $subscription;
     }    /**
 
@@ -139,6 +152,11 @@ class SubscriptionService
             'subscription_id' => $subscription->id,
             'stripe_subscription_id' => $stripeSubscriptionId
         ]);
+
+        // When subscription is canceled, fall back user subscription_type to 'free'
+        if ($subscription->user) {
+            $subscription->user->forceFill(['subscription_type' => 'free'])->save();
+        }
     }
 
     /**
@@ -451,6 +469,9 @@ class SubscriptionService
 
             $planName = $user->getCurrentPlanName();
             $planKey = $user->getCurrentPlanKey();
+
+            // Persist current plan key on the user for easy access
+            $user->forceFill(['subscription_type' => $planKey])->save();
 
             Log::info('Immediate payment success handled successfully', [
                 'user_id' => $user->id,

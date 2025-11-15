@@ -30,8 +30,26 @@ const plansData = ref<any>(null);
 const processingUpgrade = ref(false);
 const preselectedPlanKey = ref<string | null>(null);
 
-// Success modal state
+// Success modal state & auth user
 const page = usePage();
+
+// Determine the current plan key, preferring live subscription data when available,
+// and falling back to the user's subscription_type from page props.
+const userSubscriptionType = computed(() => {
+    // If we have live subscription + plans data, derive the plan key from the Stripe price ID
+    if (subscriptionData.value?.subscription && plansData.value?.plans) {
+        const sub = subscriptionData.value.subscription;
+        const plans = plansData.value.plans;
+        const derivedKey = Object.keys(plans).find(
+            (key) => plans[key].stripe_price_id === sub.stripe_price_id
+        );
+        if (derivedKey) return derivedKey as string;
+    }
+
+    // Fallback to the value persisted on the user model (from users.subscription_type)
+    return (page.props.auth?.user?.subscription_type as string) || 'free';
+});
+
 const showSuccessModal = ref(false);
 
 // Check for success parameter in URL
@@ -96,6 +114,20 @@ const currentPlan = computed(() => {
     }
 
     return plansData.value?.free_plan || { name: 'Unknown', price: 0, period: 'month', features: [] };
+});
+
+const currentPlanNameFromUser = computed(() => {
+    const plans = plansData.value?.plans || {};
+    const key = userSubscriptionType.value;
+
+    // If the key matches a configured plan, use its display name
+    if (plans[key]?.name) {
+        return plans[key].name as string;
+    }
+
+    // Fallback: simple capitalized key (e.g., 'free' -> 'Free')
+    if (!key) return 'Free';
+    return key.charAt(0).toUpperCase() + key.slice(1);
 });
 
 const availablePlans = computed(() => {
@@ -307,7 +339,7 @@ onMounted(() => {
                     <div>
                         <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Current Plan</h2>
                         <p class="text-gray-600 dark:text-gray-400 mt-1">
-                            You're currently on the {{ currentPlan.name }} plan
+                            You're currently on the {{ currentPlanNameFromUser }} plan
                             <span v-if="hasActiveSubscription && currentPlan.currentPeriodEnd">
                                 (renews {{ formatDate(currentPlan.currentPeriodEnd) }})
                             </span>
@@ -486,6 +518,7 @@ onMounted(() => {
         <SubscriptionSuccessModal 
             :show="showSuccessModal"
             :subscription="subscriptionData"
+            :plan-name="currentPlanNameFromUser"
             @close="showSuccessModal = false"
         />
     </SettingsLayout>
