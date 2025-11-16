@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import AuthBase from '@/layouts/AuthLayout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import { Eye, EyeOff, LoaderCircle, Mail, Lock } from 'lucide-vue-next';
 import { ref } from 'vue';
 
@@ -46,8 +46,32 @@ const togglePasswordVisibility = () => {
     <AuthBase title="Bienvenido" description="Inicia sesión para continuar">
         <Head title="Inicia sesión" />
 
-        <!-- Success Status Message -->
-        <div v-if="status" class="mb-6 rounded-lg bg-green-50 border border-green-200 p-4 text-center">
+        <!-- Status Messages -->
+        <div
+            v-if="status === 'verification-link-sent' || status === 'unverified'"
+            class="mb-6 rounded-lg bg-green-50 border border-green-200 p-4 text-center"
+        >
+            <div class="text-sm font-medium text-green-800 mb-2">
+                <span v-if="status === 'verification-link-sent'">
+                    Te hemos enviado un correo de verificación. Revisa tu bandeja de entrada.
+                </span>
+                <span v-else>
+                    Tu cuenta aún no está verificada. Por favor, verifica tu correo electrónico antes de iniciar sesión.
+                </span>
+            </div>
+            <Link
+                :href="route('email.verify.resend')"
+                method="post"
+                as="button"
+                :data="{ email: form.email }"
+                class="inline-flex items-center px-4 py-2 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            >
+                Reenviar correo de verificación
+            </Link>
+        </div>
+
+        <!-- Generic status banner for other cases -->
+        <div v-else-if="status" class="mb-6 rounded-lg bg-green-50 border border-green-200 p-4 text-center">
             <div class="text-sm font-medium text-green-800">
                 {{ status }}
             </div>
@@ -70,7 +94,7 @@ const togglePasswordVisibility = () => {
                             :tabindex="1"
                             autocomplete="email"
                             v-model="form.email"
-                            placeholder="Enter your email"
+                            placeholder="Introduce tu correo electrónico"
                             class="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors dark:text-black"
                             :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': form.errors.email }"
                         />
@@ -102,7 +126,7 @@ const togglePasswordVisibility = () => {
                             :tabindex="2"
                             autocomplete="current-password"
                             v-model="form.password"
-                            placeholder="Enter your password"
+                            placeholder="Introduce tu contraseña"
                             class="pl-10 pr-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors dark:text-black"
                             :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': form.errors.password }"
                         />
@@ -127,7 +151,7 @@ const togglePasswordVisibility = () => {
                             :tabindex="3"
                             class="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                         />
-                        <span class="text-sm text-gray-600">Recuerdame por 30 días</span>
+                        <span class="text-sm text-gray-600">Recuérdame durante 30 días</span>
                     </Label>
                 </div>
 
@@ -140,7 +164,7 @@ const togglePasswordVisibility = () => {
                 >
                     <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin mr-2" />
                     <span v-if="!form.processing">Inicia sesión</span>
-                    <span v-else>Signing in...</span>
+                    <span v-else>Iniciando sesión...</span>
                 </Button>
             </form>
         </Card>

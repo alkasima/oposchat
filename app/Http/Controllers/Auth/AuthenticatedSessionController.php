@@ -31,10 +31,23 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
+        $user = Auth::user();
+
+        // Only allow login if the email has been verified
+        if (!$user || !$user->hasVerifiedEmail()) {
+            if ($user) {
+                Auth::guard('web')->logout();
+            }
+
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')->with('status', 'unverified');
+        }
+
         $request->session()->regenerate();
 
         // Debug logging
-        $user = Auth::user();
         \Log::info('User logged in', [
             'user_id' => $user->id,
             'remember_token' => $user->remember_token ? 'SET' : 'NOT SET',

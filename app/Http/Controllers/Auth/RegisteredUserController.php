@@ -72,9 +72,8 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user)); // keep event for any listeners
 
-        Auth::login($user);
-
-        // Redirect to verification notice page
-        return to_route('verification.notice');
+        // Do NOT log the user in automatically. Require email verification first.
+        // Redirect back to the login page with a status message.
+        return redirect()->route('login')->with('status', 'verification-link-sent');
     }
 }
