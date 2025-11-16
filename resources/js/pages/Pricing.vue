@@ -1,7 +1,63 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import SiteHeader from '@/components/SiteHeader.vue';
 import SiteFooter from '@/components/SiteFooter.vue';
+import stripeService from '@/services/stripeService';
+
+const page = usePage();
+
+const managePlanFromPricing = async () => {
+    if (!page.props.auth?.user) {
+        router.visit(route('login'));
+        return;
+    }
+
+    try {
+        await stripeService.redirectToPortal();
+    } catch (error) {
+        console.error('Failed to open Stripe customer portal from pricing page:', error);
+    }
+};
+
+const upgradeToPremiumFromPricing = async () => {
+    if (!page.props.auth?.user) {
+        router.visit(route('register'));
+        return;
+    }
+
+    try {
+        const plans = await stripeService.getPlans();
+        const premiumPlan = plans.plans?.premium;
+        const priceId = premiumPlan?.stripe_price_id;
+        if (!priceId) {
+            console.error('Premium price ID not found in plans config');
+            return;
+        }
+        await stripeService.redirectToCheckout(priceId);
+    } catch (error) {
+        console.error('Failed to start Premium checkout from pricing page:', error);
+    }
+};
+
+const upgradeToPlusFromPricing = async () => {
+    if (!page.props.auth?.user) {
+        router.visit(route('register'));
+        return;
+    }
+
+    try {
+        const plans = await stripeService.getPlans();
+        const plusPlan = plans.plans?.plus;
+        const priceId = plusPlan?.stripe_price_id;
+        if (!priceId) {
+            console.error('Plus price ID not found in plans config');
+            return;
+        }
+        await stripeService.redirectToCheckout(priceId);
+    } catch (error) {
+        console.error('Failed to start Plus checkout from pricing page:', error);
+    }
+};
 </script>
 
 <template>
@@ -59,10 +115,10 @@ import SiteFooter from '@/components/SiteFooter.vue';
                                 </Link>
                                 <Link 
                                     v-else
-                                    :href="route('subscription', { plan: 'free' })"
+                                    :href="route('dashboard')"
                                     class="w-full bg-gray-200 text-gray-800 py-3 px-6 rounded-xl font-semibold text-center hover:bg-gray-300 transition-colors duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
-                                    Manage Plan
+                                    Empieza con el estudio
                                 </Link>
                             </div>
                         </div>
@@ -118,13 +174,14 @@ import SiteFooter from '@/components/SiteFooter.vue';
                                 >
                                     Mejorar al Premium
                                 </Link>
-                                <Link 
+                                <button
                                     v-else
-                                    :href="route('subscription', { plan: 'premium' })"
-                                    class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-blue-600 hover:to-purple-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
+                                    type="button"
+                                    @click="$page.props.auth.user?.subscription_type === 'premium' ? managePlanFromPricing() : upgradeToPremiumFromPricing()"
+                                    class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-blue-600 hover:to-purple-700 transition-all duración-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
-                                    Mejorar al Premium
-                                </Link>
+                                    {{ $page.props.auth.user?.subscription_type === 'premium' ? 'Manage Plan' : 'Mejorar al Premium' }}
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -176,13 +233,14 @@ import SiteFooter from '@/components/SiteFooter.vue';
                                 >
                                     Mejorar al Plus
                                 </Link>
-                                <Link 
+                                <button
                                     v-else
-                                    :href="route('subscription', { plan: 'plus' })"
+                                    type="button"
+                                    @click="$page.props.auth.user?.subscription_type === 'plus' ? managePlanFromPricing() : upgradeToPlusFromPricing()"
                                     class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
-                                    Mejorar al Plus
-                                </Link>
+                                    {{ $page.props.auth.user?.subscription_type === 'plus' ? 'Manage Plan' : 'Mejorar al Plus' }}
+                                </button>
                             </div>
                         </div>
                     </div>

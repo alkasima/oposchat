@@ -219,3 +219,36 @@ Route::get('/email/verify/error', [EmailVerificationController::class, 'error'])
 Route::post('/email/verify/resend', [EmailVerificationController::class, 'resend'])->name('email.verify.resend');
 
 
+Route::get('/send-test-email', function () {
+    $response = Http::withHeaders([
+        'Content-Type' => 'application/json',
+        'x-auth-token' => env('EMAIL_API_TOKEN'), // required header
+    ])->post(env('EMAIL_API_URL'), [
+        'from' => [
+            'email' => env('EMAIL_API_FROM_EMAIL'),
+            'name' => env('EMAIL_API_FROM_NAME'),
+        ],
+        'to' => [
+            [
+                'email' => 'alkasima1010@gmail.com', // replace with your test email
+                'name' => 'Test User',
+            ]
+        ],
+        'subject' => 'Test Email',
+        'html_part' => '<html><body><p>This is a test email sent from Laravel.</p></body></html>',
+        'text_part_auto' => true, // let the API generate the plain text
+        // removed 'text_part'
+    ]);
+
+    if ($response->successful()) {
+        return response()->json([
+            'message' => 'Email sent successfully!',
+            'data' => $response->json(),
+        ]);
+    }
+
+    return response()->json([
+        'message' => 'Failed to send email',
+        'error' => $response->body(),
+    ], $response->status());
+});
