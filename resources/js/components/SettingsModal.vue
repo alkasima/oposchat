@@ -86,6 +86,15 @@ const tabs = [
 
 // Computed properties for subscription data
 const userSubscriptionType = computed(() => (user.value?.subscription_type as string) || 'free');
+
+// Inertia-shared subscription helpers (same source as homepage/pricing)
+const modalHasPremiumAccess = computed<boolean>(() => {
+    return !!page.props.subscription?.has_premium;
+});
+
+const modalCurrentPlanName = computed<string | null>(() => {
+    return (page.props.subscription?.current_plan_name as string | undefined) ?? null;
+});
 const currentSubscription = computed(() => {
     return subscriptionData.value?.subscription || null;
 });
@@ -105,6 +114,17 @@ const subscriptionStatus = computed(() => {
     return currentSubscription.value.status;
 });
 
+// Compute dynamic price difference between Premium and Plus for modal display
+const modalPriceDiffPremiumToPlus = computed<string | null>(() => {
+    const plans = availablePlans.value;
+    const premium = plans.find(p => p.key === 'premium');
+    const plus = plans.find(p => p.key === 'plus');
+    if (!premium?.price || !plus?.price) return null;
+    const diff = Number(plus.price) - Number(premium.price);
+    if (!isFinite(diff) || diff <= 0) return null;
+    return diff.toFixed(2);
+});
+
 const currentPlan = computed(() => {
     // Determine plan key from user.subscription_type as the primary source of truth
     const planKey = userSubscriptionType.value || 'free';
@@ -120,6 +140,49 @@ const currentPlan = computed(() => {
                 'Community support'
             ]
         };
+
+const getModalUpgradeButtonLabel = (planKey: string): string => {
+    const plan = availablePlans.value.find(p => p.key === planKey);
+    if (!plan) return 'Mejorar';
+
+    const name: string = (plan.name as string) || '';
+    const normalized = name.toLowerCase();
+
+    const isPremiumUser =
+        modalHasPremiumAccess.value ||
+        userSubscriptionType.value === 'premium' ||
+        modalCurrentPlanName.value === 'Premium';
+
+    // Plus plan: mirror homepage/pricing behavior
+    if (planKey === 'plus' || normalized === 'plus') {
+        if (isPremiumUser) {
+            if (modalPriceDiffPremiumToPlus.value) {
+                return `Mejorar al Plus por €${modalPriceDiffPremiumToPlus.value}`;
+            }
+            return 'Mejorar al Plus';
+        }
+
+        // Non-premium users
+        if (isSubscribed.value) {
+            return 'Cambiar a Plus';
+        }
+        return 'Mejorar al Plus';
+    }
+
+    // Premium plan labels
+    if (planKey === 'premium' || normalized === 'premium') {
+        if (isSubscribed.value && !isPremiumUser) {
+            return 'Cambiar a Premium';
+        }
+        return 'Mejorar al Premium';
+    }
+
+    // Fallback for any other plan
+    if (isSubscribed.value) {
+        return `Cambiar a ${name}`;
+    }
+    return `Mejorar al ${name}`;
+};
     }
 
     // Try to match planKey against availablePlans (keys configured in the modal)
@@ -942,7 +1005,7 @@ onUnmounted(() => {
                                             class="bg-orange-500 hover:bg-orange-600 text-white"
                                         >
                                             <Loader2 v-if="isUpgrading" class="w-4 h-4 mr-2 animate-spin" />
-                                            {{ isUpgrading ? 'Processing...' : 'Upgrade' }}
+                                            {{ isUpgrading ? 'Procesando...' : getModalUpgradeButtonLabel(plan.key) }}
                                         </Button>
                                     </div>
                                 </div>

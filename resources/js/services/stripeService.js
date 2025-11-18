@@ -82,14 +82,20 @@ class StripeService {
             });
 
             if (!response.data.success) {
-                throw new Error(response.data.message || 'Failed to create checkout session');
+                // Throw the original Axios error shape so callers (redirectToCheckout)
+                // can inspect error.response and error_code for upgrade flow
+                const err = new Error(response.data.message || 'Failed to create checkout session');
+                err.response = { data: response.data, status: response.status };
+                throw err;
             }
 
             return response.data.data;
         } catch (error) {
             const errorMessage = this.extractErrorMessage(error);
             this.setError(errorMessage);
-            throw new Error(errorMessage);
+            // Re-throw the original error object so redirectToCheckout can
+            // read error.response.data.error_code (e.g. has_active_subscription)
+            throw error;
         } finally {
             this.setLoading(false);
         }

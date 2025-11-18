@@ -137,18 +137,9 @@ class SubscriptionController extends Controller
                 ], 400);
             }
 
-            // Update the subscription in Stripe to new price WITHOUT automatic proration
-            $stripeSub = $this->stripeService->updateSubscription($active->stripe_subscription_id, [
-                'items' => [[
-                    'id' => $stripeItemId,
-                    'price' => $request->price_id,
-                    'quantity' => 1,
-                ]],
-                // Disable Stripe's automatic proration; we'll charge a fixed difference instead
-                'proration_behavior' => 'none',
-            ]);
-
             // Compute fixed price difference between current and target plans from config
+            // IMPORTANT: capture the current plan BEFORE updating the Stripe subscription,
+            // otherwise getCurrentPlanKey() might already reflect the new plan and diff becomes 0.
             $plansConfig = config('subscription.plans');
             $currentPlanKey = $user->getCurrentPlanKey();
             $targetPlanKey = null;
@@ -160,31 +151,58 @@ class SubscriptionController extends Controller
                 }
             }
 
+            // Update the subscription in Stripe to new price WITHOUT automatic proration
+            $stripeSub = $this->stripeService->updateSubscription($active->stripe_subscription_id, [
+                'items' => [[
+                    'id' => $stripeItemId,
+                    'price' => $request->price_id,
+                    'quantity' => 1,
+                ]],
+                // Disable Stripe's automatic proration; we'll charge a fixed difference instead
+                'proration_behavior' => 'none',
+            ]);
+
             $redirectUrl = null;
             if ($currentPlanKey && $targetPlanKey && isset($plansConfig[$currentPlanKey], $plansConfig[$targetPlanKey])) {
                 $currentPrice = (float) ($plansConfig[$currentPlanKey]['price'] ?? 0);
                 $targetPrice = (float) ($plansConfig[$targetPlanKey]['price'] ?? 0);
                 $diff = max(0, $targetPrice - $currentPrice);
 
-                if ($diff > 0 && $user->stripe_customer_id) {
+                if ($diff > 0) {
                     try {
-                        $amountCents = (int) round($diff * 100);
-                        $currency = $plansConfig[$targetPlanKey]['currency'] ?? 'EUR';
+                        // Ensure the user has a Stripe customer ID before creating the invoice
+                        if (!$user->hasStripeId()) {
+                            $user->createOrGetStripeCustomer();
+                            $user->refresh();
+                        }
 
-                        $invoice = $this->stripeService->createOneOffInvoice(
-                            $user->stripe_customer_id,
-                            $amountCents,
-                            $currency,
-                            [
+                        $customerId = $user->getStripeCustomerId();
+
+                        if ($customerId) {
+                            $amountCents = (int) round($diff * 100);
+                            $currency = $plansConfig[$targetPlanKey]['currency'] ?? 'EUR';
+
+                            $invoice = $this->stripeService->createOneOffInvoice(
+                                $customerId,
+                                $amountCents,
+                                $currency,
+                                [
+                                    'user_id' => $user->id,
+                                    'upgrade_from' => $currentPlanKey,
+                                    'upgrade_to' => $targetPlanKey,
+                                    'subscription_id' => $active->stripe_subscription_id,
+                                ]
+                            );
+
+                            if ($invoice && isset($invoice->hosted_invoice_url)) {
+                                $redirectUrl = $invoice->hosted_invoice_url;
+                            }
+                        } else {
+                            Log::warning('Stripe customer ID missing when creating upgrade invoice', [
                                 'user_id' => $user->id,
-                                'upgrade_from' => $currentPlanKey,
-                                'upgrade_to' => $targetPlanKey,
-                                'subscription_id' => $active->stripe_subscription_id,
-                            ]
-                        );
-
-                        if ($invoice && isset($invoice->hosted_invoice_url)) {
-                            $redirectUrl = $invoice->hosted_invoice_url;
+                                'current_plan' => $currentPlanKey,
+                                'target_plan' => $targetPlanKey,
+                            ]);
                         }
                     } catch (\Throwable $e) {
                         Log::warning('Failed to create one-off upgrade invoice', [

@@ -243,7 +243,7 @@ const handleEditSave = async (newTitle: string) => {
 
 const openSettings = () => {
     showUserMenu.value = false;
-    showSettingsModal.value = true;
+    router.visit('/settings/profile');
 };
 
 const handleUpgradeClick = () => {

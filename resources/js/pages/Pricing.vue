@@ -21,6 +21,7 @@ const currentPlanName = computed<string | null>(() => {
 });
 
 const pricingPlans = ref<any | null>(null);
+const upgradingPlus = ref(false);
 
 const priceDiffPremiumToPlus = computed<string | null>(() => {
     const plans = pricingPlans.value?.plans;
@@ -92,6 +93,7 @@ const upgradeToPlusFromPricing = async () => {
     }
 
     try {
+        upgradingPlus.value = true;
         const plans = await stripeService.getPlans();
         const plusPlan = plans.plans?.plus;
         const priceId = plusPlan?.stripe_price_id;
@@ -99,9 +101,34 @@ const upgradeToPlusFromPricing = async () => {
             console.error('Plus price ID not found in plans config');
             return;
         }
+
+        // If user already has an active/premium subscription, use direct upgrade flow
+        const isPremiumUser =
+            hasPremiumAccess.value ||
+            activePlan.value === 'premium' ||
+            currentPlanName.value === 'Premium';
+
+        if (isPremiumUser) {
+            const res = await stripeService.upgrade(priceId);
+
+            // If Stripe returned a specific invoice/hosted URL, prefer that
+            if (res?.redirect_url) {
+                window.location.href = res.redirect_url;
+                return;
+            }
+
+            // Otherwise, always navigate directly to the subscription settings
+            // page so the user clearly sees the upgraded Plus plan.
+            router.visit('/settings/subscription?success=true');
+            return;
+        }
+
+        // New subscription: normal checkout flow
         await stripeService.redirectToCheckout(priceId);
     } catch (error) {
         console.error('Failed to start Plus checkout from pricing page:', error);
+    } finally {
+        upgradingPlus.value = false;
     }
 };
 
@@ -297,9 +324,10 @@ onMounted(async () => {
                                     v-else
                                     type="button"
                                     @click="activePlan === 'plus' ? managePlanFromPricing() : upgradeToPlusFromPricing()"
+                                    :disabled="upgradingPlus"
                                     class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
-                                    {{ plusUpgradeLabel }}
+                                    {{ upgradingPlus ? 'Procesando...' : plusUpgradeLabel }}
                                 </button>
                             </div>
                         </div>

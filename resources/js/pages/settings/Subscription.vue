@@ -142,6 +142,19 @@ const availablePlans = computed(() => {
     });
 });
 
+// Compute dynamic price difference between Premium and Plus (for display only)
+const priceDiffPremiumToPlus = computed<string | null>(() => {
+    const plans = plansData.value?.plans;
+    if (!plans?.premium?.price || !plans?.plus?.price) {
+        return null;
+    }
+    const diff = Number(plans.plus.price) - Number(plans.premium.price);
+    if (!isFinite(diff) || diff <= 0) {
+        return null;
+    }
+    return diff.toFixed(2);
+});
+
 const hasActiveSubscription = computed(() => {
     return subscriptionData.value?.subscription?.is_active || false;
 });
@@ -192,6 +205,43 @@ const loadData = async () => {
     } finally {
         loading.value = false;
     }
+};
+
+const getUpgradeButtonLabel = (plan: any): string => {
+    // Handle contact-sales plans elsewhere; this function assumes a normal priced plan
+    const name: string = (plan.name as string) || '';
+    const normalized = name.toLowerCase();
+
+    // If user already has an active subscription, this is a plan switch
+    if (hasActiveSubscription.value) {
+        // Special case: Premium -> Plus upgrade with explicit difference
+        const currentKey = userSubscriptionType.value;
+        const isPremiumToPlus =
+            currentKey === 'premium' && normalized === 'plus';
+
+        if (isPremiumToPlus && priceDiffPremiumToPlus.value) {
+            return `Mejorar al Plus por €${priceDiffPremiumToPlus.value}`;
+        }
+
+        // Generic switch text in Spanish
+        if (normalized === 'plus') {
+            return 'Cambiar a Plus';
+        }
+        if (normalized === 'premium') {
+            return 'Cambiar a Premium';
+        }
+        return `Cambiar a ${name}`;
+    }
+
+    // No active subscription yet: upgrading from Free or none
+    if (normalized === 'plus') {
+        return 'Mejorar al Plus';
+    }
+    if (normalized === 'premium') {
+        return 'Mejorar al Premium';
+    }
+
+    return `Mejorar al ${name}`;
 };
 
 const handleUpgrade = async (plan: any) => {
@@ -468,7 +518,10 @@ onMounted(() => {
                             <Loader2 v-if="processingUpgrade" class="w-4 h-4 mr-2 animate-spin" />
                             <Crown v-else-if="plan.popular" class="w-4 h-4 mr-2" />
                             <Zap v-else class="w-4 h-4 mr-2" />
-                            {{ plan.contact_sales || !plan.stripe_price_id ? 'Consultar precio' : (hasActiveSubscription ? `Switch to ${plan.name}` : `Upgrade to ${plan.name}`) }}
+                            {{ plan.contact_sales || !plan.stripe_price_id
+                                ? 'Consultar precio'
+                                : getUpgradeButtonLabel(plan)
+                            }}
                         </Button>
                     </Card>
                 </div>
