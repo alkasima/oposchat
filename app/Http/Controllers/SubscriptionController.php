@@ -137,34 +137,64 @@ class SubscriptionController extends Controller
                 ], 400);
             }
 
-            // Update the subscription in Stripe to new price with proration
+            // Update the subscription in Stripe to new price WITHOUT automatic proration
             $stripeSub = $this->stripeService->updateSubscription($active->stripe_subscription_id, [
                 'items' => [[
                     'id' => $stripeItemId,
                     'price' => $request->price_id,
                     'quantity' => 1,
                 ]],
-                'proration_behavior' => 'create_prorations',
-                // Keep existing billing cycle anchor by omitting this param (default behavior)
-                // Use a safer payment behavior to avoid immediate failures if payment method requires action
-                'payment_behavior' => 'pending_if_incomplete',
+                // Disable Stripe's automatic proration; we'll charge a fixed difference instead
+                'proration_behavior' => 'none',
             ]);
 
-            // Attempt to fetch the latest invoice to allow user to pay any prorated difference immediately
+            // Compute fixed price difference between current and target plans from config
+            $plansConfig = config('subscription.plans');
+            $currentPlanKey = $user->getCurrentPlanKey();
+            $targetPlanKey = null;
+
+            foreach ($plansConfig as $key => $plan) {
+                if (($plan['stripe_price_id'] ?? null) === $request->price_id) {
+                    $targetPlanKey = $key;
+                    break;
+                }
+            }
+
             $redirectUrl = null;
-            if (!empty($stripeSub->latest_invoice)) {
-                try {
-                    $invoice = $this->stripeService->retrieveInvoiceById($stripeSub->latest_invoice);
-                    // If there is an invoice with amount_due, provide hosted invoice URL so user can pay now if needed
-                    if ($invoice && isset($invoice->hosted_invoice_url)) {
-                        $redirectUrl = $invoice->hosted_invoice_url;
+            if ($currentPlanKey && $targetPlanKey && isset($plansConfig[$currentPlanKey], $plansConfig[$targetPlanKey])) {
+                $currentPrice = (float) ($plansConfig[$currentPlanKey]['price'] ?? 0);
+                $targetPrice = (float) ($plansConfig[$targetPlanKey]['price'] ?? 0);
+                $diff = max(0, $targetPrice - $currentPrice);
+
+                if ($diff > 0 && $user->stripe_customer_id) {
+                    try {
+                        $amountCents = (int) round($diff * 100);
+                        $currency = $plansConfig[$targetPlanKey]['currency'] ?? 'EUR';
+
+                        $invoice = $this->stripeService->createOneOffInvoice(
+                            $user->stripe_customer_id,
+                            $amountCents,
+                            $currency,
+                            [
+                                'user_id' => $user->id,
+                                'upgrade_from' => $currentPlanKey,
+                                'upgrade_to' => $targetPlanKey,
+                                'subscription_id' => $active->stripe_subscription_id,
+                            ]
+                        );
+
+                        if ($invoice && isset($invoice->hosted_invoice_url)) {
+                            $redirectUrl = $invoice->hosted_invoice_url;
+                        }
+                    } catch (\Throwable $e) {
+                        Log::warning('Failed to create one-off upgrade invoice', [
+                            'user_id' => $user->id,
+                            'stripe_customer_id' => $user->stripe_customer_id,
+                            'current_plan' => $currentPlanKey,
+                            'target_plan' => $targetPlanKey,
+                            'error' => $e->getMessage(),
+                        ]);
                     }
-                } catch (\Throwable $e) {
-                    Log::warning('Failed to retrieve latest invoice after upgrade', [
-                        'subscription_id' => $active->stripe_subscription_id,
-                        'latest_invoice' => $stripeSub->latest_invoice,
-                        'error' => $e->getMessage()
-                    ]);
                 }
             }
 
@@ -330,13 +360,13 @@ class SubscriptionController extends Controller
             $user = Auth::user();
             
             // If user already has an active subscription, they should use the upgrade endpoint
-            // if ($user->hasActiveSubscription()) {
-            //     return response()->json([
-            //         'success' => false,
-            //         'message' => 'User already has an active subscription. Use upgrade endpoint.',
-            //         'error_code' => 'has_active_subscription'
-            //     ], 400);
-            // }
+            if ($user->hasActiveSubscription()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User already has an active subscription. Use upgrade endpoint.',
+                    'error_code' => 'has_active_subscription'
+                ], 400);
+            }
 
             // Ensure user has a Stripe customer ID
             if (!$user->hasStripeId()) {

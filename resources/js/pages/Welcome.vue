@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import SiteFooter from '@/components/SiteFooter.vue';
 import stripeService from '@/services/stripeService';
@@ -81,6 +81,51 @@ const toggleMoreInfo = (id: string) => {
 // Subscription helpers for homepage pricing section
 const page = usePage();
 
+const homepageActivePlan = computed<string | null>(() => {
+    const type = page.props.auth?.user?.subscription_type as string | undefined;
+    return type ?? null;
+});
+
+const homepageHasPremiumAccess = computed<boolean>(() => {
+    return !!page.props.subscription?.has_premium;
+});
+
+const homepageCurrentPlanName = computed<string | null>(() => {
+    return (page.props.subscription?.current_plan_name as string | undefined) ?? null;
+});
+
+const homepagePlans = ref<any | null>(null);
+
+const homepagePriceDiffPremiumToPlus = computed<string | null>(() => {
+    const plans = homepagePlans.value?.plans;
+    if (!plans?.premium?.price || !plans?.plus?.price) {
+        return null;
+    }
+    const diff = Number(plans.plus.price) - Number(plans.premium.price);
+    if (!isFinite(diff) || diff <= 0) {
+        return null;
+    }
+    return diff.toFixed(2);
+});
+
+const homepagePlusUpgradeLabel = computed<string>(() => {
+    // Already on Plus -> manage current plan
+    if (homepageActivePlan.value === 'plus' || homepageCurrentPlanName.value === 'Plus') {
+        return 'Manage plan';
+    }
+
+    // User has Premium subscription -> show dynamic upgrade difference
+    if (homepageHasPremiumAccess.value || homepageActivePlan.value === 'premium' || homepageCurrentPlanName.value === 'Premium') {
+        if (homepagePriceDiffPremiumToPlus.value) {
+            return `Mejorar al Plus por €${homepagePriceDiffPremiumToPlus.value}`;
+        }
+        return 'Mejorar al Plus';
+    }
+
+    // Non-premium users
+    return 'Mejorar al Plus';
+});
+
 const managePlanFromHome = async () => {
     // Only for authenticated users
     if (!page.props.auth?.user) {
@@ -134,6 +179,15 @@ const upgradeToPlusFromHome = async () => {
         console.error('Failed to start Plus checkout from homepage:', error);
     }
 };
+
+// Load plans once for homepage pricing labels
+onMounted(async () => {
+    try {
+        homepagePlans.value = await stripeService.getPlans();
+    } catch (error) {
+        console.error('Failed to load plans for homepage pricing section:', error);
+    }
+});
 
 const faqData = [
     { 
@@ -601,10 +655,10 @@ const faqData = [
                                 <button
                                     v-else
                                     type="button"
-                                    @click="$page.props.auth.user?.subscription_type === 'plus' ? managePlanFromHome() : upgradeToPlusFromHome()"
+                                    @click="homepageActivePlan === 'plus' || homepageCurrentPlanName === 'Plus' ? managePlanFromHome() : upgradeToPlusFromHome()"
                                     class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
-                                    {{ $page.props.auth.user?.subscription_type === 'plus' ? 'Manage Plan' : 'Mejorar al Plus' }}
+                                    {{ homepagePlusUpgradeLabel }}
                                 </button>
                             </div>
                         </div>

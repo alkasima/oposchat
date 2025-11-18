@@ -1,10 +1,56 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { computed, onMounted, ref } from 'vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import SiteFooter from '@/components/SiteFooter.vue';
 import stripeService from '@/services/stripeService';
 
 const page = usePage();
+
+const activePlan = computed<string | null>(() => {
+    const type = page.props.auth?.user?.subscription_type as string | undefined;
+    return type ?? null;
+});
+
+const hasPremiumAccess = computed<boolean>(() => {
+    return !!page.props.subscription?.has_premium;
+});
+
+const currentPlanName = computed<string | null>(() => {
+    return (page.props.subscription?.current_plan_name as string | undefined) ?? null;
+});
+
+const pricingPlans = ref<any | null>(null);
+
+const priceDiffPremiumToPlus = computed<string | null>(() => {
+    const plans = pricingPlans.value?.plans;
+    if (!plans?.premium?.price || !plans?.plus?.price) {
+        return null;
+    }
+    const diff = Number(plans.plus.price) - Number(plans.premium.price);
+    if (!isFinite(diff) || diff <= 0) {
+        return null;
+    }
+    return diff.toFixed(2);
+});
+
+const plusUpgradeLabel = computed<string>(() => {
+    // Already on Plus -> manage current plan
+    if (activePlan.value === 'plus' || currentPlanName.value === 'Plus') {
+        return 'Manage plan';
+    }
+
+    // User has Premium subscription -> show dynamic upgrade difference
+    if (hasPremiumAccess.value || activePlan.value === 'premium' || currentPlanName.value === 'Premium') {
+        if (priceDiffPremiumToPlus.value) {
+            return `Mejorar al Plus por €${priceDiffPremiumToPlus.value}`;
+        }
+        return 'Mejorar al Plus';
+    }
+
+    // Non-premium users
+    return 'Mejorar al Plus';
+});
 
 const managePlanFromPricing = async () => {
     if (!page.props.auth?.user) {
@@ -58,6 +104,14 @@ const upgradeToPlusFromPricing = async () => {
         console.error('Failed to start Plus checkout from pricing page:', error);
     }
 };
+
+onMounted(async () => {
+    try {
+        pricingPlans.value = await stripeService.getPlans();
+    } catch (error) {
+        console.error('Failed to load plans for pricing page:', error);
+    }
+});
 </script>
 
 <template>
@@ -177,10 +231,16 @@ const upgradeToPlusFromPricing = async () => {
                                 <button
                                     v-else
                                     type="button"
-                                    @click="$page.props.auth.user?.subscription_type === 'premium' ? managePlanFromPricing() : upgradeToPremiumFromPricing()"
-                                    class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-blue-600 hover:to-purple-700 transition-all duración-300 block h-12 flex items-center justify-center whitespace-nowrap"
+                                    @click="!activePlan || activePlan === 'free' ? upgradeToPremiumFromPricing() : managePlanFromPricing()"
+                                    class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-blue-600 hover:to-purple-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
-                                    {{ $page.props.auth.user?.subscription_type === 'premium' ? 'Manage Plan' : 'Mejorar al Premium' }}
+                                    {{
+                                        activePlan === 'premium'
+                                            ? 'Manage plan'
+                                            : activePlan === 'plus'
+                                                ? 'Downgrade to Premium'
+                                                : 'Mejorar al Premium'
+                                    }}
                                 </button>
                             </div>
                         </div>
@@ -236,10 +296,10 @@ const upgradeToPlusFromPricing = async () => {
                                 <button
                                     v-else
                                     type="button"
-                                    @click="$page.props.auth.user?.subscription_type === 'plus' ? managePlanFromPricing() : upgradeToPlusFromPricing()"
+                                    @click="activePlan === 'plus' ? managePlanFromPricing() : upgradeToPlusFromPricing()"
                                     class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
-                                    {{ $page.props.auth.user?.subscription_type === 'plus' ? 'Manage Plan' : 'Mejorar al Plus' }}
+                                    {{ plusUpgradeLabel }}
                                 </button>
                             </div>
                         </div>
@@ -292,6 +352,22 @@ const upgradeToPlusFromPricing = async () => {
                             
                             <div class="mt-auto">
                                 <Link 
+                                    v-if="!$page.props.auth.user"
+                                    :href="route('academy.contact')"
+                                    class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-orange-600 hover:to-red-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
+                                >
+                                    Consultar precio
+                                </Link>
+                                <button
+                                    v-else-if="activePlan === 'academias'"
+                                    type="button"
+                                    @click="managePlanFromPricing()"
+                                    class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-orange-600 hover:to-red-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
+                                >
+                                    Manage plan
+                                </button>
+                                <Link 
+                                    v-else
                                     :href="route('academy.contact')"
                                     class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-orange-600 hover:to-red-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >

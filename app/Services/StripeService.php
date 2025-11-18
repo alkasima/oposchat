@@ -6,6 +6,7 @@ use Stripe\Stripe;
 use Stripe\Customer;
 use Stripe\Subscription;
 use Stripe\Invoice;
+use Stripe\InvoiceItem;
 use Stripe\Price;
 use Stripe\Checkout\Session;
 use Stripe\Checkout\Session as CheckoutSession;
