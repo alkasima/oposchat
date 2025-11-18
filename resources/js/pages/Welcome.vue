@@ -174,6 +174,25 @@ const upgradeToPlusFromHome = async () => {
             console.error('Plus price ID not found in plans config');
             return;
         }
+
+        // Mirror pricing page logic: if user already has Premium/active access,
+        // use direct upgrade endpoint first.
+        const isPremiumUser =
+            homepageHasPremiumAccess.value ||
+            homepageActivePlan.value === 'premium' ||
+            homepageCurrentPlanName.value === 'Premium';
+
+        if (isPremiumUser) {
+            const res = await stripeService.upgrade(priceId);
+            if (res?.redirect_url) {
+                window.location.href = res.redirect_url;
+                return;
+            }
+            router.visit('/settings/subscription?success=true');
+            return;
+        }
+
+        // New subscription: normal checkout flow
         await stripeService.redirectToCheckout(priceId);
     } catch (error) {
         console.error('Failed to start Plus checkout from homepage:', error);
