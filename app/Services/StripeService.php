@@ -405,4 +405,46 @@ class StripeService
             throw $e;
         }
     }
+
+    /**
+     * Create a one-off invoice for charging plan differences (e.g., upgrades)
+     *
+     * @param string $customerId
+     * @param int $amountCents
+     * @param string $currency
+     * @param array $metadata
+     * @return Invoice
+     * @throws ApiErrorException
+     */
+    public function createOneOffInvoice(string $customerId, int $amountCents, string $currency, array $metadata = []): Invoice
+    {
+        try {
+            InvoiceItem::create([
+                'customer' => $customerId,
+                'amount' => $amountCents,
+                'currency' => strtolower($currency),
+                'description' => $metadata['description'] ?? 'Plan upgrade adjustment',
+                'metadata' => $metadata,
+            ]);
+
+            $invoice = Invoice::create([
+                'customer' => $customerId,
+                'collection_method' => 'send_invoice',
+                'days_until_due' => 7,
+                'metadata' => $metadata,
+                'auto_advance' => true,
+            ]);
+
+            return $invoice->finalizeInvoice();
+        } catch (ApiErrorException $e) {
+            Log::error('Stripe one-off invoice creation failed', [
+                'error' => $e->getMessage(),
+                'customer_id' => $customerId,
+                'amount' => $amountCents,
+                'currency' => $currency,
+                'metadata' => $metadata,
+            ]);
+            throw $e;
+        }
+    }
 }

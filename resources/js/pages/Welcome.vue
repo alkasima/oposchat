@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import SiteFooter from '@/components/SiteFooter.vue';
 import stripeService from '@/services/stripeService';
+import PlanChangeConfirmationModal from '@/components/PlanChangeConfirmationModal.vue';
+import SubscriptionSuccessModal from '@/components/SubscriptionSuccessModal.vue';
 
 const isMenuOpen = ref(false);
 const openFaq = ref(null);
@@ -126,6 +128,163 @@ const homepagePlusUpgradeLabel = computed<string>(() => {
     return 'Mejorar al Plus';
 });
 
+interface PendingPlanChange {
+    priceId: string;
+    currentPlan: {
+        key: string;
+        name: string;
+        price: number;
+    };
+    targetPlan: {
+        key: string;
+        name: string;
+        price: number;
+    };
+    priceDifference: number;
+    currency: string;
+    isUpgrade: boolean;
+    isDowngrade: boolean;
+}
+
+const showPlanChangeModal = ref(false);
+const pendingPlanChange = ref<PendingPlanChange | null>(null);
+const planChangeLoading = ref(false);
+const planChangeError = ref<string | null>(null);
+const showPlanSuccessModal = ref(false);
+const planSuccessModalData = ref({
+    title: '¡Suscripción actualizada!',
+    description: 'Actualizando tu cuenta...',
+    statusLabel: 'Activo',
+    planName: null as string | null,
+});
+let planSuccessTimer: ReturnType<typeof setTimeout> | null = null;
+
+const clearPlanSuccessTimer = () => {
+    if (planSuccessTimer) {
+        clearTimeout(planSuccessTimer);
+        planSuccessTimer = null;
+    }
+};
+
+const ensureHomepagePlansLoaded = async () => {
+    if (!homepagePlans.value) {
+        homepagePlans.value = await stripeService.getPlans();
+    }
+    return homepagePlans.value;
+};
+
+const startPlanChangeFromHome = async (targetPlanKey: 'premium' | 'plus') => {
+    if (!page.props.auth?.user) {
+        router.visit(route('login'));
+        return;
+    }
+
+    try {
+        planChangeError.value = null;
+        const plans = await ensureHomepagePlansLoaded();
+        const planConfig = plans?.plans ?? {};
+        const targetPlan = planConfig[targetPlanKey];
+
+        if (!targetPlan?.stripe_price_id) {
+            throw new Error('El plan seleccionado no está disponible.');
+        }
+
+        const currentKey = (homepageActivePlan.value || page.props.auth?.user?.subscription_type || 'free') as string;
+        const currentPlanConfig = planConfig[currentKey] ?? plans?.free_plan ?? { name: 'Free', price: 0, currency: targetPlan.currency ?? 'EUR' };
+        const currentPrice = Number(currentPlanConfig.price ?? 0);
+        const targetPrice = Number(targetPlan.price ?? 0);
+        const priceDifference = targetPrice - currentPrice;
+
+        pendingPlanChange.value = {
+            priceId: targetPlan.stripe_price_id,
+            currentPlan: {
+                key: currentKey,
+                name: currentPlanConfig.name ?? currentKey,
+                price: currentPrice,
+            },
+            targetPlan: {
+                key: targetPlanKey,
+                name: targetPlan.name ?? targetPlanKey,
+                price: targetPrice,
+            },
+            priceDifference,
+            currency: (targetPlan.currency ?? 'EUR') as string,
+            isUpgrade: priceDifference > 0,
+            isDowngrade: priceDifference < 0,
+        };
+
+        showPlanChangeModal.value = true;
+    } catch (error: any) {
+        console.error('Failed to prepare plan change from homepage:', error);
+        planChangeError.value = error?.message ?? 'No se pudo preparar el cambio de plan.';
+    }
+};
+
+const handlePlanChangeSuccessFromHome = (res: any, context: PendingPlanChange) => {
+    if (res?.redirect_url) {
+        window.location.href = res.redirect_url;
+        return;
+    }
+
+    if (res?.status === 'scheduled' && res?.scheduled_plan_change) {
+        planSuccessModalData.value = {
+            title: 'Cambio programado',
+            description: `Tu plan cambiará a ${context.targetPlan.name} al final de tu período de facturación actual. Te avisaremos cuando se complete.`,
+            statusLabel: 'Pendiente',
+            planName: context.targetPlan.name,
+        };
+    } else {
+        planSuccessModalData.value = {
+            title: '¡Suscripción actualizada!',
+            description: 'Estamos procesando tu cambio de plan. Actualizaremos esta página automáticamente.',
+            statusLabel: 'Activo',
+            planName: context.targetPlan.name,
+        };
+    }
+
+    showPlanSuccessModal.value = true;
+    clearPlanSuccessTimer();
+    planSuccessTimer = window.setTimeout(() => {
+        window.location.reload();
+    }, 2000);
+};
+
+const confirmPlanChangeFromHome = async () => {
+    if (!pendingPlanChange.value) {
+        return;
+    }
+
+    planChangeLoading.value = true;
+    planChangeError.value = null;
+
+    try {
+        const res = await stripeService.upgrade(
+            pendingPlanChange.value.priceId,
+            pendingPlanChange.value.isUpgrade
+        );
+
+        showPlanChangeModal.value = false;
+        handlePlanChangeSuccessFromHome(res, pendingPlanChange.value);
+        pendingPlanChange.value = null;
+    } catch (error: any) {
+        console.error('Failed to change plan from homepage:', error);
+        planChangeError.value = error?.message ?? 'No se pudo completar el cambio de plan.';
+    } finally {
+        planChangeLoading.value = false;
+    }
+};
+
+const cancelPlanChangeFromHome = () => {
+    showPlanChangeModal.value = false;
+    pendingPlanChange.value = null;
+    planChangeError.value = null;
+};
+
+const closePlanSuccessModal = () => {
+    showPlanSuccessModal.value = false;
+    clearPlanSuccessTimer();
+};
+
 const managePlanFromHome = async () => {
     // Only for authenticated users
     if (!page.props.auth?.user) {
@@ -175,28 +334,52 @@ const upgradeToPlusFromHome = async () => {
             return;
         }
 
-        // Mirror pricing page logic: if user already has Premium/active access,
-        // use direct upgrade endpoint first.
-        const isPremiumUser =
-            homepageHasPremiumAccess.value ||
-            homepageActivePlan.value === 'premium' ||
-            homepageCurrentPlanName.value === 'Premium';
-
-        if (isPremiumUser) {
-            const res = await stripeService.upgrade(priceId);
-            if (res?.redirect_url) {
-                window.location.href = res.redirect_url;
-                return;
-            }
-            router.visit('/settings/subscription?success=true');
-            return;
-        }
-
-        // New subscription: normal checkout flow
         await stripeService.redirectToCheckout(priceId);
     } catch (error) {
         console.error('Failed to start Plus checkout from homepage:', error);
     }
+};
+
+const handlePremiumCtaClick = async () => {
+    if (!page.props.auth?.user) {
+        router.visit(route('register'));
+        return;
+    }
+
+    const currentKey = homepageActivePlan.value ?? (homepageCurrentPlanName.value?.toLowerCase() === 'premium' ? 'premium' : 'free');
+
+    if (currentKey === 'premium') {
+        await managePlanFromHome();
+        return;
+    }
+
+    if (currentKey === 'plus') {
+        await startPlanChangeFromHome('premium');
+        return;
+    }
+
+    await upgradeToPremiumFromHome();
+};
+
+const handlePlusCtaClick = async () => {
+    if (!page.props.auth?.user) {
+        router.visit(route('register'));
+        return;
+    }
+
+    const currentKey = homepageActivePlan.value ?? (homepageCurrentPlanName.value?.toLowerCase() === 'plus' ? 'plus' : homepageCurrentPlanName.value?.toLowerCase() === 'premium' ? 'premium' : 'free');
+
+    if (currentKey === 'plus') {
+        await managePlanFromHome();
+        return;
+    }
+
+    if (currentKey === 'premium') {
+        await startPlanChangeFromHome('plus');
+        return;
+    }
+
+    await upgradeToPlusFromHome();
 };
 
 // Load plans once for homepage pricing labels
@@ -206,6 +389,10 @@ onMounted(async () => {
     } catch (error) {
         console.error('Failed to load plans for homepage pricing section:', error);
     }
+});
+
+onUnmounted(() => {
+    clearPlanSuccessTimer();
 });
 
 const faqData = [
@@ -615,10 +802,16 @@ const faqData = [
                                 <button
                                     v-else
                                     type="button"
-                                    @click="$page.props.auth.user?.subscription_type === 'premium' ? managePlanFromHome() : upgradeToPremiumFromHome()"
+                                    @click="handlePremiumCtaClick"
                                     class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-blue-600 hover:to-purple-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
-                                    {{ $page.props.auth.user?.subscription_type === 'premium' ? 'Manage Plan' : 'Mejorar al Premium' }}
+                                    {{
+                                        $page.props.auth.user?.subscription_type === 'premium'
+                                            ? 'Manage Plan'
+                                            : $page.props.auth.user?.subscription_type === 'plus'
+                                                ? 'Downgrade to Premium'
+                                                : 'Mejorar al Premium'
+                                    }}
                                 </button>
                             </div>
                         </div>
@@ -674,7 +867,7 @@ const faqData = [
                                 <button
                                     v-else
                                     type="button"
-                                    @click="homepageActivePlan === 'plus' || homepageCurrentPlanName === 'Plus' ? managePlanFromHome() : upgradeToPlusFromHome()"
+                                    @click="handlePlusCtaClick"
                                     class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
                                     {{ homepagePlusUpgradeLabel }}
@@ -836,6 +1029,30 @@ const faqData = [
         </section>
 
         <SiteFooter />
+
+        <PlanChangeConfirmationModal
+            v-if="pendingPlanChange"
+            :show="showPlanChangeModal"
+            :current-plan="pendingPlanChange.currentPlan"
+            :target-plan="pendingPlanChange.targetPlan"
+            :price-difference="pendingPlanChange.priceDifference"
+            :currency="pendingPlanChange.currency"
+            :is-upgrade="pendingPlanChange.isUpgrade"
+            :is-downgrade="pendingPlanChange.isDowngrade"
+            :loading="planChangeLoading"
+            :error-message="planChangeError"
+            @confirm="confirmPlanChangeFromHome"
+            @cancel="cancelPlanChangeFromHome"
+        />
+
+        <SubscriptionSuccessModal
+            :show="showPlanSuccessModal"
+            :plan-name="planSuccessModalData.planName ?? undefined"
+            :title="planSuccessModalData.title"
+            :description="planSuccessModalData.description"
+            :status-label="planSuccessModalData.statusLabel"
+            @close="closePlanSuccessModal"
+        />
     </div>
 </template>
 

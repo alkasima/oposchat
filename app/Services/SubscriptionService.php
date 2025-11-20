@@ -94,7 +94,7 @@ class SubscriptionService
         }
 
         // Update subscription data
-        $subscription->update([
+        $updateData = [
             'stripe_price_id' => $stripeSubscription->items->data[0]->price->id,
             'status' => $stripeSubscription->status,
             'current_period_start' => $stripeSubscription->current_period_start ? 
@@ -108,7 +108,17 @@ class SubscriptionService
             'cancel_at_period_end' => $stripeSubscription->cancel_at_period_end ?? false,
             'canceled_at' => $stripeSubscription->canceled_at ? 
                 now()->createFromTimestamp($stripeSubscription->canceled_at) : null,
-        ]);
+        ];
+
+        if (
+            $subscription->scheduled_plan_change_price_id &&
+            $subscription->scheduled_plan_change_price_id === $stripeSubscription->items->data[0]->price->id
+        ) {
+            $updateData['scheduled_plan_change_price_id'] = null;
+            $updateData['scheduled_plan_change_at'] = null;
+        }
+
+        $subscription->update($updateData);
 
         Log::info('Subscription updated from webhook', [
             'subscription_id' => $subscription->id,

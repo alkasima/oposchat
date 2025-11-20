@@ -23,3 +23,8 @@ Schedule::command('payments:handle-failed --notify')
     ->dailyAt('08:00')
     ->withoutOverlapping()
     ->runInBackground();
+
+Schedule::command('subscriptions:process-scheduled-changes')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground();

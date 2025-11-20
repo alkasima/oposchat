@@ -40,13 +40,14 @@ class StripeService {
     /**
      * Upgrade existing subscription to a new price (prorated)
      */
-    async upgrade(priceId) {
+    async upgrade(priceId, confirmed = false) {
         this.setLoading(true);
         this.clearError();
 
         try {
             const response = await axios.post(`${this.baseUrl}/upgrade`, {
                 price_id: priceId,
+                confirmed,
             });
 
             if (!response.data.success) {

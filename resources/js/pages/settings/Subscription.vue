@@ -1,26 +1,40 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { Head, usePage, router } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
 import SubscriptionSuccessModal from '@/components/SubscriptionSuccessModal.vue';
+import PlanChangeConfirmationModal from '@/components/PlanChangeConfirmationModal.vue';
 import stripeService from '@/services/stripeService';
 import { 
     Check, 
     Crown, 
     Zap, 
-    MessageSquare, 
-    Users, 
-    FileText,
     Clock,
-    Shield,
     Star,
     Loader2,
     AlertCircle,
     Settings
 } from 'lucide-vue-next';
+
+interface PendingPlanChange {
+    priceId: string;
+    currentPlan: {
+        key: string;
+        name: string;
+        price: number;
+    };
+    targetPlan: {
+        key: string;
+        name: string;
+        price: number;
+    };
+    priceDifference: number;
+    currency: string;
+    isUpgrade: boolean;
+}
 
 // Reactive state
 const loading = ref(true);
@@ -29,6 +43,11 @@ const subscriptionData = ref<any>(null);
 const plansData = ref<any>(null);
 const processingUpgrade = ref(false);
 const preselectedPlanKey = ref<string | null>(null);
+const autoPlanTriggerHandled = ref(false);
+const showConfirmationModal = ref(false);
+const pendingPlanChange = ref<PendingPlanChange | null>(null);
+const confirmationLoading = ref(false);
+let autoRefreshTimerId: ReturnType<typeof setTimeout> | null = null;
 
 // Success modal state & auth user
 const page = usePage();
@@ -51,30 +70,17 @@ const userSubscriptionType = computed(() => {
 });
 
 const showSuccessModal = ref(false);
+const successModalTitle = ref('Thank You for Subscribing!');
+const successModalDescription = ref('Your subscription is now active! You have full access to all premium features.');
+const successModalStatusLabel = ref('Active');
+const successModalPlanName = ref<string | null>(null);
 
 // Check for success parameter in URL
 onMounted(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('success') === 'true') {
-        showSuccessModal.value = true;
-        // If we have a session_id, confirm immediately to persist DB without webhook
         const sessionId = urlParams.get('session_id');
-        if (sessionId) {
-            stripeService.confirmCheckout(sessionId).then(() => {
-                loadData();
-            }).catch(() => {
-                // Fallback to polling if confirm fails
-                stripeService.pollSubscriptionUntilActive().then((status) => {
-                    if (status) subscriptionData.value = status;
-                });
-            });
-        } else {
-            // No session id, try polling
-            stripeService.pollSubscriptionUntilActive().then((status) => {
-                if (status) subscriptionData.value = status;
-            });
-        }
-        // Clean up URL without reloading
+        handleSuccessfulCheckoutReturn(sessionId);
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 
@@ -130,6 +136,26 @@ const currentPlanNameFromUser = computed(() => {
     return key.charAt(0).toUpperCase() + key.slice(1);
 });
 
+const scheduledPlanChange = computed(() => {
+    return subscriptionData.value?.scheduled_plan_change 
+        ?? subscriptionData.value?.subscription?.scheduled_plan_change 
+        ?? null;
+});
+
+const hasScheduledPlanChange = computed(() => Boolean(scheduledPlanChange.value));
+
+const scheduledPlanChangeDescription = computed(() => {
+    if (!scheduledPlanChange.value) return '';
+    const targetName = scheduledPlanChange.value.plan_name || 'tu nuevo plan';
+    const scheduledFor = scheduledPlanChange.value.scheduled_for
+        ? formatDate(scheduledPlanChange.value.scheduled_for)
+        : '';
+    if (scheduledFor) {
+        return `Tu plan cambiará automáticamente a ${targetName} el ${scheduledFor}. Mantendrás tu plan actual hasta esa fecha.`;
+    }
+    return `Tu plan cambiará automáticamente a ${targetName} al final de tu período de facturación.`;
+});
+
 const availablePlans = computed(() => {
     if (!plansData.value?.plans) return [];
     
@@ -169,6 +195,45 @@ const subscriptionStatus = computed(() => {
 });
 
 // Methods
+const clearPlanQueryParam = () => {
+    if (!preselectedPlanKey.value) {
+        return;
+    }
+
+    const url = new URL(window.location.href);
+    const params = new URLSearchParams(url.search);
+    params.delete('plan');
+    const newQuery = params.toString();
+    const newUrl = newQuery ? `${url.pathname}?${newQuery}` : url.pathname;
+    window.history.replaceState({}, document.title, newUrl);
+    preselectedPlanKey.value = params.get('plan');
+};
+
+const attemptAutoPlanChange = async () => {
+    if (autoPlanTriggerHandled.value) {
+        return;
+    }
+
+    const key = preselectedPlanKey.value;
+    if (!key || !plansData.value?.plans?.[key]) {
+        return;
+    }
+
+    if (!hasActiveSubscription.value) {
+        return;
+    }
+
+    autoPlanTriggerHandled.value = true;
+    clearPlanQueryParam();
+
+    try {
+        await handleUpgrade(plansData.value.plans[key]);
+    } catch (err) {
+        console.error('Automatic plan change failed:', err);
+        autoPlanTriggerHandled.value = false;
+    }
+};
+
 const loadData = async () => {
     try {
         loading.value = true;
@@ -198,6 +263,8 @@ const loadData = async () => {
                 const el = document.querySelector('[data-plans-section]');
                 el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 200);
+
+            await attemptAutoPlanChange();
         }
     } catch (err) {
         console.error('Failed to load subscription data:', err);
@@ -218,9 +285,15 @@ const getUpgradeButtonLabel = (plan: any): string => {
         const currentKey = userSubscriptionType.value;
         const isPremiumToPlus =
             currentKey === 'premium' && normalized === 'plus';
+        const isPlusToPremium =
+            currentKey === 'plus' && normalized === 'premium';
 
         if (isPremiumToPlus && priceDiffPremiumToPlus.value) {
             return `Mejorar al Plus por €${priceDiffPremiumToPlus.value}`;
+        }
+
+        if (isPlusToPremium) {
+            return 'Downgrade to Premium';
         }
 
         // Generic switch text in Spanish
@@ -244,26 +317,73 @@ const getUpgradeButtonLabel = (plan: any): string => {
     return `Mejorar al ${name}`;
 };
 
+const processPlanChangeSuccess = async (res: any, planContext?: { name?: string }) => {
+    if (!res) {
+        throw new Error('Missing plan change response');
+    }
+
+    if (res.redirect_url) {
+        window.location.href = res.redirect_url;
+        return;
+    }
+
+    await loadData();
+
+    if (res.status === 'scheduled' && res.scheduled_plan_change) {
+        const targetName = res.scheduled_plan_change.plan_name || planContext?.name || 'tu nuevo plan';
+        const scheduledFor = res.scheduled_plan_change.scheduled_for
+            ? formatDate(res.scheduled_plan_change.scheduled_for)
+            : '';
+        const description = scheduledFor
+            ? `Tu plan cambiará a ${targetName} el ${scheduledFor}. Mantendrás las ventajas actuales hasta esa fecha.`
+            : `Tu plan cambiará a ${targetName} al final del período actual.`;
+
+        setSuccessModalContent({
+            title: 'Cambio programado',
+            description,
+            statusLabel: 'Pendiente',
+            planName: targetName,
+        });
+    } else {
+        const planName = res.plan_name || planContext?.name || currentPlanNameFromUser.value;
+        setSuccessModalContent({
+            title: '¡Suscripción actualizada!',
+            description: 'Tu nuevo plan ya está activo. Actualizaremos la página automáticamente.',
+            statusLabel: 'Activo',
+            planName,
+        });
+    }
+
+    triggerAutoRefresh();
+};
+
 const handleUpgrade = async (plan: any) => {
     try {
         processingUpgrade.value = true;
         
         // Handle Academy plan (contact sales)
         if (plan.contact_sales || !plan.stripe_price_id) {
-            // Redirect to academy contact page
             router.visit('/academy-contact');
             return;
         }
         
         if (hasActiveSubscription.value) {
             const res = await stripeService.upgrade(plan.stripe_price_id);
-            if (res?.redirect_url) {
-                window.location.href = res.redirect_url;
+
+            if (res?.requires_confirmation) {
+                pendingPlanChange.value = {
+                    priceId: plan.stripe_price_id,
+                    currentPlan: res.current_plan,
+                    targetPlan: res.target_plan,
+                    priceDifference: Number(res.price_difference) || 0,
+                    currency: res.currency || plan.currency || 'EUR',
+                    isUpgrade: true,
+                };
+                showConfirmationModal.value = true;
                 return;
             }
-            // No redirect required; refresh data and show success
-            await loadData();
-            showSuccessModal.value = true;
+
+            await processPlanChangeSuccess(res, { name: plan.name });
             return;
         } else {
             await stripeService.redirectToCheckout(plan.stripe_price_id);
@@ -286,6 +406,28 @@ const handleManageSubscription = async () => {
     } finally {
         processingUpgrade.value = false;
     }
+};
+
+const handleConfirmPlanChange = async () => {
+    if (!pendingPlanChange.value) return;
+    const planMeta = pendingPlanChange.value;
+    try {
+        confirmationLoading.value = true;
+        const res = await stripeService.upgrade(planMeta.priceId, true);
+        showConfirmationModal.value = false;
+        pendingPlanChange.value = null;
+        await processPlanChangeSuccess(res, { name: planMeta.targetPlan.name });
+    } catch (err) {
+        console.error('Failed to confirm plan change:', err);
+        error.value = err instanceof Error ? err.message : 'Failed to confirm plan change';
+    } finally {
+        confirmationLoading.value = false;
+    }
+};
+
+const handleCancelPlanChange = () => {
+    showConfirmationModal.value = false;
+    pendingPlanChange.value = null;
 };
 
 const handleRefreshSubscription = async () => {
@@ -342,6 +484,47 @@ const formatDate = (dateString: string) => {
     });
 };
 
+const setSuccessModalContent = (options: { title: string; description: string; statusLabel: string; planName?: string | null }) => {
+    successModalTitle.value = options.title;
+    successModalDescription.value = options.description;
+    successModalStatusLabel.value = options.statusLabel;
+    successModalPlanName.value = options.planName ?? null;
+    showSuccessModal.value = true;
+};
+
+const triggerAutoRefresh = () => {
+    if (autoRefreshTimerId) {
+        clearTimeout(autoRefreshTimerId);
+    }
+    autoRefreshTimerId = window.setTimeout(() => {
+        window.location.reload();
+    }, 2000);
+};
+
+const handleSuccessfulCheckoutReturn = async (sessionId: string | null) => {
+    try {
+        if (sessionId) {
+            await stripeService.confirmCheckout(sessionId);
+        } else {
+            const status = await stripeService.pollSubscriptionUntilActive();
+            if (status) {
+                subscriptionData.value = status;
+            }
+        }
+    } catch (error) {
+        console.error('Failed to finalize checkout session:', error);
+    } finally {
+        await loadData();
+        setSuccessModalContent({
+            title: '¡Suscripción actualizada!',
+            description: 'Tu suscripción está activa. Estamos actualizando la página...',
+            statusLabel: 'Activo',
+            planName: currentPlanNameFromUser.value,
+        });
+        triggerAutoRefresh();
+    }
+};
+
 const getStatusBadge = () => {
     switch (subscriptionStatus.value) {
         case 'trial':
@@ -358,6 +541,12 @@ const getStatusBadge = () => {
 // Lifecycle
 onMounted(() => {
     loadData();
+});
+
+onUnmounted(() => {
+    if (autoRefreshTimerId) {
+        clearTimeout(autoRefreshTimerId);
+    }
 });
 </script>
 
@@ -462,6 +651,19 @@ onMounted(() => {
                     </div>
                 </div>
             </Card>
+
+            <div 
+                v-if="hasScheduledPlanChange" 
+                class="border border-blue-200 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 flex items-start space-x-3"
+            >
+                <Clock class="w-5 h-5 text-blue-500 mt-1" />
+                <div>
+                    <p class="font-semibold text-blue-900 dark:text-blue-100">Cambio de plan programado</p>
+                    <p class="text-sm text-blue-800 dark:text-blue-200 mt-1">
+                        {{ scheduledPlanChangeDescription }}
+                    </p>
+                </div>
+            </div>
 
             <!-- Available Plans -->
             <div v-if="availablePlans.length > 0">
@@ -571,8 +773,24 @@ onMounted(() => {
         <SubscriptionSuccessModal 
             :show="showSuccessModal"
             :subscription="subscriptionData"
-            :plan-name="currentPlanNameFromUser"
+            :plan-name="successModalPlanName || currentPlanNameFromUser"
+            :title="successModalTitle"
+            :description="successModalDescription"
+            :status-label="successModalStatusLabel"
             @close="showSuccessModal = false"
+        />
+
+        <PlanChangeConfirmationModal
+            v-if="pendingPlanChange"
+            :show="showConfirmationModal"
+            :current-plan="pendingPlanChange.currentPlan"
+            :target-plan="pendingPlanChange.targetPlan"
+            :price-difference="pendingPlanChange.priceDifference"
+            :currency="pendingPlanChange.currency"
+            :is-upgrade="pendingPlanChange.isUpgrade"
+            :loading="confirmationLoading"
+            @confirm="handleConfirmPlanChange"
+            @cancel="handleCancelPlanChange"
         />
     </SettingsLayout>
 </template>

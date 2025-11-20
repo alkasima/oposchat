@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import SiteFooter from '@/components/SiteFooter.vue';
 import stripeService from '@/services/stripeService';
+import PlanChangeConfirmationModal from '@/components/PlanChangeConfirmationModal.vue';
+import SubscriptionSuccessModal from '@/components/SubscriptionSuccessModal.vue';
 
 const page = usePage();
 
@@ -53,6 +55,163 @@ const plusUpgradeLabel = computed<string>(() => {
     return 'Mejorar al Plus';
 });
 
+interface PendingPlanChange {
+    priceId: string;
+    currentPlan: {
+        key: string;
+        name: string;
+        price: number;
+    };
+    targetPlan: {
+        key: string;
+        name: string;
+        price: number;
+    };
+    priceDifference: number;
+    currency: string;
+    isUpgrade: boolean;
+    isDowngrade: boolean;
+}
+
+const showPlanChangeModal = ref(false);
+const pendingPlanChange = ref<PendingPlanChange | null>(null);
+const planChangeLoading = ref(false);
+const planChangeError = ref<string | null>(null);
+const showPlanSuccessModal = ref(false);
+const planSuccessModalData = ref({
+    title: '¡Suscripción actualizada!',
+    description: 'Actualizando tu cuenta...',
+    statusLabel: 'Activo',
+    planName: null as string | null,
+});
+let planSuccessTimer: ReturnType<typeof setTimeout> | null = null;
+
+const clearPlanSuccessTimer = () => {
+    if (planSuccessTimer) {
+        clearTimeout(planSuccessTimer);
+        planSuccessTimer = null;
+    }
+};
+
+const ensurePricingPlansLoaded = async () => {
+    if (!pricingPlans.value) {
+        pricingPlans.value = await stripeService.getPlans();
+    }
+    return pricingPlans.value;
+};
+
+const startPlanChangeFromPricing = async (targetPlanKey: 'premium' | 'plus') => {
+    if (!page.props.auth?.user) {
+        router.visit(route('login'));
+        return;
+    }
+
+    try {
+        planChangeError.value = null;
+        const plans = await ensurePricingPlansLoaded();
+        const planConfig = plans?.plans ?? {};
+        const targetPlan = planConfig[targetPlanKey];
+
+        if (!targetPlan?.stripe_price_id) {
+            throw new Error('El plan seleccionado no está disponible.');
+        }
+
+        const currentKey = (activePlan.value || page.props.auth?.user?.subscription_type || 'free') as string;
+        const currentPlanConfig = planConfig[currentKey] ?? plans?.free_plan ?? { name: 'Free', price: 0, currency: targetPlan.currency ?? 'EUR' };
+        const currentPrice = Number(currentPlanConfig.price ?? 0);
+        const targetPrice = Number(targetPlan.price ?? 0);
+        const priceDifference = targetPrice - currentPrice;
+
+        pendingPlanChange.value = {
+            priceId: targetPlan.stripe_price_id,
+            currentPlan: {
+                key: currentKey,
+                name: currentPlanConfig.name ?? currentKey,
+                price: currentPrice,
+            },
+            targetPlan: {
+                key: targetPlanKey,
+                name: targetPlan.name ?? targetPlanKey,
+                price: targetPrice,
+            },
+            priceDifference,
+            currency: (targetPlan.currency ?? 'EUR') as string,
+            isUpgrade: priceDifference > 0,
+            isDowngrade: priceDifference < 0,
+        };
+
+        showPlanChangeModal.value = true;
+    } catch (error: any) {
+        console.error('Failed to prepare plan change from pricing page:', error);
+        planChangeError.value = error?.message ?? 'No se pudo preparar el cambio de plan.';
+    }
+};
+
+const handlePlanChangeSuccessFromPricing = (res: any, context: PendingPlanChange) => {
+    if (res?.redirect_url) {
+        window.location.href = res.redirect_url;
+        return;
+    }
+
+    if (res?.status === 'scheduled' && res?.scheduled_plan_change) {
+        planSuccessModalData.value = {
+            title: 'Cambio programado',
+            description: `Tu plan cambiará a ${context.targetPlan.name} al final de tu período de facturación actual.`,
+            statusLabel: 'Pendiente',
+            planName: context.targetPlan.name,
+        };
+    } else {
+        planSuccessModalData.value = {
+            title: '¡Suscripción actualizada!',
+            description: 'Estamos procesando tu cambio de plan. Actualizaremos esta página automáticamente.',
+            statusLabel: 'Activo',
+            planName: context.targetPlan.name,
+        };
+    }
+
+    showPlanSuccessModal.value = true;
+    clearPlanSuccessTimer();
+    planSuccessTimer = window.setTimeout(() => {
+        window.location.reload();
+    }, 2000);
+};
+
+const confirmPlanChangeFromPricing = async () => {
+    if (!pendingPlanChange.value) {
+        return;
+    }
+
+    planChangeLoading.value = true;
+    planChangeError.value = null;
+
+    try {
+        const res = await stripeService.upgrade(
+            pendingPlanChange.value.priceId,
+            pendingPlanChange.value.isUpgrade
+        );
+
+        showPlanChangeModal.value = false;
+        handlePlanChangeSuccessFromPricing(res, pendingPlanChange.value);
+        pendingPlanChange.value = null;
+    } catch (error: any) {
+        console.error('Failed to change plan from pricing page:', error);
+        planChangeError.value = error?.message ?? 'No se pudo completar el cambio de plan.';
+    } finally {
+        planChangeLoading.value = false;
+    }
+};
+
+const cancelPlanChangeFromPricing = () => {
+    showPlanChangeModal.value = false;
+    pendingPlanChange.value = null;
+    planChangeError.value = null;
+};
+
+const closePlanSuccessModal = () => {
+    showPlanSuccessModal.value = false;
+    clearPlanSuccessTimer();
+};
+
 const managePlanFromPricing = async () => {
     if (!page.props.auth?.user) {
         router.visit(route('login'));
@@ -101,29 +260,6 @@ const upgradeToPlusFromPricing = async () => {
             console.error('Plus price ID not found in plans config');
             return;
         }
-
-        // If user already has an active/premium subscription, use direct upgrade flow
-        const isPremiumUser =
-            hasPremiumAccess.value ||
-            activePlan.value === 'premium' ||
-            currentPlanName.value === 'Premium';
-
-        if (isPremiumUser) {
-            const res = await stripeService.upgrade(priceId);
-
-            // If Stripe returned a specific invoice/hosted URL, prefer that
-            if (res?.redirect_url) {
-                window.location.href = res.redirect_url;
-                return;
-            }
-
-            // Otherwise, always navigate directly to the subscription settings
-            // page so the user clearly sees the upgraded Plus plan.
-            router.visit('/settings/subscription?success=true');
-            return;
-        }
-
-        // New subscription: normal checkout flow
         await stripeService.redirectToCheckout(priceId);
     } catch (error) {
         console.error('Failed to start Plus checkout from pricing page:', error);
@@ -132,12 +268,60 @@ const upgradeToPlusFromPricing = async () => {
     }
 };
 
+const handlePremiumCtaClick = async () => {
+    if (!page.props.auth?.user) {
+        router.visit(route('register'));
+        return;
+    }
+
+    const currentKey = activePlan.value ?? (currentPlanName.value?.toLowerCase() === 'premium' ? 'premium' : 'free');
+
+    if (currentKey === 'premium') {
+        await managePlanFromPricing();
+        return;
+    }
+
+    if (currentKey === 'plus') {
+        await startPlanChangeFromPricing('premium');
+        return;
+    }
+
+    await upgradeToPremiumFromPricing();
+};
+
+const handlePlusCtaClick = async () => {
+    if (!page.props.auth?.user) {
+        router.visit(route('register'));
+        return;
+    }
+
+    const normalizedCurrent = currentPlanName.value?.toLowerCase();
+    const currentKey = activePlan.value
+        ?? (normalizedCurrent === 'plus' ? 'plus' : normalizedCurrent === 'premium' ? 'premium' : 'free');
+
+    if (currentKey === 'plus') {
+        await managePlanFromPricing();
+        return;
+    }
+
+    if (currentKey === 'premium') {
+        await startPlanChangeFromPricing('plus');
+        return;
+    }
+
+    await upgradeToPlusFromPricing();
+};
+
 onMounted(async () => {
     try {
         pricingPlans.value = await stripeService.getPlans();
     } catch (error) {
         console.error('Failed to load plans for pricing page:', error);
     }
+});
+
+onUnmounted(() => {
+    clearPlanSuccessTimer();
 });
 </script>
 
@@ -258,7 +442,7 @@ onMounted(async () => {
                                 <button
                                     v-else
                                     type="button"
-                                    @click="!activePlan || activePlan === 'free' ? upgradeToPremiumFromPricing() : managePlanFromPricing()"
+                                    @click="handlePremiumCtaClick"
                                     class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-blue-600 hover:to-purple-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
                                     {{
@@ -323,7 +507,7 @@ onMounted(async () => {
                                 <button
                                     v-else
                                     type="button"
-                                    @click="activePlan === 'plus' ? managePlanFromPricing() : upgradeToPlusFromPricing()"
+                                    @click="handlePlusCtaClick"
                                     :disabled="upgradingPlus"
                                     class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-600 hover:to-pink-700 transition-all duration-300 block h-12 flex items-center justify-center whitespace-nowrap"
                                 >
@@ -418,5 +602,29 @@ onMounted(async () => {
             </div>
         </section>
         <SiteFooter />
+
+        <PlanChangeConfirmationModal
+            v-if="pendingPlanChange"
+            :show="showPlanChangeModal"
+            :current-plan="pendingPlanChange.currentPlan"
+            :target-plan="pendingPlanChange.targetPlan"
+            :price-difference="pendingPlanChange.priceDifference"
+            :currency="pendingPlanChange.currency"
+            :is-upgrade="pendingPlanChange.isUpgrade"
+            :is-downgrade="pendingPlanChange.isDowngrade"
+            :loading="planChangeLoading"
+            :error-message="planChangeError"
+            @confirm="confirmPlanChangeFromPricing"
+            @cancel="cancelPlanChangeFromPricing"
+        />
+
+        <SubscriptionSuccessModal
+            :show="showPlanSuccessModal"
+            :plan-name="planSuccessModalData.planName ?? undefined"
+            :title="planSuccessModalData.title"
+            :description="planSuccessModalData.description"
+            :status-label="planSuccessModalData.statusLabel"
+            @close="closePlanSuccessModal"
+        />
     </div>
 </template>

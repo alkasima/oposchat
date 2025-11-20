@@ -8,7 +8,7 @@
 
       <!-- Title -->
       <h2 class="text-2xl font-bold text-center text-gray-900 dark:text-white mb-2">
-        Thank You for Subscribing!
+        {{ modalTitle }}
       </h2>
 
       <!-- Subscription Details -->
@@ -23,14 +23,14 @@
         <div class="flex items-center justify-between">
           <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Status:</span>
           <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">
-            Active
+            {{ statusLabelText }}
           </span>
         </div>
       </div>
 
       <!-- Description -->
       <p class="text-center text-gray-600 dark:text-gray-300 mb-6">
-        Your subscription is now active! You have full access to all premium features.
+        {{ modalDescription }}
       </p>
 
       <!-- Action Buttons -->
@@ -61,11 +61,17 @@ interface Props {
     status?: string
   }
   planName?: string
+  title?: string
+  description?: string
+  statusLabel?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   show: false,
-  subscription: () => ({})
+  subscription: () => ({}),
+  title: 'Thank You for Subscribing!',
+  description: 'Your subscription is now active! You have full access to all premium features.',
+  statusLabel: 'Active'
 })
 
 const emit = defineEmits<{
@@ -84,6 +90,10 @@ const planName = computed(() => {
   }
   return 'Free';
 })
+
+const modalTitle = computed(() => props.title || 'Thank You for Subscribing!');
+const modalDescription = computed(() => props.description || 'Your subscription is now active! You have full access to all premium features.');
+const statusLabelText = computed(() => props.statusLabel || 'Active');
 
 const startChatting = () => {
   emit('close')

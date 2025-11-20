@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Exception\CardException;
 use Stripe\Exception\RateLimitException;
@@ -64,12 +65,13 @@ class SubscriptionController extends Controller
     public function upgrade(Request $request): JsonResponse
     {
         $request->validate([
-            'price_id' => 'required|string'
+            'price_id' => 'required|string',
+            'confirmed' => 'sometimes|boolean',
         ]);
-
 
         try {
             $user = Auth::user();
+            $confirmed = (bool) $request->boolean('confirmed', false);
 
             // If no active subscription, fall back to checkout flow
             $active = $user->activeSubscription();
@@ -113,6 +115,104 @@ class SubscriptionController extends Controller
                 ], 400);
             }
 
+            $plansConfig = config('subscription.plans');
+            $currentPlanKey = $user->getCurrentPlanKey();
+            $targetPlanKey = null;
+
+            foreach ($plansConfig as $key => $plan) {
+                if (($plan['stripe_price_id'] ?? null) === $request->price_id) {
+                    $targetPlanKey = $key;
+                    break;
+                }
+            }
+
+            if (!$targetPlanKey) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The selected plan is not available. Please refresh and try again.',
+                    'error_code' => 'plan_not_configured'
+                ], 400);
+            }
+
+            $currentPrice = (float) ($plansConfig[$currentPlanKey]['price'] ?? 0);
+            $targetPrice = (float) ($plansConfig[$targetPlanKey]['price'] ?? 0);
+            $currency = $plansConfig[$targetPlanKey]['currency'] ?? 'EUR';
+            $priceDifference = $targetPrice - $currentPrice;
+            $isDowngrade = $priceDifference < 0;
+            $isUpgrade = $priceDifference > 0;
+
+            if ($isDowngrade) {
+                $scheduledAt = $active->current_period_end;
+
+                if (!$scheduledAt) {
+                    try {
+                        $stripeSubLive = $this->stripeService->retrieveSubscriptionById($active->stripe_subscription_id);
+                        if (!empty($stripeSubLive->current_period_end)) {
+                            $scheduledAt = Carbon::createFromTimestamp($stripeSubLive->current_period_end);
+                        }
+                        if (!empty($stripeSubLive->current_period_start)) {
+                            $active->update([
+                                'current_period_start' => Carbon::createFromTimestamp($stripeSubLive->current_period_start),
+                            ]);
+                        }
+                    } catch (\Throwable $e) {
+                        Log::warning('Failed to retrieve Stripe subscription while scheduling downgrade', [
+                            'subscription_id' => $active->stripe_subscription_id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+
+                if (!$scheduledAt) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Could not determine the end of your billing period. Please try again later or contact support.',
+                        'error_code' => 'period_end_unknown'
+                    ], 400);
+                }
+
+                $active->update([
+                    'current_period_end' => $active->current_period_end ?? $scheduledAt,
+                    'scheduled_plan_change_price_id' => $request->price_id,
+                    'scheduled_plan_change_at' => $scheduledAt,
+                ]);
+
+                $active->refresh();
+
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'status' => 'scheduled',
+                        'scheduled_plan_change' => $active->getScheduledPlanChange(),
+                        'plan_name' => $user->getCurrentPlanName(),
+                        'plan_key' => $currentPlanKey,
+                        'subscription_status' => $active->status,
+                    ]
+                ]);
+            }
+
+            if ($isUpgrade && !$confirmed) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'requires_confirmation' => true,
+                        'price_id' => $request->price_id,
+                        'current_plan' => [
+                            'key' => $currentPlanKey,
+                            'name' => $plansConfig[$currentPlanKey]['name'] ?? ucfirst($currentPlanKey),
+                            'price' => $currentPrice,
+                        ],
+                        'target_plan' => [
+                            'key' => $targetPlanKey,
+                            'name' => $plansConfig[$targetPlanKey]['name'] ?? ucfirst($targetPlanKey),
+                            'price' => $targetPrice,
+                        ],
+                        'price_difference' => $priceDifference,
+                        'currency' => $currency,
+                    ]
+                ]);
+            }
+
             // Find the existing subscription item to update (local first, then Stripe fallback)
             $item = $active->items()->first();
             $stripeItemId = $item?->stripe_subscription_item_id;
@@ -132,23 +232,9 @@ class SubscriptionController extends Controller
             if (!$stripeItemId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Could not locate subscription item to upgrade. Please try again in a moment or contact support.',
+                    'message' => 'Could not locate subscription item to update. Please try again in a moment or contact support.',
                     'error_code' => 'subscription_item_missing'
                 ], 400);
-            }
-
-            // Compute fixed price difference between current and target plans from config
-            // IMPORTANT: capture the current plan BEFORE updating the Stripe subscription,
-            // otherwise getCurrentPlanKey() might already reflect the new plan and diff becomes 0.
-            $plansConfig = config('subscription.plans');
-            $currentPlanKey = $user->getCurrentPlanKey();
-            $targetPlanKey = null;
-
-            foreach ($plansConfig as $key => $plan) {
-                if (($plan['stripe_price_id'] ?? null) === $request->price_id) {
-                    $targetPlanKey = $key;
-                    break;
-                }
             }
 
             // Update the subscription in Stripe to new price WITHOUT automatic proration
@@ -162,57 +248,58 @@ class SubscriptionController extends Controller
                 'proration_behavior' => 'none',
             ]);
 
+            // Clear any scheduled change because we're applying a new plan immediately
+            if ($active->scheduled_plan_change_price_id) {
+                $active->update([
+                    'scheduled_plan_change_price_id' => null,
+                    'scheduled_plan_change_at' => null,
+                ]);
+            }
+
             $redirectUrl = null;
-            if ($currentPlanKey && $targetPlanKey && isset($plansConfig[$currentPlanKey], $plansConfig[$targetPlanKey])) {
-                $currentPrice = (float) ($plansConfig[$currentPlanKey]['price'] ?? 0);
-                $targetPrice = (float) ($plansConfig[$targetPlanKey]['price'] ?? 0);
-                $diff = max(0, $targetPrice - $currentPrice);
+            if ($isUpgrade && $priceDifference > 0) {
+                try {
+                    // Ensure the user has a Stripe customer ID before creating the invoice
+                    if (!$user->hasStripeId()) {
+                        $user->createOrGetStripeCustomer();
+                        $user->refresh();
+                    }
 
-                if ($diff > 0) {
-                    try {
-                        // Ensure the user has a Stripe customer ID before creating the invoice
-                        if (!$user->hasStripeId()) {
-                            $user->createOrGetStripeCustomer();
-                            $user->refresh();
-                        }
+                    $customerId = $user->getStripeCustomerId();
 
-                        $customerId = $user->getStripeCustomerId();
+                    if ($customerId) {
+                        $amountCents = (int) round($priceDifference * 100);
 
-                        if ($customerId) {
-                            $amountCents = (int) round($diff * 100);
-                            $currency = $plansConfig[$targetPlanKey]['currency'] ?? 'EUR';
-
-                            $invoice = $this->stripeService->createOneOffInvoice(
-                                $customerId,
-                                $amountCents,
-                                $currency,
-                                [
-                                    'user_id' => $user->id,
-                                    'upgrade_from' => $currentPlanKey,
-                                    'upgrade_to' => $targetPlanKey,
-                                    'subscription_id' => $active->stripe_subscription_id,
-                                ]
-                            );
-
-                            if ($invoice && isset($invoice->hosted_invoice_url)) {
-                                $redirectUrl = $invoice->hosted_invoice_url;
-                            }
-                        } else {
-                            Log::warning('Stripe customer ID missing when creating upgrade invoice', [
+                        $invoice = $this->stripeService->createOneOffInvoice(
+                            $customerId,
+                            $amountCents,
+                            $currency,
+                            [
                                 'user_id' => $user->id,
-                                'current_plan' => $currentPlanKey,
-                                'target_plan' => $targetPlanKey,
-                            ]);
+                                'upgrade_from' => $currentPlanKey,
+                                'upgrade_to' => $targetPlanKey,
+                                'subscription_id' => $active->stripe_subscription_id,
+                            ]
+                        );
+
+                        if ($invoice && isset($invoice->hosted_invoice_url)) {
+                            $redirectUrl = $invoice->hosted_invoice_url;
                         }
-                    } catch (\Throwable $e) {
-                        Log::warning('Failed to create one-off upgrade invoice', [
+                    } else {
+                        Log::warning('Stripe customer ID missing when creating upgrade invoice', [
                             'user_id' => $user->id,
-                            'stripe_customer_id' => $user->stripe_customer_id,
                             'current_plan' => $currentPlanKey,
                             'target_plan' => $targetPlanKey,
-                            'error' => $e->getMessage(),
                         ]);
                     }
+                } catch (\Throwable $e) {
+                    Log::warning('Failed to create one-off upgrade invoice', [
+                        'user_id' => $user->id,
+                        'stripe_customer_id' => $user->stripe_customer_id,
+                        'current_plan' => $currentPlanKey,
+                        'target_plan' => $targetPlanKey,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
 
@@ -225,7 +312,7 @@ class SubscriptionController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'status' => 'upgraded',
+                    'status' => $isUpgrade ? 'upgraded' : 'switched',
                     'subscription_id' => $stripeSub->id,
                     'redirect_url' => $redirectUrl,
                     'plan_name' => $result['plan_name'] ?? null,
@@ -344,10 +431,13 @@ class SubscriptionController extends Controller
                         'stripe_price_id' => $subscription->stripe_price_id,
                         'is_active' => $subscription->isActive(),
                         'on_trial' => $subscription->onTrial(),
-                        'has_expired' => $subscription->hasExpired()
+                        'has_expired' => $subscription->hasExpired(),
+                        'scheduled_plan_change' => $subscription->getScheduledPlanChange(),
                     ],
                     'status' => $subscription->status,
-                    'plan' => $subscription->stripe_price_id
+                    'plan' => $subscription->stripe_price_id,
+                    'has_scheduled_plan_change' => $subscription->hasScheduledPlanChange(),
+                    'scheduled_plan_change' => $subscription->getScheduledPlanChange(),
                 ]
             ]);
         } catch (Exception $e) {

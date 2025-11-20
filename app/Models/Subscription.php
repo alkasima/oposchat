@@ -28,6 +28,8 @@ class Subscription extends Model
         'trial_end',
         'cancel_at_period_end',
         'canceled_at',
+        'scheduled_plan_change_price_id',
+        'scheduled_plan_change_at',
     ];
 
     /**
@@ -42,6 +44,7 @@ class Subscription extends Model
         'trial_end' => 'datetime',
         'canceled_at' => 'datetime',
         'cancel_at_period_end' => 'boolean',
+        'scheduled_plan_change_at' => 'datetime',
     ];
 
     /**
@@ -131,5 +134,42 @@ class Subscription extends Model
         $gracePeriodEnd = $this->gracePeriodEnd();
         
         return $gracePeriodEnd && $gracePeriodEnd->isFuture();
+    }
+
+    /**
+     * Determine if the subscription has a scheduled plan change.
+     */
+    public function hasScheduledPlanChange(): bool
+    {
+        return !empty($this->scheduled_plan_change_price_id) && $this->scheduled_plan_change_at !== null;
+    }
+
+    /**
+     * Get scheduled plan change details including target plan metadata.
+     */
+    public function getScheduledPlanChange(): ?array
+    {
+        if (!$this->hasScheduledPlanChange()) {
+            return null;
+        }
+
+        $plans = config('subscription.plans', []);
+        $targetKey = null;
+        $targetName = null;
+
+        foreach ($plans as $key => $plan) {
+            if (($plan['stripe_price_id'] ?? null) === $this->scheduled_plan_change_price_id) {
+                $targetKey = $key;
+                $targetName = $plan['name'] ?? ucfirst($key);
+                break;
+            }
+        }
+
+        return [
+            'price_id' => $this->scheduled_plan_change_price_id,
+            'scheduled_for' => $this->scheduled_plan_change_at,
+            'plan_key' => $targetKey,
+            'plan_name' => $targetName,
+        ];
     }
 }
