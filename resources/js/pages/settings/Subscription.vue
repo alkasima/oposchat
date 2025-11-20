@@ -495,14 +495,6 @@ const setSuccessModalContent = (options: { title: string; description: string; s
     showSuccessModal.value = true;
 };
 
-const triggerAutoRefresh = () => {
-    if (autoRefreshTimerId) {
-        clearTimeout(autoRefreshTimerId);
-    }
-    autoRefreshTimerId = window.setTimeout(() => {
-        window.location.reload();
-    }, 2000);
-};
 
 const handleSuccessfulCheckoutReturn = async (sessionId: string | null) => {
     try {
