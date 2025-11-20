@@ -187,7 +187,7 @@ const confirmPlanChangeFromPricing = async () => {
     try {
         const res = await stripeService.upgrade(
             pendingPlanChange.value.priceId,
-            pendingPlanChange.value.isUpgrade
+            true // Always confirm when user clicks the confirm button
         );
 
         showPlanChangeModal.value = false;

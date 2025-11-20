@@ -34,6 +34,7 @@ interface PendingPlanChange {
     priceDifference: number;
     currency: string;
     isUpgrade: boolean;
+    isDowngrade: boolean;
 }
 
 // Reactive state
@@ -371,13 +372,15 @@ const handleUpgrade = async (plan: any) => {
             const res = await stripeService.upgrade(plan.stripe_price_id);
 
             if (res?.requires_confirmation) {
+                const priceDiff = Number(res.price_difference) || 0;
                 pendingPlanChange.value = {
                     priceId: plan.stripe_price_id,
                     currentPlan: res.current_plan,
                     targetPlan: res.target_plan,
-                    priceDifference: Number(res.price_difference) || 0,
+                    priceDifference: priceDiff,
                     currency: res.currency || plan.currency || 'EUR',
-                    isUpgrade: true,
+                    isUpgrade: priceDiff > 0,
+                    isDowngrade: priceDiff < 0,
                 };
                 showConfirmationModal.value = true;
                 return;
@@ -788,6 +791,7 @@ onUnmounted(() => {
             :price-difference="pendingPlanChange.priceDifference"
             :currency="pendingPlanChange.currency"
             :is-upgrade="pendingPlanChange.isUpgrade"
+            :is-downgrade="pendingPlanChange.isDowngrade"
             :loading="confirmationLoading"
             @confirm="handleConfirmPlanChange"
             @cancel="handleCancelPlanChange"

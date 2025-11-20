@@ -141,6 +141,30 @@ class SubscriptionController extends Controller
             $isDowngrade = $priceDifference < 0;
             $isUpgrade = $priceDifference > 0;
 
+            // Require confirmation for both upgrades and downgrades
+            if (!$confirmed) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'requires_confirmation' => true,
+                        'price_id' => $request->price_id,
+                        'current_plan' => [
+                            'key' => $currentPlanKey,
+                            'name' => $plansConfig[$currentPlanKey]['name'] ?? ucfirst($currentPlanKey),
+                            'price' => $currentPrice,
+                        ],
+                        'target_plan' => [
+                            'key' => $targetPlanKey,
+                            'name' => $plansConfig[$targetPlanKey]['name'] ?? ucfirst($targetPlanKey),
+                            'price' => $targetPrice,
+                        ],
+                        'price_difference' => $priceDifference,
+                        'currency' => $currency,
+                    ]
+                ]);
+            }
+
+            // Handle downgrade: schedule for end of billing period
             if ($isDowngrade) {
                 $scheduledAt = $active->current_period_end;
 
@@ -187,28 +211,6 @@ class SubscriptionController extends Controller
                         'plan_name' => $user->getCurrentPlanName(),
                         'plan_key' => $currentPlanKey,
                         'subscription_status' => $active->status,
-                    ]
-                ]);
-            }
-
-            if ($isUpgrade && !$confirmed) {
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'requires_confirmation' => true,
-                        'price_id' => $request->price_id,
-                        'current_plan' => [
-                            'key' => $currentPlanKey,
-                            'name' => $plansConfig[$currentPlanKey]['name'] ?? ucfirst($currentPlanKey),
-                            'price' => $currentPrice,
-                        ],
-                        'target_plan' => [
-                            'key' => $targetPlanKey,
-                            'name' => $plansConfig[$targetPlanKey]['name'] ?? ucfirst($targetPlanKey),
-                            'price' => $targetPrice,
-                        ],
-                        'price_difference' => $priceDifference,
-                        'currency' => $currency,
                     ]
                 ]);
             }
