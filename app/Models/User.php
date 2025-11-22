@@ -12,6 +12,7 @@ use Laravel\Cashier\Billable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Http;
 
 class User extends Authenticatable
 {
@@ -404,5 +405,42 @@ class User extends Authenticatable
         $this->generateEmailVerificationToken();
         $verificationUrl = $this->getEmailVerificationUrl();
         // Email sending is handled in the controller via the external email API
+    }
+
+    /**
+     * Send the password reset notification using the external email API
+     * instead of Laravel's default mailer (SES).
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        // Build the password reset URL used by the frontend
+        $resetUrl = url(route('password.reset', [
+            'token' => $token,
+            'email' => $this->email,
+        ], false));
+
+        $html = view('emails.password-reset', [
+            'user' => $this,
+            'resetUrl' => $resetUrl,
+        ])->render();
+
+        $payload = [
+            'from' => [
+                'email' => config('services.email_api.from_email'),
+                'name' => config('services.email_api.from_name'),
+            ],
+            'to' => [[
+                'email' => $this->email,
+                'name' => $this->name,
+            ]],
+            'subject' => 'Restablece tu contraseña en OposChat',
+            'html_part' => $html,
+            'text_part_auto' => true,
+        ];
+
+        Http::withHeaders([
+            'content-type' => 'application/json',
+            'x-auth-token' => config('services.email_api.token'),
+        ])->post(config('services.email_api.url'), $payload);
     }
 }
