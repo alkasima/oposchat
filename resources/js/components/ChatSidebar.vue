@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -271,10 +271,25 @@ const { appearance } = useAppearance();
 const prefersDark = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 const isDark = computed(() => appearance.value === 'dark');
 
+// Close menu when clicking outside
+const handleClickOutside = (event: MouseEvent) => {
+    if (showUserMenu.value) {
+        const target = event.target as HTMLElement;
+        if (!target.closest('[data-user-menu]') && !target.closest('[data-user-menu-dropdown]')) {
+            showUserMenu.value = false;
+        }
+    }
+};
+
 // Load chats when component mounts
 onMounted(async () => {
     await loadChats();
     await fetchSubscriptionStatus();
+    document.addEventListener('click', handleClickOutside);
+});
+
+onBeforeUnmount(() => {
+    document.removeEventListener('click', handleClickOutside);
 });
 </script>
 
@@ -435,6 +450,7 @@ onMounted(async () => {
             <div class="relative">
                 <Button 
                     @click="showUserMenu = !showUserMenu"
+                    data-user-menu
                     class=""
                     :class="{ 
                         'w-full justify-center p-3': !isCollapsed, 
@@ -474,51 +490,59 @@ onMounted(async () => {
                 </Button>
 
                 <!-- User Menu Dropdown -->
-                <div v-if="showUserMenu"
-                     class="absolute bottom-full left-0 right-0 mb-2 rounded-lg shadow-lg py-1 z-50"
-                     :class="isDark
-                         ? 'bg-gray-800 border border-gray-700'
-                         : 'bg-gray-100 border border-gray-200'">
+                <Teleport to="body">
+                    <div v-if="showUserMenu"
+                         @click.stop
+                         data-user-menu-dropdown
+                         class="fixed rounded-lg shadow-xl py-1 z-[9999] min-w-[250px]"
+                         :style="{
+                             bottom: '80px',
+                             left: isCollapsed ? '20px' : '20px'
+                         }"
+                         :class="isDark
+                             ? 'bg-gray-800 border border-gray-700'
+                             : 'bg-white border border-gray-200'">
 
-                    <!-- Usage Indicators -->
-                    <div v-if="usage.chat_messages && !usage.chat_messages.unlimited" class="px-2 py-1">
-                        <UsageIndicator
-                            feature="chat_messages"
-                            feature-name="Chat Messages"
-                            :usage="usage.chat_messages"
-                            :has-premium="hasPremium"
-                            @upgrade="handleUpgradeClick"
-                        />
+                        <!-- Usage Indicators -->
+                        <div v-if="usage.chat_messages && !usage.chat_messages.unlimited" class="px-2 py-1">
+                            <UsageIndicator
+                                feature="chat_messages"
+                                feature-name="Chat Messages"
+                                :usage="usage.chat_messages"
+                                :has-premium="hasPremium"
+                                @upgrade="handleUpgradeClick"
+                            />
+                        </div>
+
+                        <div v-if="usage.file_uploads && !usage.file_uploads.unlimited" class="px-2 py-1">
+                            <UsageIndicator
+                                feature="file_uploads"
+                                feature-name="File Uploads"
+                                :usage="usage.file_uploads"
+                                :has-premium="hasPremium"
+                                @upgrade="handleUpgradeClick"
+                            />
+                        </div>
+
+                        <button @click="openSettings"
+                                class="w-full flex items-center px-3 py-2 text-sm transition-colors"
+                                :class="isDark
+                                    ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                                    : 'text-gray-700 hover:bg-gray-200 hover:text-gray-900'">
+                            <Settings class="w-4 h-4 mr-3" />
+                            Settings
+                        </button>
+                        <Separator class="my-1" :class="isDark ? 'bg-gray-700' : 'bg-gray-200'" />
+                        <button @click="logout"
+                                class="w-full flex items-center px-3 py-2 text-sm transition-colors"
+                                :class="isDark
+                                    ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                                    : 'text-gray-700 hover:bg-gray-200 hover:text-gray-900'">
+                            <LogOut class="w-4 h-4 mr-3" />
+                            Sign out
+                        </button>
                     </div>
-
-                    <div v-if="usage.file_uploads && !usage.file_uploads.unlimited" class="px-2 py-1">
-                        <UsageIndicator
-                            feature="file_uploads"
-                            feature-name="File Uploads"
-                            :usage="usage.file_uploads"
-                            :has-premium="hasPremium"
-                            @upgrade="handleUpgradeClick"
-                        />
-                    </div>
-
-                    <button @click="openSettings"
-                            class="w-full flex items-center px-3 py-1 text-sm transition-colors"
-                            :class="isDark
-                                ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                                : 'text-gray-700 hover:bg-gray-200 hover:text-gray-900'">
-                        <Settings class="w-4 h-4 mr-3" />
-                        Settings
-                    </button>
-                    <Separator class="my-1" :class="isDark ? 'bg-gray-700' : 'bg-gray-200'" />
-                    <button @click="logout"
-                            class="w-full flex items-center px-3 py-1 text-sm transition-colors"
-                            :class="isDark
-                                ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                                : 'text-gray-700 hover:bg-gray-200 hover:text-gray-900'">
-                        <LogOut class="w-4 h-4 mr-3" />
-                        Sign out
-                    </button>
-                </div>
+                </Teleport>
             </div>
         </div>
 
