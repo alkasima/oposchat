@@ -323,8 +323,9 @@ const processPlanChangeSuccess = async (res: any, planContext?: { name?: string 
         throw new Error('Missing plan change response');
     }
 
-    if (res.redirect_url) {
-        window.location.href = res.redirect_url;
+    // Redirect to Stripe invoice page if available
+    if (res.invoice_url) {
+        window.location.href = res.invoice_url;
         return;
     }
 

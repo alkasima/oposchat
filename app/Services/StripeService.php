@@ -413,29 +413,125 @@ class StripeService
      * @param int $amountCents
      * @param string $currency
      * @param array $metadata
+     * @param \Stripe\Subscription|null $subscription Optional subscription to get payment method from
      * @return Invoice
      * @throws ApiErrorException
      */
-    public function createOneOffInvoice(string $customerId, int $amountCents, string $currency, array $metadata = []): Invoice
+    public function createOneOffInvoice(string $customerId, int $amountCents, string $currency, array $metadata = [], $subscription = null): Invoice
     {
         try {
+            // Create a draft invoice first
+            $invoice = Invoice::create([
+                'customer' => $customerId,
+                'collection_method' => 'charge_automatically',
+                'currency' => strtolower($currency), // Set currency to match the invoice item
+                'metadata' => $metadata,
+                'auto_advance' => false, // Don't auto-finalize yet
+            ]);
+
+            // Now add the invoice item to this specific invoice
             InvoiceItem::create([
                 'customer' => $customerId,
+                'invoice' => $invoice->id, // Attach to the specific invoice
                 'amount' => $amountCents,
                 'currency' => strtolower($currency),
                 'description' => $metadata['description'] ?? 'Plan upgrade adjustment',
                 'metadata' => $metadata,
             ]);
 
-            $invoice = Invoice::create([
-                'customer' => $customerId,
-                'collection_method' => 'send_invoice',
-                'days_until_due' => 7,
-                'metadata' => $metadata,
-                'auto_advance' => true,
+            // Retrieve the invoice to ensure it has the line items
+            $invoice = Invoice::retrieve($invoice->id);
+            
+            Log::info('Invoice before finalization', [
+                'invoice_id' => $invoice->id,
+                'total' => $invoice->total,
+                'amount_due' => $invoice->amount_due,
+                'lines_count' => count($invoice->lines->data ?? []),
             ]);
 
-            return $invoice->finalizeInvoice();
+            // Now finalize the invoice with the items attached
+            $finalizedInvoice = $invoice->finalizeInvoice();
+            
+            Log::info('Invoice after finalization', [
+                'invoice_id' => $finalizedInvoice->id,
+                'total' => $finalizedInvoice->total,
+                'amount_due' => $finalizedInvoice->amount_due,
+                'status' => $finalizedInvoice->status,
+            ]);
+            
+            // Attempt to pay the invoice immediately if it's still open
+            if ($finalizedInvoice->status === 'open') {
+                try {
+                    // Get payment method from the subscription if provided
+                    $paymentMethodId = null;
+                    
+                    if ($subscription && !empty($subscription->default_payment_method)) {
+                        $paymentMethodId = $subscription->default_payment_method;
+                        Log::info('Using payment method from subscription', [
+                            'subscription_id' => $subscription->id,
+                            'payment_method' => $paymentMethodId
+                        ]);
+                    } else {
+                        // Fallback: try to get from customer
+                        try {
+                            $customer = Customer::retrieve($customerId, [
+                                'expand' => ['subscriptions']
+                            ]);
+                            
+                            if (!empty($customer->invoice_settings->default_payment_method)) {
+                                $paymentMethodId = $customer->invoice_settings->default_payment_method;
+                                Log::info('Using customer default payment method', ['payment_method' => $paymentMethodId]);
+                            } elseif (!empty($customer->subscriptions->data)) {
+                                foreach ($customer->subscriptions->data as $sub) {
+                                    if ($sub->status === 'active' && !empty($sub->default_payment_method)) {
+                                        $paymentMethodId = $sub->default_payment_method;
+                                        Log::info('Using subscription payment method from customer', [
+                                            'subscription_id' => $sub->id,
+                                            'payment_method' => $paymentMethodId
+                                        ]);
+                                        break;
+                                    }
+                                }
+                            }
+                        } catch (\Exception $e) {
+                            Log::warning('Could not retrieve payment method from customer', [
+                                'customer_id' => $customerId,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+                    }
+                    
+                    // Pay the invoice with the payment method
+                    if ($paymentMethodId) {
+                        $paidInvoice = $finalizedInvoice->pay([
+                            'payment_method' => $paymentMethodId,
+                        ]);
+                    } else {
+                        // Try without specifying payment method (will use default if available)
+                        $paidInvoice = $finalizedInvoice->pay();
+                    }
+                    
+                    Log::info('Invoice payment attempted', [
+                        'invoice_id' => $paidInvoice->id,
+                        'status' => $paidInvoice->status,
+                        'amount_paid' => $paidInvoice->amount_paid,
+                        'amount_due' => $paidInvoice->amount_due,
+                        'payment_method_used' => $paymentMethodId ?? 'default',
+                    ]);
+                    
+                    return $paidInvoice;
+                } catch (ApiErrorException $payError) {
+                    // Log payment failure but still return the invoice
+                    // The customer can pay it manually via the hosted invoice URL
+                    Log::warning('Failed to automatically pay upgrade invoice', [
+                        'invoice_id' => $finalizedInvoice->id,
+                        'customer_id' => $customerId,
+                        'error' => $payError->getMessage(),
+                    ]);
+                }
+            }
+
+            return $finalizedInvoice;
         } catch (ApiErrorException $e) {
             Log::error('Stripe one-off invoice creation failed', [
                 'error' => $e->getMessage(),

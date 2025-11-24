@@ -141,6 +141,16 @@ class SubscriptionController extends Controller
             $isDowngrade = $priceDifference < 0;
             $isUpgrade = $priceDifference > 0;
 
+            Log::info('Upgrade price calculation', [
+                'current_plan' => $currentPlanKey,
+                'target_plan' => $targetPlanKey,
+                'current_price' => $currentPrice,
+                'target_price' => $targetPrice,
+                'price_difference' => $priceDifference,
+                'is_upgrade' => $isUpgrade,
+                'is_downgrade' => $isDowngrade,
+            ]);
+
             // Require confirmation for both upgrades and downgrades
             if (!$confirmed) {
                 return response()->json([
@@ -258,7 +268,8 @@ class SubscriptionController extends Controller
                 ]);
             }
 
-            $redirectUrl = null;
+            // Handle upgrade: charge the difference immediately via one-off invoice
+            $invoiceUrl = null;
             if ($isUpgrade && $priceDifference > 0) {
                 try {
                     // Ensure the user has a Stripe customer ID before creating the invoice
@@ -272,6 +283,18 @@ class SubscriptionController extends Controller
                     if ($customerId) {
                         $amountCents = (int) round($priceDifference * 100);
 
+                        Log::info('Creating upgrade invoice', [
+                            'user_id' => $user->id,
+                            'customer_id' => $customerId,
+                            'price_difference' => $priceDifference,
+                            'amount_cents' => $amountCents,
+                            'currency' => $currency,
+                            'current_plan' => $currentPlanKey,
+                            'target_plan' => $targetPlanKey,
+                            'subscription_id' => $stripeSub->id,
+                            'subscription_payment_method' => $stripeSub->default_payment_method ?? null,
+                        ]);
+
                         $invoice = $this->stripeService->createOneOffInvoice(
                             $customerId,
                             $amountCents,
@@ -281,11 +304,22 @@ class SubscriptionController extends Controller
                                 'upgrade_from' => $currentPlanKey,
                                 'upgrade_to' => $targetPlanKey,
                                 'subscription_id' => $active->stripe_subscription_id,
-                            ]
+                            ],
+                            $stripeSub // Pass the subscription so we can get payment method from it
                         );
 
+                        Log::info('Upgrade invoice created', [
+                            'invoice_id' => $invoice->id ?? null,
+                            'invoice_amount_due' => $invoice->amount_due ?? null,
+                            'invoice_amount_paid' => $invoice->amount_paid ?? null,
+                            'invoice_total' => $invoice->total ?? null,
+                            'invoice_status' => $invoice->status ?? null,
+                            'hosted_invoice_url' => $invoice->hosted_invoice_url ?? null,
+                        ]);
+
+                        // Store invoice URL for user to view/download
                         if ($invoice && isset($invoice->hosted_invoice_url)) {
-                            $redirectUrl = $invoice->hosted_invoice_url;
+                            $invoiceUrl = $invoice->hosted_invoice_url;
                         }
                     } else {
                         Log::warning('Stripe customer ID missing when creating upgrade invoice', [
@@ -316,7 +350,7 @@ class SubscriptionController extends Controller
                 'data' => [
                     'status' => $isUpgrade ? 'upgraded' : 'switched',
                     'subscription_id' => $stripeSub->id,
-                    'redirect_url' => $redirectUrl,
+                    'invoice_url' => $invoiceUrl,
                     'plan_name' => $result['plan_name'] ?? null,
                     'plan_key' => $result['plan_key'] ?? null,
                     'subscription_status' => $result['subscription_status'] ?? null,

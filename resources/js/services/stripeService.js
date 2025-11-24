@@ -22,7 +22,7 @@ class StripeService {
 
         try {
             const response = await axios.get(this.baseUrl);
-            
+
             if (!response.data.success) {
                 throw new Error(response.data.message || 'Failed to fetch subscription status');
             }
@@ -201,12 +201,17 @@ class StripeService {
             const isActiveSub = errorCode === 'has_active_subscription' || message.toLowerCase().includes('active subscription');
             if (isActiveSub) {
                 const upgradeData = await this.upgrade(priceId);
-                if (upgradeData?.redirect_url) {
-                    window.location.href = upgradeData.redirect_url;
-                    return;
+                if (upgradeData) {
+                    console.log('Upgrade successful:', upgradeData);
+
+                    // Redirect to invoice page if available
+                    if (upgradeData?.invoice_url) {
+                        window.location.href = upgradeData.invoice_url;
+                        return upgradeData;
+                    }
+
+                    return upgradeData;
                 }
-                // No redirect needed; rely on webhooks/polling
-                return upgradeData;
             }
             console.error('Failed to redirect to checkout:', error);
             throw error;
@@ -287,11 +292,11 @@ class StripeService {
         if (error.response) {
             // Server responded with error status
             const data = error.response.data;
-            
+
             if (data.message) {
                 return data.message;
             }
-            
+
             if (data.error) {
                 return data.error;
             }
@@ -350,7 +355,7 @@ class StripeService {
 
         try {
             const response = await axios.get(`${this.baseUrl}/plans`);
-            
+
             if (!response.data.success) {
                 throw new Error(response.data.message || 'Failed to fetch subscription plans');
             }
