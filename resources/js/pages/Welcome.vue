@@ -162,7 +162,9 @@ const planSuccessModalData = ref({
     interval: null as string | null,
     nextBillingDate: null as string | null,
     receiptUrl: null as string | null,
+    upgradeAmount: null as number | null,
 });
+const isFinalizingUpgrade = ref(false);
 
 const { refreshSubscriptionData } = useSubscription();
 
@@ -237,6 +239,7 @@ const handlePlanChangeSuccessFromHome = async (res: any, context: PendingPlanCha
             interval: 'mes',
             nextBillingDate: null,
             receiptUrl: res?.invoice_url ?? null,
+            upgradeAmount: null,
         };
     } else {
         let nextBilling: string | null = null;
@@ -257,6 +260,7 @@ const handlePlanChangeSuccessFromHome = async (res: any, context: PendingPlanCha
             interval: 'mes',
             nextBillingDate: nextBilling,
             receiptUrl: res?.invoice_url ?? null,
+            upgradeAmount: context.priceDifference > 0 ? context.priceDifference : null,
         };
     }
 
@@ -267,6 +271,7 @@ const handlePlanChangeSuccessFromHome = async (res: any, context: PendingPlanCha
         console.error('Failed to refresh subscription data after homepage plan change:', error);
     }
 
+    isFinalizingUpgrade.value = false;
     showPlanSuccessModal.value = true;
 };
 
@@ -285,6 +290,7 @@ const confirmPlanChangeFromHome = async () => {
         );
 
         showPlanChangeModal.value = false;
+        isFinalizingUpgrade.value = true;
         await handlePlanChangeSuccessFromHome(res, pendingPlanChange.value);
         pendingPlanChange.value = null;
     } catch (error: any) {
@@ -1073,8 +1079,22 @@ const faqData = [
             :interval="planSuccessModalData.interval ?? undefined"
             :next-billing-date="planSuccessModalData.nextBillingDate ?? undefined"
             :receipt-url="planSuccessModalData.receiptUrl ?? undefined"
+            :upgrade-amount="planSuccessModalData.upgradeAmount ?? undefined"
             @close="closePlanSuccessModal"
         />
+
+        <!-- Full-screen loading overlay while finalizing upgrade -->
+        <div
+            v-if="isFinalizingUpgrade"
+            class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-40"
+        >
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg px-6 py-4 flex items-center space-x-3">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                <span class="text-sm text-gray-700 dark:text-gray-200">
+                    Procesando tu cambio de plan...
+                </span>
+            </div>
+        </div>
     </div>
 </template>
 

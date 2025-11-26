@@ -79,6 +79,7 @@ const pendingPlanChange = ref<PendingPlanChange | null>(null);
 const planChangeLoading = ref(false);
 const planChangeError = ref<string | null>(null);
 const showPlanSuccessModal = ref(false);
+const isFinalizingUpgrade = ref(false);
 const planSuccessModalData = ref({
     title: '¡Suscripción actualizada!',
     description: 'Actualizando tu cuenta...',
@@ -89,6 +90,7 @@ const planSuccessModalData = ref({
     interval: null as string | null,
     nextBillingDate: null as string | null,
     receiptUrl: null as string | null,
+    upgradeAmount: null as number | null,
 });
 
 const { refreshSubscriptionData } = useSubscription();
@@ -164,6 +166,7 @@ const handlePlanChangeSuccessFromPricing = async (res: any, context: PendingPlan
             interval: 'mes',
             nextBillingDate: null,
             receiptUrl: res?.invoice_url ?? null,
+            upgradeAmount: null,
         };
     } else {
         let nextBilling: string | null = null;
@@ -184,6 +187,8 @@ const handlePlanChangeSuccessFromPricing = async (res: any, context: PendingPlan
             interval: 'mes',
             nextBillingDate: nextBilling,
             receiptUrl: res?.invoice_url ?? null,
+            // Show the actual upgrade charge (difference) if positive
+            upgradeAmount: context.priceDifference > 0 ? context.priceDifference : null,
         };
     }
 
@@ -194,6 +199,7 @@ const handlePlanChangeSuccessFromPricing = async (res: any, context: PendingPlan
         console.error('Failed to refresh subscription data after plan change:', error);
     }
 
+    isFinalizingUpgrade.value = false;
     showPlanSuccessModal.value = true;
 };
 
@@ -212,6 +218,7 @@ const confirmPlanChangeFromPricing = async () => {
         );
 
         showPlanChangeModal.value = false;
+        isFinalizingUpgrade.value = true;
         await handlePlanChangeSuccessFromPricing(res, pendingPlanChange.value);
         pendingPlanChange.value = null;
     } catch (error: any) {
@@ -636,6 +643,19 @@ onMounted(async () => {
             @cancel="cancelPlanChangeFromPricing"
         />
 
+        <!-- Full-screen loading overlay while finalizing upgrade -->
+        <div
+            v-if="isFinalizingUpgrade"
+            class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-40"
+        >
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg px-6 py-4 flex items-center space-x-3">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                <span class="text-sm text-gray-700 dark:text-gray-200">
+                    Procesando tu cambio de plan...
+                </span>
+            </div>
+        </div>
+
         <SubscriptionSuccessModal
             :show="showPlanSuccessModal"
             :plan-name="planSuccessModalData.planName ?? undefined"
@@ -647,6 +667,7 @@ onMounted(async () => {
             :interval="planSuccessModalData.interval ?? undefined"
             :next-billing-date="planSuccessModalData.nextBillingDate ?? undefined"
             :receipt-url="planSuccessModalData.receiptUrl ?? undefined"
+            :upgrade-amount="planSuccessModalData.upgradeAmount ?? undefined"
             @close="closePlanSuccessModal"
         />
     </div>

@@ -39,6 +39,12 @@
             {{ formattedNextBillingDate }}
           </span>
         </div>
+        <div v-if="formattedUpgradeAmount" class="flex items-center justify-between">
+          <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Upgrade charge (today):</span>
+          <span class="text-sm font-semibold text-gray-900 dark:text-white">
+            {{ formattedUpgradeAmount }}
+          </span>
+        </div>
       </div>
 
       <!-- Description -->
@@ -94,6 +100,7 @@ interface Props {
   interval?: string | null
   nextBillingDate?: string | null
   receiptUrl?: string | null
+  upgradeAmount?: number | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -107,6 +114,7 @@ const props = withDefaults(defineProps<Props>(), {
   interval: null,
   nextBillingDate: null,
   receiptUrl: null,
+  upgradeAmount: null,
 })
 
 const emit = defineEmits<{
@@ -155,6 +163,19 @@ const formattedNextBillingDate = computed(() => {
 });
 
 const hasReceipt = computed(() => !!props.receiptUrl);
+
+const formattedUpgradeAmount = computed(() => {
+  if (props.upgradeAmount === null || props.upgradeAmount === undefined) return null;
+  const currency = (props.priceCurrency || 'EUR').toUpperCase();
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+    }).format(props.upgradeAmount);
+  } catch {
+    return `${props.upgradeAmount} ${currency}`;
+  }
+});
 
 const startChatting = () => {
   emit('close')
