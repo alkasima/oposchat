@@ -216,6 +216,26 @@ class StripeService
     }
 
     /**
+     * Create a subscription in Stripe
+     *
+     * @param array $params
+     * @return Subscription
+     * @throws ApiErrorException
+     */
+    public function createSubscription(array $params): Subscription
+    {
+        try {
+            return Subscription::create($params);
+        } catch (ApiErrorException $e) {
+            Log::error('Stripe subscription creation failed', [
+                'error' => $e->getMessage(),
+                'params' => $params,
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * Update a subscription in Stripe
      *
      * @param string $subscriptionId

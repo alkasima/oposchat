@@ -206,6 +206,32 @@
                         </tbody>
                     </table>
                 </div>
+                <!-- Pagination -->
+                <div
+                    v-if="users && users.links"
+                    class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between text-sm text-gray-600 dark:text-gray-300"
+                >
+                    <div>
+                        Page {{ users.current_page }} of {{ users.last_page }}
+                    </div>
+                    <div class="flex space-x-2">
+                        <button
+                            v-for="link in users.links"
+                            :key="link.label"
+                            type="button"
+                            class="px-3 py-1 rounded-md border text-xs"
+                            :class="[
+                                link.active
+                                    ? 'bg-blue-600 text-white border-blue-600'
+                                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700',
+                                !link.url ? 'opacity-50 cursor-not-allowed' : ''
+                            ]"
+                            :disabled="!link.url"
+                            v-html="link.label"
+                            @click="goToPage(link.url)"
+                        />
+                    </div>
+                </div>
             </div>
         </div>
     </AdminLayout>
@@ -213,6 +239,7 @@
 
 <script setup>
 import { ref, reactive } from 'vue';
+import { router } from '@inertiajs/vue3';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -339,5 +366,13 @@ const getPlanBadgeClass = (plan) => {
         'Academy': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300'
     };
     return classes[plan] || classes['Free'];
+};
+
+const goToPage = (url) => {
+    if (!url) return;
+    router.visit(url, {
+        preserveState: true,
+        preserveScroll: true,
+    });
 };
 </script>

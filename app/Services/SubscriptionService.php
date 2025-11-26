@@ -93,9 +93,20 @@ class SubscriptionService
             throw new \Exception("Subscription not found for Stripe ID: {$stripeSubscription->id}");
         }
 
-        // Update subscription data
+        // Guard against subscriptions with no items (should not normally happen)
+        if (empty($stripeSubscription->items->data)) {
+            Log::warning('Stripe subscription has no items when updating from webhook', [
+                'stripe_subscription_id' => $stripeSubscription->id,
+            ]);
+        }
+
+        // Use the first item as the primary price (single-price subscriptions)
+        $primaryItem = $stripeSubscription->items->data[0] ?? null;
+        $primaryPriceId = $primaryItem?->price?->id;
+
+        // Update subscription core fields
         $updateData = [
-            'stripe_price_id' => $stripeSubscription->items->data[0]->price->id,
+            'stripe_price_id' => $primaryPriceId ?? $subscription->stripe_price_id,
             'status' => $stripeSubscription->status,
             'current_period_start' => $stripeSubscription->current_period_start ? 
                 now()->createFromTimestamp($stripeSubscription->current_period_start) : null,
@@ -110,9 +121,11 @@ class SubscriptionService
                 now()->createFromTimestamp($stripeSubscription->canceled_at) : null,
         ];
 
+        // If a scheduled plan change just took effect, clear the local scheduled fields
         if (
+            $primaryPriceId &&
             $subscription->scheduled_plan_change_price_id &&
-            $subscription->scheduled_plan_change_price_id === $stripeSubscription->items->data[0]->price->id
+            $subscription->scheduled_plan_change_price_id === $primaryPriceId
         ) {
             $updateData['scheduled_plan_change_price_id'] = null;
             $updateData['scheduled_plan_change_at'] = null;
@@ -120,10 +133,26 @@ class SubscriptionService
 
         $subscription->update($updateData);
 
-        Log::info('Subscription updated from webhook', [
+        // Sync subscription items to always have the latest Stripe item IDs and prices
+        if (!empty($stripeSubscription->items->data)) {
+            // Remove old items and recreate from Stripe data
+            SubscriptionItem::where('subscription_id', $subscription->id)->delete();
+
+            foreach ($stripeSubscription->items->data as $item) {
+                SubscriptionItem::create([
+                    'subscription_id' => $subscription->id,
+                    'stripe_subscription_item_id' => $item->id,
+                    'stripe_price_id' => $item->price->id,
+                    'quantity' => $item->quantity,
+                ]);
+            }
+        }
+
+        Log::info('Subscription updated from Stripe data', [
             'subscription_id' => $subscription->id,
             'stripe_subscription_id' => $stripeSubscription->id,
-            'status' => $stripeSubscription->status
+            'status' => $stripeSubscription->status,
+            'primary_price_id' => $primaryPriceId,
         ]);
 
         // Clear usage cache for the user to ensure new limits take effect immediately

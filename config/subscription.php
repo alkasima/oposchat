@@ -84,7 +84,9 @@ return [
             'price' => null, // Variable pricing - contact for quote
             'currency' => 'EUR',
             'interval' => 'month',
-            'stripe_price_id' => null, // No fixed price - contact sales
+            // Use a configurable Stripe price ID if available, otherwise fall back to a manual marker ID
+            // so that admin-granted Academy plans can still work without Stripe.
+            'stripe_price_id' => env('STRIPE_ACADEMY_PRICE_ID', 'academy_manual'),
             'contact_sales' => true, // Flag to show contact sales instead of price
             'features' => [
                 'Unlimited messages',

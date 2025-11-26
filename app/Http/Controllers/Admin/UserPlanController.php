@@ -5,12 +5,19 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Subscription;
+use App\Services\SubscriptionService;
+use App\Services\StripeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
 class UserPlanController extends Controller
 {
+    public function __construct(
+        private SubscriptionService $subscriptionService,
+        private StripeService $stripeService,
+    ) {}
+
     /**
      * Display the user plan management page
      */
@@ -95,12 +102,47 @@ class UserPlanController extends Controller
         ]);
 
         try {
-            DB::transaction(function () use ($request, $user) {
-                $planKey = $request->plan_key;
-                $reason = $request->reason;
-                $durationMonths = $request->duration_months ?? 1;
+            $planKey = $request->plan_key;
+            $reason = $request->reason;
+            $durationMonths = $request->duration_months ?? 1;
 
-                // Get plan configuration
+            // Handle free plan: cancel Stripe subscription if present and set user to free
+            if ($planKey === 'free') {
+                $active = $user->activeSubscription();
+
+                if ($active && $active->stripe_subscription_id) {
+                    // Cancel in Stripe (immediate) and sync locally from Stripe response
+                    $stripeSub = $this->stripeService->cancelSubscription($active->stripe_subscription_id, false);
+                    $this->subscriptionService->updateSubscriptionFromStripe($stripeSub);
+
+                    Log::info('Admin canceled user subscription via Stripe (set to free)', [
+                        'user_id' => $user->id,
+                        'admin_id' => auth()->id(),
+                        'reason' => $reason,
+                        'stripe_subscription_id' => $active->stripe_subscription_id,
+                    ]);
+                } else {
+                    // No Stripe subscription; just mark any local active subs as canceled
+                    $user->subscriptions()->whereIn('status', ['active', 'trialing'])->update([
+                        'status' => 'canceled',
+                        'canceled_at' => now(),
+                    ]);
+
+                    Log::info('Admin set user to free without Stripe subscription', [
+                        'user_id' => $user->id,
+                        'admin_id' => auth()->id(),
+                        'reason' => $reason,
+                    ]);
+                }
+
+                // Ensure user is marked as free in local model
+                $user->forceFill(['subscription_type' => 'free'])->save();
+
+                // Clear usage cache to ensure new limits take effect
+                $this->clearUsageCacheForUser($user);
+
+            } else {
+                // Paid plans: premium, plus, academy – must go through Stripe
                 $plans = config('subscription.plans');
                 $plan = $plans[$planKey] ?? null;
 
@@ -108,66 +150,87 @@ class UserPlanController extends Controller
                     throw new \Exception("Invalid plan: {$planKey}");
                 }
 
-                // If setting to free plan, cancel all active subscriptions
-                if ($planKey === 'free') {
-                    $user->subscriptions()->whereIn('status', ['active', 'trialing'])->update([
-                        'status' => 'canceled',
-                        'canceled_at' => now()
-                    ]);
+                $stripePriceId = $plan['stripe_price_id'] ?? null;
+                if (!$stripePriceId) {
+                    throw new \Exception("No Stripe price ID configured for plan: {$planKey}");
+                }
 
-                    Log::info('User plan set to free', [
-                        'user_id' => $user->id,
-                        'admin_id' => auth()->id(),
-                        'reason' => $reason
-                    ]);
+                // Ensure the user has a Stripe customer
+                if (!$user->hasStripeId()) {
+                    $user->createOrGetStripeCustomer();
+                    $user->refresh();
+                }
 
-                } else {
-                    // Create or update subscription for paid plans
-                    $stripePriceId = $plan['stripe_price_id'];
+                $active = $user->activeSubscription();
 
-                    if (!$stripePriceId) {
-                        throw new \Exception("No Stripe price ID configured for plan: {$planKey}");
+                if ($active && $active->stripe_subscription_id) {
+                    // Upgrade/downgrade existing Stripe subscription
+                    $stripeSubLive = $this->stripeService->retrieveSubscriptionById($active->stripe_subscription_id);
+
+                    if (empty($stripeSubLive->items->data)) {
+                        throw new \Exception('No subscription items found on Stripe subscription for user.');
                     }
 
-                    // Cancel existing active subscriptions
-                    $user->subscriptions()->whereIn('status', ['active', 'trialing'])->update([
-                        'status' => 'canceled',
-                        'canceled_at' => now()
+                    $primaryItem = $stripeSubLive->items->data[0];
+
+                    $updatedStripeSub = $this->stripeService->updateSubscription($stripeSubLive->id, [
+                        'items' => [[
+                            'id' => $primaryItem->id,
+                            'price' => $stripePriceId,
+                            'quantity' => 1,
+                        ]],
+                        // Admin-triggered plan changes: no automatic proration/charges here
+                        'proration_behavior' => 'none',
                     ]);
 
-                    // Create new subscription
-                    $subscription = Subscription::create([
-                        'user_id' => $user->id,
-                        'stripe_subscription_id' => 'admin_manual_' . time() . '_' . $user->id,
-                        'stripe_customer_id' => $user->stripe_customer_id ?? 'admin_manual_customer',
-                        'stripe_price_id' => $stripePriceId,
-                        'status' => 'active',
-                        'current_period_start' => now(),
-                        'current_period_end' => now()->addMonths($durationMonths),
-                        'cancel_at_period_end' => false,
-                        'canceled_at' => null,
-                    ]);
+                    // Sync local subscription + items with Stripe
+                    $subscription = $this->subscriptionService->updateSubscriptionFromStripe($updatedStripeSub);
 
-                    Log::info('User plan updated manually', [
+                    Log::info('Admin updated user plan via Stripe subscription update', [
                         'user_id' => $user->id,
                         'admin_id' => auth()->id(),
                         'old_plan' => $user->getCurrentPlanName(),
                         'new_plan' => $plan['name'],
                         'duration_months' => $durationMonths,
                         'reason' => $reason,
-                        'subscription_id' => $subscription->id
+                        'subscription_id' => $subscription->id,
+                        'stripe_subscription_id' => $updatedStripeSub->id,
+                    ]);
+                } else {
+                    // No active Stripe subscription: create one for this user
+                    $stripeSub = $this->stripeService->createSubscription([
+                        'customer' => $user->stripe_customer_id,
+                        'items' => [[
+                            'price' => $stripePriceId,
+                            'quantity' => 1,
+                        ]],
+                        // Allow subscription to be created even if payment method is missing/incomplete
+                        'payment_behavior' => 'default_incomplete',
+                    ]);
+
+                    // Persist locally using the same immediate-success logic used for user flows
+                    $result = $this->subscriptionService->handleImmediatePaymentSuccess($stripeSub);
+
+                    Log::info('Admin created new Stripe subscription for user plan', [
+                        'user_id' => $user->id,
+                        'admin_id' => auth()->id(),
+                        'new_plan' => $plan['name'],
+                        'duration_months' => $durationMonths,
+                        'reason' => $reason,
+                        'stripe_subscription_id' => $stripeSub->id,
+                        'result' => $result,
                     ]);
                 }
 
                 // Clear usage cache to ensure new limits take effect
-                $features = ['chat_messages', 'file_uploads', 'api_calls'];
-                foreach ($features as $feature) {
-                    $cacheKey = "usage_{$user->id}_{$feature}";
-                    \Illuminate\Support\Facades\Cache::forget($cacheKey);
-                }
-            });
+                $this->clearUsageCacheForUser($user);
 
-            // Refresh user data
+                // Ensure user.subscription_type is aligned with current Stripe-backed plan
+                $user->refresh();
+                $user->forceFill(['subscription_type' => $user->getCurrentPlanKey()])->save();
+            }
+
+            // Refresh user data for response
             $user->refresh();
 
             return response()->json([
@@ -196,6 +259,18 @@ class UserPlanController extends Controller
                 'success' => false,
                 'message' => 'Failed to update user plan: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Clear usage cache so new plan limits take effect immediately.
+     */
+    private function clearUsageCacheForUser(User $user): void
+    {
+        $features = ['chat_messages', 'file_uploads', 'api_calls'];
+        foreach ($features as $feature) {
+            $cacheKey = "usage_{$user->id}_{$feature}";
+            \Illuminate\Support\Facades\Cache::forget($cacheKey);
         }
     }
 

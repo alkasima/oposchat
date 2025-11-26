@@ -97,6 +97,18 @@ class SubscriptionController extends Controller
                 ]);
             }
 
+            // Always fetch the latest subscription object from Stripe before any update
+            $stripeSubLive = $this->stripeService->retrieveSubscriptionById($active->stripe_subscription_id);
+
+            // Ensure we have at least one subscription item on the live Stripe object
+            if (empty($stripeSubLive->items->data)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No subscription items found on your current plan. Please contact support.',
+                    'error_code' => 'subscription_item_missing'
+                ], 400);
+            }
+
             // Validate target price exists and is recurring
             try {
                 $price = $this->stripeService->retrievePriceById($request->price_id);
@@ -116,7 +128,21 @@ class SubscriptionController extends Controller
             }
 
             $plansConfig = config('subscription.plans');
-            $currentPlanKey = $user->getCurrentPlanKey();
+
+            // Derive the current plan key from the live Stripe subscription's price ID
+            $currentPriceId = $stripeSubLive->items->data[0]->price->id ?? null;
+            $currentPlanKey = null;
+            foreach ($plansConfig as $key => $plan) {
+                if (($plan['stripe_price_id'] ?? null) === $currentPriceId) {
+                    $currentPlanKey = $key;
+                    break;
+                }
+            }
+
+            // Fallback to user's computed plan key if we couldn't derive it from Stripe
+            if (!$currentPlanKey) {
+                $currentPlanKey = $user->getCurrentPlanKey();
+            }
             $targetPlanKey = null;
 
             foreach ($plansConfig as $key => $plan) {
@@ -225,29 +251,8 @@ class SubscriptionController extends Controller
                 ]);
             }
 
-            // Find the existing subscription item to update (local first, then Stripe fallback)
-            $item = $active->items()->first();
-            $stripeItemId = $item?->stripe_subscription_item_id;
-            if (!$stripeItemId) {
-                try {
-                    $stripeSubLive = $this->stripeService->retrieveSubscriptionById($active->stripe_subscription_id);
-                    if (!empty($stripeSubLive->items->data[0]?->id)) {
-                        $stripeItemId = $stripeSubLive->items->data[0]->id;
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('Failed to retrieve Stripe subscription for item fallback', [
-                        'subscription_id' => $active->stripe_subscription_id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-            if (!$stripeItemId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Could not locate subscription item to update. Please try again in a moment or contact support.',
-                    'error_code' => 'subscription_item_missing'
-                ], 400);
-            }
+            // Always use the current subscription item ID from the live Stripe object
+            $stripeItemId = $stripeSubLive->items->data[0]->id;
 
             // Update the subscription in Stripe to new price WITHOUT automatic proration
             $stripeSub = $this->stripeService->updateSubscription($active->stripe_subscription_id, [
