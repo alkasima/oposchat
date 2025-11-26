@@ -66,6 +66,7 @@ const {
     currentPlanName,
     subscription,
     usage,
+    loading,
     fetchSubscriptionStatus,
     fetchUsageData,
     refreshSubscriptionData,
@@ -81,6 +82,26 @@ const userSubscriptionType = computed(() => (user.value?.subscription_type as st
 const displayPlanName = computed(() => {
     const key = userSubscriptionType.value || 'free';
     return key.charAt(0).toUpperCase() + key.slice(1);
+});
+
+const isSubscriptionRefreshing = computed(() => {
+    if (typeof window === 'undefined') {
+        return loading.value;
+    }
+
+    let flag = false;
+    try {
+        flag = window.localStorage.getItem('subscription_refreshing') === '1';
+    } catch (e) {
+        flag = false;
+    }
+
+    const path = window.location.pathname;
+    const search = window.location.search || '';
+    const onSuccessPage = path.includes('/subscription/success');
+    const hasSuccessQuery = search.includes('success=true');
+
+    return !!loading.value || flag || onSuccessPage || hasSuccessQuery;
 });
 
 // Whether user is on a paid plan (any non-free subscription_type)
@@ -467,24 +488,41 @@ onBeforeUnmount(() => {
                     <div v-if="!isCollapsed" class="flex-1 text-center">
                         <div class="text-sm font-medium flex items-center justify-center mb-2" :class="isDark ? 'text-white' : 'text-gray-900'">
                             <span>{{ user?.name || 'User' }}</span>
-                            <span v-if="hasPaidPlan" class="ml-2 px-1 py-0.5 text-xs bg-yellow-500 text-black rounded-full font-medium">
+                            <span
+                                v-if="hasPaidPlan && !isSubscriptionRefreshing"
+                                class="ml-2 px-1 py-0.5 text-xs bg-yellow-500 text-black rounded-full font-medium"
+                            >
                                 {{ displayPlanName }}
+                            </span>
+                            <span
+                                v-else-if="isSubscriptionRefreshing"
+                                class="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 animate-pulse"
+                            >
+                                Updating plan...
                             </span>
                         </div>
                         <div class="text-xs mb-1 px-3 py-2 rounded-lg flex items-center justify-center gap-2" :class="isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'">
                             <span class="truncate">{{ user?.email }}</span>
                         </div>
                         <div class="text-xs flex items-center justify-center gap-2" :class="isDark ? 'text-gray-500' : 'text-gray-600'">
-                            <span>Plan: {{ displayPlanName }}</span>
-                            <button 
-                                @click="refreshSubscriptionData"
-                                class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                                title="Refresh subscription status"
-                            >
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                                </svg>
-                            </button>
+                            <template v-if="isSubscriptionRefreshing">
+                                <span class="inline-flex items-center gap-2">
+                                    <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
+                                    <span>Updating plan...</span>
+                                </span>
+                            </template>
+                            <template v-else>
+                                <span>Plan: {{ displayPlanName }}</span>
+                                <button 
+                                    @click="refreshSubscriptionData"
+                                    class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                                    title="Refresh subscription status"
+                                >
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                </button>
+                            </template>
                         </div>
                     </div>
                 </Button>

@@ -8,7 +8,7 @@ import { Sun, Moon, User, Settings, LogOut, CreditCard, BarChart3 } from 'lucide
 const isMenuOpen = ref(false);
 const isProfileOpen = ref(false);
 const { appearance, updateAppearance } = useAppearance();
-const { currentPlanName, hasPremium } = useSubscription();
+const { currentPlanName, hasPremium, refreshSubscriptionData } = useSubscription();
 const isDark = computed(() => appearance.value === 'dark');
 
 const cycleTheme = () => {
@@ -38,6 +38,17 @@ onMounted(async () => {
     try {
         loadingHeaderCourses.value = true;
         headerCoursesError.value = null;
+
+        // Refresh subscription data for logged-in users so header plan is in sync everywhere
+        if ((window as any).Laravel?.page?.props?.auth?.user) {
+            try {
+                await refreshSubscriptionData();
+            } catch (e) {
+                // Non-blocking: header should still render even if refresh fails
+                console.error('Failed to refresh subscription data in header:', e);
+            }
+        }
+
         const res = await fetch('/public/courses', { headers: { 'Accept': 'application/json' } });
         if (!res.ok) throw new Error('Failed to load courses');
         const data = await res.json();

@@ -471,6 +471,58 @@ const refreshSubscriptionData = async () => {
     }
 };
 
+const triggerAutoRefresh = (attempt: number = 0) => {
+    const maxAttempts = 8;
+    const intervalMs = 3000;
+
+    if (autoRefreshTimerId) {
+        clearTimeout(autoRefreshTimerId);
+        autoRefreshTimerId = null;
+    }
+
+    const run = async () => {
+        try {
+            await refreshSubscriptionData();
+
+            const latestStatus = await stripeService.getSubscriptionStatus();
+            subscriptionData.value = latestStatus;
+
+            try {
+                const response = await fetch('/api/subscriptions/refresh-plan', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    credentials: 'same-origin'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.data?.plan_key && page.props.auth?.user) {
+                        page.props.auth.user.subscription_type = data.data.plan_key;
+                    }
+                }
+            } catch (e) {
+            }
+
+            const isActive = latestStatus?.subscription?.is_active || latestStatus?.subscription?.status === 'active';
+            if (isActive || attempt + 1 >= maxAttempts) {
+                return;
+            }
+        } catch (e) {
+            if (attempt + 1 >= maxAttempts) {
+                return;
+            }
+        }
+
+        autoRefreshTimerId = setTimeout(() => triggerAutoRefresh(attempt + 1), intervalMs);
+    };
+
+    run();
+};
+
 const formatPrice = (price: number, currency: string = 'usd') => {
     if (price === 0) return '$0';
     return new Intl.NumberFormat('en-US', {

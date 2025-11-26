@@ -140,7 +140,16 @@ export function useSubscription() {
     const refreshSubscriptionData = async () => {
         try {
             loading.value = true;
-            
+
+            // Mark subscription as refreshing so other components can react (e.g. sidebar UI)
+            if (typeof window !== 'undefined') {
+                try {
+                    window.localStorage.setItem('subscription_refreshing', '1');
+                } catch (e) {
+                    // Ignore storage errors (e.g. private mode)
+                }
+            }
+
             // First try to sync missing subscriptions
             const syncResponse = await fetch('/api/subscriptions/sync', {
                 method: 'POST',
@@ -151,7 +160,7 @@ export function useSubscription() {
                 },
                 credentials: 'same-origin'
             });
-
+            
             if (syncResponse.ok) {
                 const syncData = await syncResponse.json();
                 if (syncData.success) {
@@ -169,27 +178,81 @@ export function useSubscription() {
                 },
                 credentials: 'same-origin'
             });
-
+            
             if (response.ok) {
                 const data = await response.json();
                 if (data.success) {
                     // Refresh usage data after subscription update
                     await fetchUsageData();
-                    // Force a page reload to get fresh Inertia data
-                    window.location.reload();
+
+                    // Fetch latest subscription status for global state
+                    try {
+                        const statusResponse = await fetch('/api/subscriptions/status', {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json'
+                            },
+                            credentials: 'same-origin'
+                        });
+                        if (statusResponse.ok) {
+                            const statusData = await statusResponse.json();
+                            // statusData has the shape from SubscriptionController::status
+                            if (statusData) {
+                                globalSubscriptionData.value = {
+                                    ...(globalSubscriptionData.value || subscription.value),
+                                    ...statusData,
+                                };
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error fetching subscription status:', e);
+                    }
+
+                    // Refresh user plan (plan_name/plan_key) without full reload
+                    try {
+                        const planResponse = await fetch('/api/subscriptions/refresh-plan', {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                            },
+                            credentials: 'same-origin'
+                        });
+                        if (planResponse.ok) {
+                            const planData = await planResponse.json();
+                            if (planData.success && planData.data?.plan_name) {
+                                globalSubscriptionData.value = {
+                                    ...(globalSubscriptionData.value || subscription.value),
+                                    current_plan_name: planData.data.plan_name,
+                                };
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error refreshing user plan:', e);
+                    }
+                    
+                    // After successful refresh, stop here without page reload
                     return;
                 }
             }
             
-            // Fallback to page reload if API call fails
-            window.location.reload();
+            // If we reach here without success, just keep current in-memory state
         } catch (error) {
             console.error('Error refreshing subscription data:', error);
             error.value = error.message;
-            // Fallback to page reload
-            window.location.reload();
         } finally {
             loading.value = false;
+
+            // Clear refreshing flag once we're done (success or failure)
+            if (typeof window !== 'undefined') {
+                try {
+                    window.localStorage.removeItem('subscription_refreshing');
+                } catch (e) {
+                    // Ignore storage errors
+                }
+            }
         }
     }
 
