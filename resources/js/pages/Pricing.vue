@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import SiteFooter from '@/components/SiteFooter.vue';
 import stripeService from '@/services/stripeService';
 import PlanChangeConfirmationModal from '@/components/PlanChangeConfirmationModal.vue';
 import SubscriptionSuccessModal from '@/components/SubscriptionSuccessModal.vue';
+import { useSubscription } from '@/composables/useSubscription.js';
 
 const page = usePage();
 
@@ -83,15 +84,14 @@ const planSuccessModalData = ref({
     description: 'Actualizando tu cuenta...',
     statusLabel: 'Activo',
     planName: null as string | null,
+    amount: null as number | null,
+    currency: null as string | null,
+    interval: null as string | null,
+    nextBillingDate: null as string | null,
+    receiptUrl: null as string | null,
 });
-let planSuccessTimer: ReturnType<typeof setTimeout> | null = null;
 
-const clearPlanSuccessTimer = () => {
-    if (planSuccessTimer) {
-        clearTimeout(planSuccessTimer);
-        planSuccessTimer = null;
-    }
-};
+const { refreshSubscriptionData } = useSubscription();
 
 const ensurePricingPlansLoaded = async () => {
     if (!pricingPlans.value) {
@@ -147,7 +147,7 @@ const startPlanChangeFromPricing = async (targetPlanKey: 'premium' | 'plus') => 
     }
 };
 
-const handlePlanChangeSuccessFromPricing = (res: any, context: PendingPlanChange) => {
+const handlePlanChangeSuccessFromPricing = async (res: any, context: PendingPlanChange) => {
     if (res?.redirect_url) {
         window.location.href = res.redirect_url;
         return;
@@ -159,21 +159,42 @@ const handlePlanChangeSuccessFromPricing = (res: any, context: PendingPlanChange
             description: `Tu plan cambiará a ${context.targetPlan.name} al final de tu período de facturación actual.`,
             statusLabel: 'Pendiente',
             planName: context.targetPlan.name,
+            amount: context.targetPlan.price,
+            currency: context.currency,
+            interval: 'mes',
+            nextBillingDate: null,
+            receiptUrl: res?.invoice_url ?? null,
         };
     } else {
+        let nextBilling: string | null = null;
+        try {
+            const status = await stripeService.getSubscriptionStatus();
+            nextBilling = status?.subscription?.current_period_end || null;
+        } catch (error) {
+            console.error('Failed to fetch latest subscription status for modal:', error);
+        }
+
         planSuccessModalData.value = {
             title: '¡Suscripción actualizada!',
-            description: 'Estamos procesando tu cambio de plan. Actualizaremos esta página automáticamente.',
+            description: 'Tu nuevo plan ya está activo. Puedes descargar el recibo o revisar los detalles de tu suscripción.',
             statusLabel: 'Activo',
             planName: context.targetPlan.name,
+            amount: context.targetPlan.price,
+            currency: context.currency,
+            interval: 'mes',
+            nextBillingDate: nextBilling,
+            receiptUrl: res?.invoice_url ?? null,
         };
     }
 
+    // Refresh global subscription/auth state so header and app use the new plan immediately
+    try {
+        await refreshSubscriptionData();
+    } catch (error) {
+        console.error('Failed to refresh subscription data after plan change:', error);
+    }
+
     showPlanSuccessModal.value = true;
-    clearPlanSuccessTimer();
-    planSuccessTimer = window.setTimeout(() => {
-        window.location.reload();
-    }, 2000);
 };
 
 const confirmPlanChangeFromPricing = async () => {
@@ -191,7 +212,7 @@ const confirmPlanChangeFromPricing = async () => {
         );
 
         showPlanChangeModal.value = false;
-        handlePlanChangeSuccessFromPricing(res, pendingPlanChange.value);
+        await handlePlanChangeSuccessFromPricing(res, pendingPlanChange.value);
         pendingPlanChange.value = null;
     } catch (error: any) {
         console.error('Failed to change plan from pricing page:', error);
@@ -209,7 +230,6 @@ const cancelPlanChangeFromPricing = () => {
 
 const closePlanSuccessModal = () => {
     showPlanSuccessModal.value = false;
-    clearPlanSuccessTimer();
 };
 
 const managePlanFromPricing = async () => {
@@ -320,9 +340,7 @@ onMounted(async () => {
     }
 });
 
-onUnmounted(() => {
-    clearPlanSuccessTimer();
-});
+// No auto-hide timers for the success modal; it stays until user closes it.
 </script>
 
 <template>
@@ -624,6 +642,11 @@ onUnmounted(() => {
             :title="planSuccessModalData.title"
             :description="planSuccessModalData.description"
             :status-label="planSuccessModalData.statusLabel"
+            :price-amount="planSuccessModalData.amount ?? undefined"
+            :price-currency="planSuccessModalData.currency ?? undefined"
+            :interval="planSuccessModalData.interval ?? undefined"
+            :next-billing-date="planSuccessModalData.nextBillingDate ?? undefined"
+            :receipt-url="planSuccessModalData.receiptUrl ?? undefined"
             @close="closePlanSuccessModal"
         />
     </div>

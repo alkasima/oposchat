@@ -6,6 +6,7 @@ import SiteFooter from '@/components/SiteFooter.vue';
 import stripeService from '@/services/stripeService';
 import PlanChangeConfirmationModal from '@/components/PlanChangeConfirmationModal.vue';
 import SubscriptionSuccessModal from '@/components/SubscriptionSuccessModal.vue';
+import { useSubscription } from '@/composables/useSubscription.js';
 
 const isMenuOpen = ref(false);
 const openFaq = ref(null);
@@ -156,15 +157,14 @@ const planSuccessModalData = ref({
     description: 'Actualizando tu cuenta...',
     statusLabel: 'Activo',
     planName: null as string | null,
+    amount: null as number | null,
+    currency: null as string | null,
+    interval: null as string | null,
+    nextBillingDate: null as string | null,
+    receiptUrl: null as string | null,
 });
-let planSuccessTimer: ReturnType<typeof setTimeout> | null = null;
 
-const clearPlanSuccessTimer = () => {
-    if (planSuccessTimer) {
-        clearTimeout(planSuccessTimer);
-        planSuccessTimer = null;
-    }
-};
+const { refreshSubscriptionData } = useSubscription();
 
 const ensureHomepagePlansLoaded = async () => {
     if (!homepagePlans.value) {
@@ -220,7 +220,7 @@ const startPlanChangeFromHome = async (targetPlanKey: 'premium' | 'plus') => {
     }
 };
 
-const handlePlanChangeSuccessFromHome = (res: any, context: PendingPlanChange) => {
+const handlePlanChangeSuccessFromHome = async (res: any, context: PendingPlanChange) => {
     if (res?.redirect_url) {
         window.location.href = res.redirect_url;
         return;
@@ -232,21 +232,42 @@ const handlePlanChangeSuccessFromHome = (res: any, context: PendingPlanChange) =
             description: `Tu plan cambiará a ${context.targetPlan.name} al final de tu período de facturación actual. Te avisaremos cuando se complete.`,
             statusLabel: 'Pendiente',
             planName: context.targetPlan.name,
+            amount: context.targetPlan.price,
+            currency: context.currency,
+            interval: 'mes',
+            nextBillingDate: null,
+            receiptUrl: res?.invoice_url ?? null,
         };
     } else {
+        let nextBilling: string | null = null;
+        try {
+            const status = await stripeService.getSubscriptionStatus();
+            nextBilling = status?.subscription?.current_period_end || null;
+        } catch (error) {
+            console.error('Failed to fetch latest subscription status for homepage modal:', error);
+        }
+
         planSuccessModalData.value = {
             title: '¡Suscripción actualizada!',
-            description: 'Estamos procesando tu cambio de plan. Actualizaremos esta página automáticamente.',
+            description: 'Tu nuevo plan ya está activo. Puedes descargar el recibo o revisar los detalles de tu suscripción.',
             statusLabel: 'Activo',
             planName: context.targetPlan.name,
+            amount: context.targetPlan.price,
+            currency: context.currency,
+            interval: 'mes',
+            nextBillingDate: nextBilling,
+            receiptUrl: res?.invoice_url ?? null,
         };
     }
 
+    // Refresh global subscription/auth state so header and other pages see new plan
+    try {
+        await refreshSubscriptionData();
+    } catch (error) {
+        console.error('Failed to refresh subscription data after homepage plan change:', error);
+    }
+
     showPlanSuccessModal.value = true;
-    clearPlanSuccessTimer();
-    planSuccessTimer = window.setTimeout(() => {
-        window.location.reload();
-    }, 2000);
 };
 
 const confirmPlanChangeFromHome = async () => {
@@ -264,7 +285,7 @@ const confirmPlanChangeFromHome = async () => {
         );
 
         showPlanChangeModal.value = false;
-        handlePlanChangeSuccessFromHome(res, pendingPlanChange.value);
+        await handlePlanChangeSuccessFromHome(res, pendingPlanChange.value);
         pendingPlanChange.value = null;
     } catch (error: any) {
         console.error('Failed to change plan from homepage:', error);
@@ -282,7 +303,6 @@ const cancelPlanChangeFromHome = () => {
 
 const closePlanSuccessModal = () => {
     showPlanSuccessModal.value = false;
-    clearPlanSuccessTimer();
 };
 
 const managePlanFromHome = async () => {
@@ -391,10 +411,7 @@ onMounted(async () => {
     }
 });
 
-onUnmounted(() => {
-    clearPlanSuccessTimer();
-});
-
+// No auto-hide timers for subscription success modal; stays until user closes it.
 const faqData = [
     { 
         question: '¿Qué es OposChat y en qué me puede ayudar?', 
@@ -1051,6 +1068,11 @@ const faqData = [
             :title="planSuccessModalData.title"
             :description="planSuccessModalData.description"
             :status-label="planSuccessModalData.statusLabel"
+            :price-amount="planSuccessModalData.amount ?? undefined"
+            :price-currency="planSuccessModalData.currency ?? undefined"
+            :interval="planSuccessModalData.interval ?? undefined"
+            :next-billing-date="planSuccessModalData.nextBillingDate ?? undefined"
+            :receipt-url="planSuccessModalData.receiptUrl ?? undefined"
             @close="closePlanSuccessModal"
         />
     </div>
