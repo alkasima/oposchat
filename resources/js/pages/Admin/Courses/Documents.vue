@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { Head, usePage, router } from '@inertiajs/vue3';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import { Button } from '@/components/ui/button';
@@ -16,13 +16,17 @@ const stats = ref({});
 const isLoading = ref(false);
 const isUploading = ref(false);
 
-// Upload form
+// Upload form (still supports single-file title if you only pick one)
 const uploadForm = ref({
     file: null,
     title: '',
     description: '',
     document_type: 'study_material'
 });
+
+// Local selection & per-file upload state
+const selectedFiles = ref<File[]>([]);
+const uploadItems = ref<any[]>([]);
 
 const documentTypes = [
     { value: 'study_material', label: 'Study Material' },
@@ -32,14 +36,30 @@ const documentTypes = [
     { value: 'practice_test', label: 'Practice Test' },
 ];
 
+let pollingInterval: number | null = null;
+
 onMounted(() => {
     fetchDocuments();
     fetchStats();
+
+    // Poll periodically so admin can leave and return to see updated status
+    pollingInterval = window.setInterval(() => {
+        fetchDocuments(false);
+        fetchStats();
+    }, 10000);
 });
 
-const fetchDocuments = async () => {
+onUnmounted(() => {
+    if (pollingInterval) {
+        window.clearInterval(pollingInterval);
+    }
+});
+
+const fetchDocuments = async (withLoading: boolean = true) => {
     try {
-        isLoading.value = true;
+        if (withLoading) {
+            isLoading.value = true;
+        }
         const response = await fetch(`/admin/courses/${course.value.id}/documents/api`);
         const data = await response.json();
         
@@ -52,7 +72,9 @@ const fetchDocuments = async () => {
     } catch (error) {
         console.error('Failed to fetch documents:', error);
     } finally {
-        isLoading.value = false;
+        if (withLoading) {
+            isLoading.value = false;
+        }
     }
 };
 
@@ -70,12 +92,28 @@ const fetchStats = async () => {
 };
 
 const handleFileSelect = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-        uploadForm.value.file = file;
+    const files: File[] = Array.from(event.target.files || []);
+    selectedFiles.value = files;
+
+    uploadItems.value = files.map((file) => ({
+        id: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+        file,
+        name: file.name,
+        size: file.size,
+        status: 'pending', // pending | uploading | queued | processing | completed | failed
+        progress: 0,
+        message: '',
+        documentId: null,
+    }));
+
+    if (files.length === 1) {
+        uploadForm.value.file = files[0];
         if (!uploadForm.value.title) {
-            uploadForm.value.title = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
+            uploadForm.value.title = files[0].name.replace(/\.[^/.]+$/, ""); // Remove extension
         }
+    } else {
+        uploadForm.value.file = null;
+        uploadForm.value.title = '';
     }
 };
 
@@ -100,26 +138,35 @@ const refreshCSRFToken = async () => {
 };
 
 const uploadDocument = async () => {
-    if (!uploadForm.value.file || !uploadForm.value.title) {
-        alert('Please select a file and enter a title');
+    if (!selectedFiles.value.length) {
+        alert('Please select at least one file');
         return;
     }
 
     try {
         isUploading.value = true;
-        
+
+        // mark all as uploading
+        uploadItems.value = uploadItems.value.map(item => ({
+            ...item,
+            status: 'uploading',
+            progress: 25,
+            message: 'Uploading...',
+        }));
+
         // Refresh CSRF token before upload
         await refreshCSRFToken();
-        
+
         const formData = new FormData();
-        formData.append('file', uploadForm.value.file);
-        formData.append('title', uploadForm.value.title);
-        formData.append('description', uploadForm.value.description);
+        selectedFiles.value.forEach((file) => {
+            formData.append('files[]', file);
+        });
         formData.append('document_type', uploadForm.value.document_type);
+        formData.append('description', uploadForm.value.description || '');
 
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         console.log('CSRF Token:', csrfToken);
-        
+
         const response = await fetch(`/admin/courses/${course.value.id}/documents`, {
             method: 'POST',
             headers: {
@@ -130,7 +177,6 @@ const uploadDocument = async () => {
         });
 
         console.log('Response status:', response.status);
-        console.log('Response headers:', response.headers);
         
         if (!response.ok) {
             const errorText = await response.text();
@@ -140,28 +186,72 @@ const uploadDocument = async () => {
         
         const data = await response.json();
 
-        if (data.success) {
-            // Reset form
-            uploadForm.value = {
-                file: null,
-                title: '',
-                description: '',
-                document_type: 'study_material'
-            };
-            
-            // Refresh documents and stats
+        if (data.success && Array.isArray(data.results)) {
+            uploadItems.value = uploadItems.value.map(item => {
+                const match = data.results.find((r: any) => r.original_filename === item.name);
+                if (!match) return item;
+
+                const isSuccess = !!match.success;
+
+                return {
+                    ...item,
+                    status: isSuccess ? 'queued' : 'failed',
+                    progress: isSuccess ? 50 : 100,
+                    message: match.message || (isSuccess ? 'Queued for processing' : 'Failed to queue'),
+                    documentId: match.document?.id ?? null,
+                };
+            });
+
             await fetchDocuments();
             await fetchStats();
-            
-            alert('Document uploaded successfully!');
+
+            alert('Files uploaded. They are now being processed in the background.');
         } else {
-            alert('Failed to upload document: ' + data.message);
+            alert('Failed to upload documents: ' + (data.message || 'Unknown error'));
         }
     } catch (error) {
         console.error('Upload error:', error);
-        alert('Failed to upload document');
+        uploadItems.value = uploadItems.value.map(item => ({
+            ...item,
+            status: 'failed',
+            progress: 100,
+            message: 'Upload failed',
+        }));
+        alert('Failed to upload documents');
     } finally {
         isUploading.value = false;
+    }
+};
+
+const getProcessingStatus = (document) => {
+    if (document.is_processed) {
+        return 'completed';
+    }
+    if (document.metadata && document.metadata.processing_status === 'failed') {
+        return 'failed';
+    }
+    if (document.metadata && document.metadata.processing_status === 'queued') {
+        return 'queued';
+    }
+    return 'processing';
+};
+
+const getStatusLabel = (status: string) => {
+    switch (status) {
+        case 'pending':
+            return 'Pending';
+        case 'uploading':
+            return 'Uploading';
+        case 'queued':
+            return 'Queued';
+        case 'processing':
+            return 'Processing';
+        case 'completed':
+            return 'Completed';
+        case 'failed':
+            return 'Failed';
+        default:
+            return status;
     }
 };
 
@@ -296,6 +386,7 @@ const formatFileSize = (bytes) => {
                             <label class="block text-sm font-medium text-gray-700 mb-2">File</label>
                             <input
                                 type="file"
+                                multiple
                                 @change="handleFileSelect"
                                 accept=".pdf,.doc,.docx,.txt,.md"
                                 class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
@@ -319,7 +410,7 @@ const formatFileSize = (bytes) => {
                         <label class="block text-sm font-medium text-gray-700 mb-2">Title</label>
                         <Input
                             v-model="uploadForm.title"
-                            placeholder="Enter document title"
+                            placeholder="Enter document title (used when a single file is selected)"
                             required
                         />
                     </div>
@@ -335,12 +426,41 @@ const formatFileSize = (bytes) => {
                     
                     <Button
                         @click="uploadDocument"
-                        :disabled="isUploading || !uploadForm.file || !uploadForm.title"
+                        :disabled="isUploading || !selectedFiles.length"
                         class="w-full"
                     >
                         <Upload class="w-4 h-4 mr-2" />
-                        {{ isUploading ? 'Uploading...' : 'Upload Document' }}
+                        {{ isUploading ? 'Uploading...' : 'Upload Documents' }}
                     </Button>
+
+                    <!-- Per-file upload status -->
+                    <div v-if="uploadItems.length" class="space-y-2 mt-4">
+                        <div
+                            v-for="item in uploadItems"
+                            :key="item.id"
+                            class="border border-gray-200 rounded-md p-2"
+                        >
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-sm font-medium truncate">{{ item.name }}</span>
+                                <span class="text-xs text-gray-500">{{ getStatusLabel(item.status) }}</span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                <div
+                                    class="h-2 rounded-full transition-all duration-300"
+                                    :class="{
+                                        'bg-blue-500': item.status === 'uploading' || item.status === 'queued' || item.status === 'processing',
+                                        'bg-green-500': item.status === 'completed',
+                                        'bg-red-500': item.status === 'failed',
+                                        'bg-gray-400': item.status === 'pending',
+                                    }"
+                                    :style="{ width: (item.progress || 0) + '%' }"
+                                ></div>
+                            </div>
+                            <p v-if="item.message" class="mt-1 text-xs text-gray-500">
+                                {{ item.message }}
+                            </p>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 
@@ -385,21 +505,37 @@ const formatFileSize = (bytes) => {
                                         <span class="text-xs text-gray-500">
                                             {{ formatFileSize(document.file_size) }}
                                         </span>
-                                        <span v-if="document.chunks_count > 0" class="text-xs text-gray-500">
+                                <span v-if="document.chunks_count > 0" class="text-xs text-gray-500">
                                             {{ document.chunks_count }} chunks
                                         </span>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="flex items-center space-x-2">
-                                <div v-if="document.is_processed" class="flex items-center text-green-600">
-                                    <CheckCircle class="w-4 h-4 mr-1" />
-                                    <span class="text-xs">Processed</span>
-                                </div>
-                                <div v-else class="flex items-center text-orange-600">
-                                    <Clock class="w-4 h-4 mr-1" />
-                                    <span class="text-xs">Processing</span>
+                            <div class="flex items-center space-x-4">
+                                <div class="flex flex-col items-end text-xs">
+                                    <div v-if="getProcessingStatus(document) === 'completed'" class="flex items-center text-green-600">
+                                        <CheckCircle class="w-4 h-4 mr-1" />
+                                        <span>Processed</span>
+                                    </div>
+                                    <div v-else-if="getProcessingStatus(document) === 'failed'" class="flex items-center text-red-600">
+                                        <XCircle class="w-4 h-4 mr-1" />
+                                        <span>Failed</span>
+                                    </div>
+                                    <div v-else-if="getProcessingStatus(document) === 'queued'" class="flex items-center text-blue-600">
+                                        <Clock class="w-4 h-4 mr-1" />
+                                        <span>Queued</span>
+                                    </div>
+                                    <div v-else class="flex items-center text-orange-600">
+                                        <Clock class="w-4 h-4 mr-1" />
+                                        <span>Processing</span>
+                                    </div>
+                                    <span
+                                        v-if="document.metadata && document.metadata.processing_error"
+                                        class="mt-1 text-red-500 max-w-xs text-right"
+                                    >
+                                        {{ document.metadata.processing_error }}
+                                    </span>
                                 </div>
                                 
                                 <Button
