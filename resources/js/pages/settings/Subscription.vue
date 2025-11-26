@@ -502,6 +502,13 @@ const triggerAutoRefresh = (attempt: number = 0) => {
                     const data = await response.json();
                     if (data.success && data.data?.plan_key && page.props.auth?.user) {
                         page.props.auth.user.subscription_type = data.data.plan_key;
+
+                        // Ensure all Inertia-shared auth props (including subscription_type)
+                        // are refreshed globally without a full page reload
+                        router.reload({
+                            only: ['auth'],
+                            preserveScroll: true,
+                        });
                     }
                 }
             } catch (e) {

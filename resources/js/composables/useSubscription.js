@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { usePage } from '@inertiajs/vue3'
+import { usePage, router } from '@inertiajs/vue3'
 
 // Shared reactive state across all components
 const globalSubscriptionData = ref(null)
@@ -227,6 +227,12 @@ export function useSubscription() {
                                     ...(globalSubscriptionData.value || subscription.value),
                                     current_plan_name: planData.data.plan_name,
                                 };
+
+                                // Reload only auth props so header/user dropdown see updated subscription_type
+                                router.reload({
+                                    only: ['auth'],
+                                    preserveScroll: true,
+                                });
                             }
                         }
                     } catch (e) {

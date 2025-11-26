@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import { ref, computed, onMounted } from 'vue';
 import { useAppearance } from '@/composables/useAppearance';
 import { useSubscription } from '@/composables/useSubscription.js';
@@ -8,7 +8,16 @@ import { Sun, Moon, User, Settings, LogOut, CreditCard, BarChart3 } from 'lucide
 const isMenuOpen = ref(false);
 const isProfileOpen = ref(false);
 const { appearance, updateAppearance } = useAppearance();
-const { currentPlanName, hasPremium, refreshSubscriptionData } = useSubscription();
+const { hasPremium, refreshSubscriptionData } = useSubscription();
+const page = usePage();
+const headerUser = computed(() => page.props.auth?.user || null);
+
+const headerSubscriptionType = computed(() => (headerUser.value?.subscription_type as string) || 'free');
+
+const headerPlanName = computed(() => {
+    const key = headerSubscriptionType.value || 'free';
+    return key.charAt(0).toUpperCase() + key.slice(1);
+});
 const isDark = computed(() => appearance.value === 'dark');
 
 const cycleTheme = () => {
@@ -153,7 +162,13 @@ onMounted(async () => {
                                         <p class="text-sm font-medium text-gray-900">{{ $page.props.auth.user.name || 'User' }}</p>
                                         <p class="text-sm text-gray-500">{{ $page.props.auth.user.email }}</p>
                                         <p class="text-xs text-gray-600 mt-1">
-                                            Plan: <span class="font-medium" :class="hasPremium ? 'text-yellow-600' : 'text-gray-500'">{{ currentPlanName }}</span>
+                                            Plan:
+                                            <span
+                                                class="font-medium"
+                                                :class="headerSubscriptionType !== 'free' ? 'text-yellow-600' : 'text-gray-500'"
+                                            >
+                                                {{ headerPlanName }}
+                                            </span>
                                         </p>
                                     </div>
                                     
@@ -245,7 +260,13 @@ onMounted(async () => {
                             <p class="text-sm font-medium text-white">{{ $page.props.auth.user.name || 'User' }}</p>
                             <p class="text-xs text-blue-200">{{ $page.props.auth.user.email }}</p>
                             <p class="text-xs text-blue-300 mt-1">
-                                Plan: <span class="font-medium" :class="hasPremium ? 'text-yellow-300' : 'text-blue-200'">{{ currentPlanName }}</span>
+                                Plan:
+                                <span
+                                    class="font-medium"
+                                    :class="headerSubscriptionType !== 'free' ? 'text-yellow-300' : 'text-blue-200'"
+                                >
+                                    {{ headerPlanName }}
+                                </span>
                             </p>
                         </div>
                         <Link 

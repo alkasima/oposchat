@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useInitials } from '@/composables/useInitials';
-import { useSubscription } from '@/composables/useSubscription.js';
 import type { User } from '@/types';
 import { computed } from 'vue';
 
@@ -16,12 +15,17 @@ const props = withDefaults(defineProps<Props>(), {
     showPlan: false,
 });
 
-const { currentPlanName, hasPremium } = useSubscription();
-
 const { getInitials } = useInitials();
 
 // Compute whether we should show the avatar image
 const showAvatar = computed(() => props.user.avatar && props.user.avatar !== '');
+
+const subscriptionType = computed(() => props.user.subscription_type || 'free');
+
+const displayPlanName = computed(() => {
+    const key = subscriptionType.value || 'free';
+    return key.charAt(0).toUpperCase() + key.slice(1);
+});
 </script>
 
 <template>
@@ -35,8 +39,12 @@ const showAvatar = computed(() => props.user.avatar && props.user.avatar !== '')
     <div class="grid flex-1 text-left text-sm leading-tight">
         <span class="truncate font-medium">{{ user.name }}</span>
         <span v-if="showEmail" class="truncate text-xs text-muted-foreground">{{ user.email }}</span>
-        <span v-if="showPlan" class="truncate text-xs" :class="hasPremium ? 'text-yellow-600 font-medium' : 'text-muted-foreground'">
-            Plan: {{ currentPlanName }}
+        <span
+            v-if="showPlan"
+            class="truncate text-xs"
+            :class="subscriptionType !== 'free' ? 'text-yellow-600 font-medium' : 'text-muted-foreground'"
+        >
+            Plan: {{ displayPlanName }}
         </span>
     </div>
 </template>
