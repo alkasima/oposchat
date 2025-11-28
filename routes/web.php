@@ -115,6 +115,53 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'system_message' => $systemMessage
         ]);
     })->name('test.exam.context');
+    
+    // Quiz web routes
+    Route::get('/quizzes', function () {
+        $courses = \App\Models\Course::active()->ordered()->get(['id', 'name', 'slug']);
+        return Inertia::render('Quizzes', [
+            'courses' => $courses,
+        ]);
+    })->name('quizzes');
+    
+    Route::get('/quiz-attempt/{attempt}', function (\App\Models\QuizAttempt $attempt) {
+        // Verify ownership
+        if ($attempt->user_id !== Auth::id()) {
+            abort(403);
+        }
+        
+        // Load relationships
+        $attempt->load([
+            'answers.question.options',
+            'quiz:id,title,duration_minutes',
+        ]);
+        
+        return Inertia::render('QuizAttempt', [
+            'attempt' => $attempt,
+        ]);
+    })->name('quiz.attempt');
+    
+    Route::get('/quiz-results/{attempt}', function (\App\Models\QuizAttempt $attempt) {
+        // Verify ownership
+        if ($attempt->user_id !== Auth::id()) {
+            abort(403);
+        }
+        
+        // Verify completed
+        if ($attempt->status !== 'completed') {
+            return redirect()->route('quiz.attempt', $attempt->id);
+        }
+        
+        // Load relationships
+        $attempt->load([
+            'answers.question.options',
+            'quiz:id,title',
+        ]);
+        
+        return Inertia::render('QuizResults', [
+            'results' => $attempt,
+        ]);
+    })->name('quiz.results');
 });
 
 // API routes for subscription (using web middleware for session-based auth)
@@ -147,6 +194,32 @@ Route::middleware(['auth', 'verified'])->prefix('api')->group(function () {
     
     // Courses API routes
     Route::get('/courses', [App\Http\Controllers\ChatController::class, 'getCourses']);
+    
+    // Quiz API routes
+    Route::prefix('quizzes')->group(function () {
+        Route::get('/', [App\Http\Controllers\QuizController::class, 'index']); // List quizzes
+        Route::get('/topics', [App\Http\Controllers\QuizController::class, 'getTopics']); // Get available topics
+        Route::get('/questions', [App\Http\Controllers\QuizController::class, 'getQuestions']); // Get filtered questions
+        Route::get('/{quiz}', [App\Http\Controllers\QuizController::class, 'show']); // Quiz details
+        Route::post('/{quiz}/start', [App\Http\Controllers\QuizController::class, 'startAttempt']); // Start attempt
+    });
+    
+    Route::prefix('quiz-attempts')->group(function () {
+        Route::post('/{attempt}/answer', [App\Http\Controllers\QuizController::class, 'submitAnswer']); // Submit answer
+        Route::post('/{attempt}/bookmark', [App\Http\Controllers\QuizController::class, 'toggleBookmark']); // Toggle bookmark
+        Route::post('/{attempt}/complete', [App\Http\Controllers\QuizController::class, 'completeAttempt']); // Complete attempt
+        Route::get('/{attempt}/results', [App\Http\Controllers\QuizController::class, 'getAttemptResults']); // Get results
+    });
+    
+    Route::get('/quiz-history', [App\Http\Controllers\QuizController::class, 'getUserHistory']); // User's quiz history
+    
+    // Quiz Statistics API routes
+    Route::prefix('quiz-statistics')->group(function () {
+        Route::get('/', [App\Http\Controllers\QuizStatisticsController::class, 'getStatistics']); // Overall stats
+        Route::get('/topics', [App\Http\Controllers\QuizStatisticsController::class, 'getTopicBreakdown']); // Topic breakdown
+        Route::get('/recommendations', [App\Http\Controllers\QuizStatisticsController::class, 'getRecommendations']); // Recommendations
+        Route::get('/export', [App\Http\Controllers\QuizStatisticsController::class, 'exportStatistics']); // Export data
+    });
     
     // Streaming chat routes
     Route::get('/chats/{chat}/stream', [App\Http\Controllers\StreamingChatController::class, 'streamMessage'])->middleware('usage.limit:chat_messages');

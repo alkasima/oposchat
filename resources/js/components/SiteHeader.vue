@@ -133,6 +133,10 @@ onMounted(async () => {
                         Precios
                         <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-yellow-300 transition-all duration-300 group-hover:w-full"></span>
                     </Link>
+                    <Link v-if="$page.props.auth.user" :href="route('quizzes')" class="text-white hover:text-yellow-300 transition-all duration-300 font-medium relative group">
+                        Cuestionarios
+                        <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-yellow-300 transition-all duration-300 group-hover:w-full"></span>
+                    </Link>
                     <div v-if="$page.props.auth.user" class="flex items-center space-x-4">
                         <!-- Profile Dropdown -->
                         <div class="relative" @click.stop>
@@ -255,6 +259,7 @@ onMounted(async () => {
                     <Link :href="route('about')" class="text-white hover:text-yellow-300 transition-colors">Sobre OposChat</Link>
                     <Link :href="route('contact')" class="text-white hover:text-yellow-300 transition-colors">Contacto</Link>
                     <Link :href="route('pricing')" class="text-white hover:text-yellow-300 transition-colors">Precios</Link>
+                    <Link v-if="$page.props.auth.user" :href="route('quizzes')" class="text-white hover:text-yellow-300 transition-colors">Cuestionarios</Link>
                     <div v-if="$page.props.auth.user" class="space-y-2">
                         <div class="px-4 py-2 border-b border-blue-800 mb-2">
                             <p class="text-sm font-medium text-white">{{ $page.props.auth.user.name || 'User' }}</p>

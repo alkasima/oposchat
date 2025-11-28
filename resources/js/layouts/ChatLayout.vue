@@ -14,7 +14,7 @@ import ToastContainer from '@/components/ui/toast/ToastContainer.vue';
 import { useSubscription } from '@/composables/useSubscription.js';
 import chatApi from '@/services/chatApi.js';
 import streamingChatService from '@/services/streamingChatService.js';
-import { Send, User, Bot, Paperclip, Settings, Download, BarChart3, Pencil, Sun, Moon, Mic, Square, ChevronsRight } from 'lucide-vue-next';
+import { Send, User, Bot, Paperclip, Settings, Download, BarChart3, Pencil, Sun, Moon, Mic, Square, ChevronsRight, ClipboardList } from 'lucide-vue-next';
 import { useAppearance } from '@/composables/useAppearance';
 import { useAudioRecording } from '@/composables/useAudioRecording';
 
@@ -1353,6 +1353,15 @@ if (savedSidebarState === 'false') {
                                     class="transform transition-all duration-200 hover:scale-[1.01]"
                                 />
                             </div>
+                            
+                            <!-- Quizzes Link -->
+                            <Link 
+                                :href="route('quizzes')"
+                                class="flex items-center space-x-2 px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02]"
+                            >
+                                <ClipboardList class="w-4 h-4" />
+                                <span class="hidden sm:inline">Cuestionarios</span>
+                            </Link>
                         </div>
                         
                         <!-- Right Section -->
