@@ -11,31 +11,60 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Add indexes to chats table for faster queries
-        Schema::table('chats', function (Blueprint $table) {
-            $table->index('user_id'); // For user's chat list
-            $table->index(['user_id', 'created_at']); // For ordered chat list
-            $table->index('course_id'); // For course filtering
-            $table->index(['user_id', 'course_id']); // For user's course chats
+        $connection = Schema::getConnection();
+        $sm = $connection->getDoctrineSchemaManager();
+
+        // ---------------- CHATS TABLE ----------------
+        $existingIndexes = array_map(fn($idx) => $idx->getName(), $sm->listTableIndexes('chats'));
+        Schema::table('chats', function (Blueprint $table) use ($existingIndexes) {
+            if (!in_array('chats_user_id_index', $existingIndexes)) {
+                $table->index('user_id');
+            }
+            if (!in_array('chats_user_id_created_at_index', $existingIndexes)) {
+                $table->index(['user_id', 'created_at']);
+            }
+            if (!in_array('chats_course_id_index', $existingIndexes)) {
+                $table->index('course_id');
+            }
+            if (!in_array('chats_user_id_course_id_index', $existingIndexes)) {
+                $table->index(['user_id', 'course_id']);
+            }
         });
 
-        // Add indexes to messages table for faster chat history
-        Schema::table('messages', function (Blueprint $table) {
-            $table->index('chat_id'); // For chat messages
-            $table->index(['chat_id', 'created_at']); // For ordered messages
-            $table->index('role'); // For filtering by role
+        // ---------------- MESSAGES TABLE ----------------
+        $existingIndexes = array_map(fn($idx) => $idx->getName(), $sm->listTableIndexes('messages'));
+        Schema::table('messages', function (Blueprint $table) use ($existingIndexes) {
+            if (!in_array('messages_chat_id_index', $existingIndexes)) {
+                $table->index('chat_id');
+            }
+            if (!in_array('messages_chat_id_created_at_index', $existingIndexes)) {
+                $table->index(['chat_id', 'created_at']);
+            }
+            if (!in_array('messages_role_index', $existingIndexes)) {
+                $table->index('role');
+            }
         });
 
-        // Add indexes to courses table
-        Schema::table('courses', function (Blueprint $table) {
-            $table->index('is_active'); // For active courses
-            $table->index(['is_active', 'name']); // For active course list
+        // ---------------- COURSES TABLE ----------------
+        $existingIndexes = array_map(fn($idx) => $idx->getName(), $sm->listTableIndexes('courses'));
+        Schema::table('courses', function (Blueprint $table) use ($existingIndexes) {
+            if (!in_array('courses_is_active_index', $existingIndexes)) {
+                $table->index('is_active');
+            }
+            if (!in_array('courses_is_active_name_index', $existingIndexes)) {
+                $table->index(['is_active', 'name']);
+            }
         });
 
-        // Add indexes to course_documents table
-        Schema::table('course_documents', function (Blueprint $table) {
-            $table->index('course_id'); // For course documents
-            $table->index(['course_id', 'created_at']); // For ordered documents
+        // ---------------- COURSE_DOCUMENTS TABLE ----------------
+        $existingIndexes = array_map(fn($idx) => $idx->getName(), $sm->listTableIndexes('course_documents'));
+        Schema::table('course_documents', function (Blueprint $table) use ($existingIndexes) {
+            if (!in_array('course_documents_course_id_index', $existingIndexes)) {
+                $table->index('course_id');
+            }
+            if (!in_array('course_documents_course_id_created_at_index', $existingIndexes)) {
+                $table->index(['course_id', 'created_at']);
+            }
         });
     }
 
@@ -44,27 +73,60 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('chats', function (Blueprint $table) {
-            $table->dropIndex(['user_id']);
-            $table->dropIndex(['user_id', 'created_at']);
-            $table->dropIndex(['course_id']);
-            $table->dropIndex(['user_id', 'course_id']);
+        $connection = Schema::getConnection();
+        $sm = $connection->getDoctrineSchemaManager();
+
+        // ---------------- CHATS TABLE ----------------
+        $existingIndexes = array_map(fn($idx) => $idx->getName(), $sm->listTableIndexes('chats'));
+        Schema::table('chats', function (Blueprint $table) use ($existingIndexes) {
+            if (in_array('chats_user_id_index', $existingIndexes)) {
+                $table->dropIndex(['user_id']);
+            }
+            if (in_array('chats_user_id_created_at_index', $existingIndexes)) {
+                $table->dropIndex(['user_id', 'created_at']);
+            }
+            if (in_array('chats_course_id_index', $existingIndexes)) {
+                $table->dropIndex(['course_id']);
+            }
+            if (in_array('chats_user_id_course_id_index', $existingIndexes)) {
+                $table->dropIndex(['user_id', 'course_id']);
+            }
         });
 
-        Schema::table('messages', function (Blueprint $table) {
-            $table->dropIndex(['chat_id']);
-            $table->dropIndex(['chat_id', 'created_at']);
-            $table->dropIndex(['role']);
+        // ---------------- MESSAGES TABLE ----------------
+        $existingIndexes = array_map(fn($idx) => $idx->getName(), $sm->listTableIndexes('messages'));
+        Schema::table('messages', function (Blueprint $table) use ($existingIndexes) {
+            if (in_array('messages_chat_id_index', $existingIndexes)) {
+                $table->dropIndex(['chat_id']);
+            }
+            if (in_array('messages_chat_id_created_at_index', $existingIndexes)) {
+                $table->dropIndex(['chat_id', 'created_at']);
+            }
+            if (in_array('messages_role_index', $existingIndexes)) {
+                $table->dropIndex(['role']);
+            }
         });
 
-        Schema::table('courses', function (Blueprint $table) {
-            $table->dropIndex(['is_active']);
-            $table->dropIndex(['is_active', 'name']);
+        // ---------------- COURSES TABLE ----------------
+        $existingIndexes = array_map(fn($idx) => $idx->getName(), $sm->listTableIndexes('courses'));
+        Schema::table('courses', function (Blueprint $table) use ($existingIndexes) {
+            if (in_array('courses_is_active_index', $existingIndexes)) {
+                $table->dropIndex(['is_active']);
+            }
+            if (in_array('courses_is_active_name_index', $existingIndexes)) {
+                $table->dropIndex(['is_active', 'name']);
+            }
         });
 
-        Schema::table('course_documents', function (Blueprint $table) {
-            $table->dropIndex(['course_id']);
-            $table->dropIndex(['course_id', 'created_at']);
+        // ---------------- COURSE_DOCUMENTS TABLE ----------------
+        $existingIndexes = array_map(fn($idx) => $idx->getName(), $sm->listTableIndexes('course_documents'));
+        Schema::table('course_documents', function (Blueprint $table) use ($existingIndexes) {
+            if (in_array('course_documents_course_id_index', $existingIndexes)) {
+                $table->dropIndex(['course_id']);
+            }
+            if (in_array('course_documents_course_id_created_at_index', $existingIndexes)) {
+                $table->dropIndex(['course_id', 'created_at']);
+            }
         });
     }
 };
