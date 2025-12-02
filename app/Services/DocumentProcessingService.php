@@ -334,8 +334,10 @@ class DocumentProcessingService
     {
             $indexName = config('services.pinecone.index_name', 'oposchat');
             
-            // Store vectors in batches
-            $batchSize = 100;
+            // Use larger batch size for Chroma (500 vs 100 for Pinecone/local)
+            $storageType = $this->vectorStore->getStorageType();
+            $batchSize = $storageType === 'chroma' ? 500 : 100;
+            
             $batches = array_chunk($vectors, $batchSize);
             
             foreach ($batches as $batch) {
@@ -344,7 +346,7 @@ class DocumentProcessingService
                     Log::info('Stored vector batch', [
                         'course_namespace' => $courseNamespace,
                         'batch_size' => count($batch),
-                        'storage_type' => $this->vectorStore->getStorageType()
+                        'storage_type' => $storageType
                     ]);
                 } catch (Exception $e) {
                     Log::error('Failed to store vector batch', [

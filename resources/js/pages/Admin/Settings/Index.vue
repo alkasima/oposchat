@@ -17,6 +17,11 @@ const keysForm = useForm({
     PINECONE_API_KEY: props.settings.pinecone_api_key || '',
     PINECONE_ENVIRONMENT: props.settings.pinecone_environment || '',
     PINECONE_INDEX_NAME: props.settings.pinecone_index_name || '',
+    CHROMA_HOST: props.settings.chroma_host || 'api.trychroma.com',
+    CHROMA_API_KEY: props.settings.chroma_api_key || '',
+    CHROMA_TENANT: props.settings.chroma_tenant || '',
+    CHROMA_DATABASE: props.settings.chroma_database || '',
+    CHROMA_COLLECTION_NAME: props.settings.chroma_collection_name || 'oposchat_vectors',
     STRIPE_KEY: props.settings.stripe_key || '',
     STRIPE_SECRET: props.settings.stripe_secret || '',
     STRIPE_WEBHOOK_SECRET: props.settings.stripe_webhook_secret || '',
@@ -94,6 +99,36 @@ function submitPassword() {
                             <input v-model="keysForm.PINECONE_INDEX_NAME" type="text" class="w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" />
                         </div>
                     </div>
+                    
+                    <!-- Chroma Cloud Configuration -->
+                    <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                        <h4 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Chroma Cloud (Vector Storage)</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Chroma Host</label>
+                                <input v-model="keysForm.CHROMA_HOST" type="text" class="w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="api.trychroma.com" />
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Chroma API Key</label>
+                                <input v-model="keysForm.CHROMA_API_KEY" type="password" class="w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="ck-..." />
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Chroma Tenant</label>
+                                <input v-model="keysForm.CHROMA_TENANT" type="text" class="w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" />
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Chroma Database</label>
+                                <input v-model="keysForm.CHROMA_DATABASE" type="text" class="w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" />
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Collection Name</label>
+                                <input v-model="keysForm.CHROMA_COLLECTION_NAME" type="text" class="w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="oposchat_vectors" />
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Stripe Key</label>

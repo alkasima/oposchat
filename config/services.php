@@ -59,6 +59,17 @@ return [
         'index_name' => env('PINECONE_INDEX_NAME', 'oposchat'),
     ],
 
+    'chroma' => [
+        'host' => env('CHROMA_HOST', 'api.trychroma.com'),
+        'api_key' => env('CHROMA_API_KEY'),
+        'tenant' => env('CHROMA_TENANT'),
+        'database' => env('CHROMA_DATABASE'),
+        'collection_name' => env('CHROMA_COLLECTION_NAME', 'oposchat_vectors'),
+        'timeout' => env('CHROMA_TIMEOUT', 60),
+        'retry_attempts' => env('CHROMA_RETRY_ATTEMPTS', 3),
+        'batch_size' => env('CHROMA_BATCH_SIZE', 500),
+    ],
+
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
     ],
