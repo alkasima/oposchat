@@ -23,8 +23,7 @@ class ChatController extends Controller
         private UsageService $usageService,
         private DocumentProcessingService $documentProcessor
     ) {
-        // Inject DocumentProcessingService into AIProviderService
-        $this->aiProvider = new AIProviderService($this->documentProcessor);
+        // Services are injected automatically by Laravel
     }
     /**
      * Get user subscription status and usage info

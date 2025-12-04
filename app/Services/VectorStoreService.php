@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use Exception;
 
 class VectorStoreService
@@ -33,27 +34,44 @@ class VectorStoreService
     }
 
     /**
-     * Determine which storage type to use
+     * Determine which storage type to use (with caching)
      */
     private function determineStorageType(): string
     {
+        // Check cache first (10 minute TTL)
+        $cacheKey = 'vector_store_type';
+        
+        $cachedType = Cache::get($cacheKey);
+        if ($cachedType) {
+            Log::info('Using cached storage type', ['storage_type' => $cachedType]);
+            return $cachedType;
+        }
+
         // Priority: Chroma > Pinecone > Local
+        $storageType = 'local'; // Default fallback
         
         // Check if Chroma Cloud should be used
         if (env('USE_CHROMA_CLOUD', true) && $this->chromaService) {
             if ($this->testChromaConnection()) {
-                return 'chroma';
+                $storageType = 'chroma';
             }
         }
 
-        // Fall back to Pinecone if configured
-        if ($this->pineconeService && $this->testPineconeConnection()) {
-            return 'pinecone';
+        // Fall back to Pinecone if configured and Chroma not available
+        if ($storageType === 'local' && $this->pineconeService && $this->testPineconeConnection()) {
+            $storageType = 'pinecone';
         }
 
-        // Final fallback to local storage
-        Log::warning('Using local storage as fallback');
-        return 'local';
+        // Cache the result for 10 minutes
+        Cache::put($cacheKey, $storageType, now()->addMinutes(10));
+        
+        if ($storageType === 'local') {
+            Log::warning('Using local storage as fallback');
+        } else {
+            Log::info('Determined storage type', ['storage_type' => $storageType]);
+        }
+        
+        return $storageType;
     }
 
     /**
@@ -368,5 +386,19 @@ class VectorStoreService
                     'message' => $available ? 'Local storage available' : 'Local storage not available'
                 ];
         }
+    }
+
+    /**
+     * Refresh connection status and clear cache
+     * Call this to force re-detection of storage type
+     */
+    public function refreshConnectionStatus(): string
+    {
+        Cache::forget('vector_store_type');
+        $this->storageType = $this->determineStorageType();
+        
+        Log::info('Connection status refreshed', ['storage_type' => $this->storageType]);
+        
+        return $this->storageType;
     }
 }

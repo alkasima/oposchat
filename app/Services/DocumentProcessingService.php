@@ -20,8 +20,10 @@ class DocumentProcessingService
         $this->vectorStore = $vectorStore;
     }
 
+
     /**
      * Process and store a document for a specific course
+     * Uses batch processing to avoid memory issues with large documents
      */
     public function processDocument(string $content, string $courseNamespace, array $metadata = []): array
     {
@@ -29,51 +31,68 @@ class DocumentProcessingService
             // Chunk the document
             $chunks = $this->chunkDocument($content);
             
-            $vectors = [];
             $processedChunks = 0;
+            $totalVectorsStored = 0;
+            $batchSize = 50; // Process 50 chunks at a time
+            $batches = array_chunk($chunks, $batchSize, true); // Preserve keys
 
-            foreach ($chunks as $index => $chunk) {
-                try {
-                    // Generate embedding for the chunk
-                    $embedding = $this->generateEmbedding($chunk);
-                    
-                    // Create vector with metadata
-                    $vectorId = $this->generateVectorId($courseNamespace, $index);
-                    
-                    $vector = [
-                        'id' => $vectorId,
-                        'values' => $embedding,
-                        'metadata' => array_merge($metadata, [
-                            'content' => $chunk,
-                            'course_namespace' => $courseNamespace,
+            foreach ($batches as $batchIndex => $batchChunks) {
+                $vectors = [];
+                
+                foreach ($batchChunks as $index => $chunk) {
+                    try {
+                        // Generate embedding for the chunk
+                        $embedding = $this->generateEmbedding($chunk);
+                        
+                        // Create vector with metadata
+                        $vectorId = $this->generateVectorId($courseNamespace, $index);
+                        
+                        $vector = [
+                            'id' => $vectorId,
+                            'values' => $embedding,
+                            'metadata' => array_merge($metadata, [
+                                'content' => $chunk,
+                                'course_namespace' => $courseNamespace,
+                                'chunk_index' => $index,
+                                'chunk_count' => count($chunks),
+                                'processed_at' => now()->toISOString(),
+                            ])
+                        ];
+
+                        $vectors[] = $vector;
+                        $processedChunks++;
+
+                    } catch (Exception $e) {
+                        Log::error('Failed to process chunk', [
                             'chunk_index' => $index,
-                            'chunk_count' => count($chunks),
-                            'processed_at' => now()->toISOString(),
-                        ])
-                    ];
-
-                    $vectors[] = $vector;
-                    $processedChunks++;
-
-                } catch (Exception $e) {
-                    Log::error('Failed to process chunk', [
-                        'chunk_index' => $index,
-                        'course_namespace' => $courseNamespace,
-                        'error' => $e->getMessage()
-                    ]);
+                            'course_namespace' => $courseNamespace,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
                 }
-            }
 
-            // Store vectors in vector store
-            if (!empty($vectors)) {
-                $this->storeVectors($vectors, $courseNamespace);
+                // Store this batch of vectors immediately and free memory
+                if (!empty($vectors)) {
+                    $this->storeVectors($vectors, $courseNamespace);
+                    $totalVectorsStored += count($vectors);
+                    
+                    Log::info('Batch processed and stored', [
+                        'batch_index' => $batchIndex,
+                        'batch_size' => count($vectors),
+                        'total_processed' => $processedChunks,
+                        'course_namespace' => $courseNamespace
+                    ]);
+                    
+                    // Free memory
+                    unset($vectors);
+                }
             }
 
             return [
                 'success' => true,
                 'chunks_processed' => $processedChunks,
                 'total_chunks' => count($chunks),
-                'vectors_stored' => count($vectors)
+                'vectors_stored' => $totalVectorsStored
             ];
 
         } catch (Exception $e) {
@@ -361,6 +380,7 @@ class DocumentProcessingService
 
     /**
      * Process a document with enhanced metadata for course documents
+     * Uses batch processing to avoid memory issues with large documents
      */
     public function processCourseDocument(string $content, string $courseNamespace, array $documentMetadata = []): array
     {
@@ -368,59 +388,82 @@ class DocumentProcessingService
             // Chunk the document
             $chunks = $this->chunkDocument($content);
             
-            $vectors = [];
             $processedChunks = 0;
+            $totalVectorsStored = 0;
+            $batchSize = 50; // Process 50 chunks at a time
+            $batches = array_chunk($chunks, $batchSize, true); // Preserve keys
 
-            foreach ($chunks as $index => $chunk) {
-                try {
-                    // Generate embedding for the chunk
-                    $embedding = $this->generateEmbedding($chunk);
-                    
-                    // Create vector with enhanced metadata
-                    $vectorId = $this->generateVectorId($courseNamespace, $index, $documentMetadata['document_id'] ?? null);
-                    
-                    $vector = [
-                        'id' => $vectorId,
-                        'values' => $embedding,
-                        'metadata' => array_merge($documentMetadata, [
-                            'content' => $chunk,
-                            'course_namespace' => $courseNamespace,
+            foreach ($batches as $batchIndex => $batchChunks) {
+                $vectors = [];
+                
+                foreach ($batchChunks as $index => $chunk) {
+                    try {
+                        // Generate embedding for the chunk
+                        $embedding = $this->generateEmbedding($chunk);
+                        
+                        // Create vector with enhanced metadata
+                        $vectorId = $this->generateVectorId($courseNamespace, $index, $documentMetadata['document_id'] ?? null);
+                        
+                        $vector = [
+                            'id' => $vectorId,
+                            'values' => $embedding,
+                            'metadata' => array_merge($documentMetadata, [
+                                'content' => $chunk,
+                                'course_namespace' => $courseNamespace,
+                                'chunk_index' => $index,
+                                'chunk_count' => count($chunks),
+                                'processed_at' => now()->toISOString(),
+                                'document_title' => $documentMetadata['title'] ?? 'Unknown',
+                                'document_type' => $documentMetadata['document_type'] ?? 'study_material',
+                            ])
+                        ];
+
+                        $vectors[] = $vector;
+                        $processedChunks++;
+
+                    } catch (Exception $e) {
+                        Log::error('Failed to process chunk', [
                             'chunk_index' => $index,
-                            'chunk_count' => count($chunks),
-                            'processed_at' => now()->toISOString(),
-                            'document_title' => $documentMetadata['title'] ?? 'Unknown',
-                            'document_type' => $documentMetadata['document_type'] ?? 'study_material',
-                        ])
-                    ];
+                            'course_namespace' => $courseNamespace,
+                            'error' => $e->getMessage()
+                        ]);
+                        continue;
+                    }
+                }
 
-                    $vectors[] = $vector;
-                    $processedChunks++;
-
-                } catch (Exception $e) {
-                    Log::error('Failed to process chunk', [
-                        'chunk_index' => $index,
+                // Store this batch of vectors immediately and free memory
+                if (!empty($vectors)) {
+                    $storeResult = $this->vectorStore->upsertVectors($vectors, $courseNamespace);
+                    
+                    if (!$storeResult['success']) {
+                        Log::error('Failed to store vector batch', [
+                            'batch_index' => $batchIndex,
+                            'course_namespace' => $courseNamespace,
+                            'error' => $storeResult['error'] ?? 'Unknown error'
+                        ]);
+                        // Continue processing other batches even if one fails
+                        continue;
+                    }
+                    
+                    $totalVectorsStored += count($vectors);
+                    
+                    Log::info('Course document batch processed and stored', [
+                        'batch_index' => $batchIndex,
+                        'batch_size' => count($vectors),
+                        'total_processed' => $processedChunks,
                         'course_namespace' => $courseNamespace,
-                        'error' => $e->getMessage()
+                        'document_title' => $documentMetadata['title'] ?? 'Unknown'
                     ]);
-                    continue;
+                    
+                    // Free memory
+                    unset($vectors);
                 }
             }
 
-            if (empty($vectors)) {
+            if ($totalVectorsStored === 0) {
                 return [
                     'success' => false,
-                    'error' => 'No chunks were successfully processed',
-                    'chunks_processed' => 0
-                ];
-            }
-
-            // Store vectors in vector database
-            $storeResult = $this->vectorStore->upsertVectors($vectors, $courseNamespace);
-            
-            if (!$storeResult['success']) {
-                return [
-                    'success' => false,
-                    'error' => 'Failed to store vectors: ' . $storeResult['error'],
+                    'error' => 'No chunks were successfully processed and stored',
                     'chunks_processed' => 0
                 ];
             }
@@ -428,6 +471,7 @@ class DocumentProcessingService
             Log::info('Course document processed successfully', [
                 'course_namespace' => $courseNamespace,
                 'chunks_processed' => $processedChunks,
+                'vectors_stored' => $totalVectorsStored,
                 'document_title' => $documentMetadata['title'] ?? 'Unknown',
                 'document_type' => $documentMetadata['document_type'] ?? 'study_material'
             ]);

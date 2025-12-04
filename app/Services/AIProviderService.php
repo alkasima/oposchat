@@ -8,6 +8,11 @@ use Exception;
 
 class AIProviderService
 {
+    // Configuration constants for performance optimization
+    private const MAX_CONTEXT_CHARS = 8000; // Approximate max characters for context
+    private const MAX_STREAMING_TIMEOUT = 90; // Reduced from 600s to 90s
+    private const MAX_STREAMING_TOKENS = 2000; // Max tokens to stream before aborting
+    
     private string $provider;
     private array $config;
     public function __construct()
@@ -126,9 +131,9 @@ class AIProviderService
                 'Authorization' => 'Bearer ' . $this->config['api_key'],
                 'Content-Type' => 'application/json',
                 'Accept' => 'text/event-stream',
-            ])->timeout(1200)->withOptions([
+            ])->timeout(self::MAX_STREAMING_TIMEOUT)->withOptions([
                 'stream' => true,
-                'read_timeout' => 120,
+                'read_timeout' => 60,
             ])->post('https://api.openai.com/v1/chat/completions', $payload);
 
             if (!$response->successful()) {
@@ -621,72 +626,17 @@ class AIProviderService
             }
         }
 
-        // Create enhanced syllabus-based system message for creative study assistance
+        // Build system message
         if (!empty($namespaces)) {
-            // Enhanced syllabus-based system message that encourages synthesis and creativity
-            $systemMessageContent = "You are OposChat, a professional study assistant specialized in preparing students for oral and written exams.
-Your only source of knowledge is the retrieved syllabus passages that are provided to you.
-You must not use external information beyond what appears in the syllabus.
+            $systemMessageContent = $this->buildSyllabusSystemMessage();
 
-Your main task is to reformulate the syllabus content in your own words and present it in a clear, didactic, and engaging way — as if you were a teacher helping a student understand the material.
-
-You must:
-
-Never copy-paste text from the syllabus. Always paraphrase naturally.
-
-Organize information into tables, lists, step-by-step guides, or diagrams when possible.
-
-CRITICAL FOR DIAGRAMS: When creating diagrams or flowcharts, wrap the diagram code in markdown code blocks with language tag. Keep diagrams simple with max 10-12 nodes, short labels, and NEVER use ASCII art with +, -, | characters.
-
-Always respond helpfully, even if the syllabus doesn't explicitly mention the user's question.
-
-In that case, adapt and reorganize what's in the syllabus to fit the request (e.g., turn it into a study guide, outline, or summary).
-
-Do not say \"This is not included in the syllabus.\"
-
-Instead, find a way to answer using relevant syllabus material and say something like:
-
-\"Let's approach this based on what the syllabus covers.\"
-
-When users ask for:
-
-a study guide, diagram, outline, summary, or oral exam prep,
-you must create it dynamically from the syllabus, using creative organization and helpful explanations.
-
-✅ Tone: Supportive, conversational, and educational (like a good teacher).
-✅ Goal: Make studying easier and more effective, while staying 100% faithful to the syllabus.
-
-IMPORTANT: When responding in Spanish, always translate 'syllabus' to 'temario' (never leave 'syllabus' untranslated in Spanish responses).
-
-Model disclosure: You are running on {$this->getProvider()} model {$this->getModel()}.";
-
-            // Add context to system message if available and relevant
+            // Add context to system message if available and relevant (with truncation)
             if (!empty($contextData['context']) && $isRelevant) {
-                $contextText = implode(' ', $contextData['context']);
+                $contextText = $this->truncateContext($contextData['context']);
                 $systemMessageContent .= "\n\nRELEVANT SYLLABUS CONTENT:\n" . $contextText;
             } elseif (!empty($namespaces) && (!$isRelevant || empty($contextData['context']))) {
-                // Explicit instruction to state that the question is not in the syllabus
-                $systemMessageContent .= "\n\nCRITICAL INSTRUCTION - READ THIS CAREFULLY:
-
-The user's question is NOT covered in the uploaded syllabus/course materials. The relevance score is too low to answer this question.
-
-YOU MUST:
-1. Start your response by explicitly stating: 'The question you're asking isn't in the syllabus' (or a similar clear statement)
-2. DO NOT attempt to answer the question at all
-3. DO NOT try to find related information or make connections to syllabus content
-4. DO NOT say things like 'Let's approach this based on what the syllabus covers'
-
-YOU MAY OPTIONALLY:
-- Suggest how the user might rephrase their question to focus on syllabus topics that ARE available
-- Offer to help with study guides, summaries, or explanations of syllabus content that IS in the uploaded materials
-- Remind the user that you can only answer questions based on the uploaded syllabus content
-
-EXAMPLE RESPONSES:
-✅ CORRECT: 'The question you're asking isn't in the syllabus. I can only help with topics covered in the SAT preparation materials that were uploaded. Would you like help with a different topic from the syllabus?'
-
-❌ WRONG: 'Let's address the topic of how to make bread based on the syllabus content...' (DON'T DO THIS!)
-
-REMEMBER: If the question isn't in the syllabus, state it clearly and do NOT answer it.";
+                // Add "not in syllabus" instruction
+                $systemMessageContent .= $this->buildNotInSyllabusMessage();
             }
         } else {
             // Use custom system message if provided in options, otherwise use default
@@ -726,44 +676,9 @@ REMEMBER: If the question isn't in the syllabus, state it clearly and do NOT ans
             }
         }
 
-        // Create enhanced syllabus-based system message for creative study assistance
+        // Build system message
         if (!empty($namespaces)) {
-            // Enhanced syllabus-based system message that encourages synthesis and creativity
-            $systemMessageContent = "You are OposChat, a professional study assistant specialized in preparing students for oral and written exams.
-Your only source of knowledge is the retrieved syllabus passages that are provided to you.
-You must not use external information beyond what appears in the syllabus.
-
-Your main task is to reformulate the syllabus content in your own words and present it in a clear, didactic, and engaging way — as if you were a teacher helping a student understand the material.
-
-You must:
-
-Never copy-paste text from the syllabus. Always paraphrase naturally.
-
-Organize information into tables, lists, step-by-step guides, or diagrams when possible.
-
-CRITICAL FOR DIAGRAMS: When creating diagrams or flowcharts, wrap the diagram code in markdown code blocks with language tag. Keep diagrams simple with max 10-12 nodes, short labels, and NEVER use ASCII art with +, -, | characters.
-
-Always respond helpfully, even if the syllabus doesn't explicitly mention the user's question.
-
-In that case, adapt and reorganize what's in the syllabus to fit the request (e.g., turn it into a study guide, outline, or summary).
-
-Do not say \"This is not included in the syllabus.\"
-
-Instead, find a way to answer using relevant syllabus material and say something like:
-
-\"Let's approach this based on what the syllabus covers.\"
-
-When users ask for:
-
-a study guide, diagram, outline, summary, or oral exam prep,
-you must create it dynamically from the syllabus, using creative organization and helpful explanations.
-
-✅ Tone: Supportive, conversational, and educational (like a good teacher).
-✅ Goal: Make studying easier and more effective, while staying 100% faithful to the syllabus.
-
-IMPORTANT: When responding in Spanish, always translate 'syllabus' to 'temario' (never leave 'syllabus' untranslated in Spanish responses).
-
-Model disclosure: You are running on {$this->getProvider()} model {$this->getModel()}.";
+            $systemMessageContent = $this->buildSyllabusSystemMessage();
 
             // Detect if the user is asking for a diagram-like deliverable (including Spanish synonyms)
             $lastUserMessage = end($messages);
@@ -783,33 +698,13 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
                 $systemMessageContent .= "\n\nWHEN REQUESTING DIAGRAM-LIKE OUTPUT: If the user asks for any of these: outline, sketch, concept map, flowchart, chart, graph/graphic, or the Spanish terms (esquema, croquis, mapa conceptual, mapa mental, diagrama, gráfica), you MUST produce the output as a Mermaid diagram enclosed in a fenced code block with the language 'mermaid' (```mermaid ... ```). After the code block, include a brief explanation in plain paragraphs describing why each connection exists and how parts relate.";
             }
 
-            // Add context to system message if available and relevant
+            // Add context to system message if available and relevant (with truncation)
             if (!empty($contextData['context']) && $isRelevant) {
-                $contextText = implode(' ', $contextData['context']);
+                $contextText = $this->truncateContext($contextData['context']);
                 $systemMessageContent .= "\n\nRELEVANT SYLLABUS CONTENT:\n" . $contextText;
             } elseif (!empty($namespaces) && (!$isRelevant || empty($contextData['context']))) {
-                // Explicit instruction to state that the question is not in the syllabus
-                $systemMessageContent .= "\n\nCRITICAL INSTRUCTION - READ THIS CAREFULLY:
-
-The user's question is NOT covered in the uploaded syllabus/course materials. The relevance score is too low to answer this question.
-
-YOU MUST:
-1. Start your response by explicitly stating: 'The question you're asking isn't in the syllabus' (or a similar clear statement)
-2. DO NOT attempt to answer the question at all
-3. DO NOT try to find related information or make connections to syllabus content
-4. DO NOT say things like 'Let's approach this based on what the syllabus covers'
-
-YOU MAY OPTIONALLY:
-- Suggest how the user might rephrase their question to focus on syllabus topics that ARE available
-- Offer to help with study guides, summaries, or explanations of syllabus content that IS in the uploaded materials
-- Remind the user that you can only answer questions based on the uploaded syllabus content
-
-EXAMPLE RESPONSES:
-✅ CORRECT: 'The question you're asking isn't in the syllabus. I can only help with topics covered in the SAT preparation materials that were uploaded. Would you like help with a different topic from the syllabus?'
-
-❌ WRONG: 'Let's address the topic of how to make bread based on the syllabus content...' (DON'T DO THIS!)
-
-REMEMBER: If the question isn't in the syllabus, state it clearly and do NOT answer it.";
+                // Add "not in syllabus" instruction
+                $systemMessageContent .= $this->buildNotInSyllabusMessage();
             }
         } else {
             // Use custom system message if provided in options, otherwise use default
@@ -872,5 +767,113 @@ REMEMBER: If the question isn't in the syllabus, state it clearly and do NOT ans
         }
         
         return false;
+    }
+
+    /**
+     * Build the base system message for syllabus-based chat (deduplicated)
+     */
+    private function buildSyllabusSystemMessage(): string
+    {
+        return "You are OposChat, a professional study assistant specialized in preparing students for oral and written exams.
+Your only source of knowledge is the retrieved syllabus passages that are provided to you.
+You must not use external information beyond what appears in the syllabus.
+
+Your main task is to reformulate the syllabus content in your own words and present it in a clear, didactic, and engaging way — as if you were a teacher helping a student understand the material.
+
+You must:
+
+Never copy-paste text from the syllabus. Always paraphrase naturally.
+
+Organize information into tables, lists, step-by-step guides, or diagrams when possible.
+
+CRITICAL FOR DIAGRAMS: When creating diagrams or flowcharts, wrap the diagram code in markdown code blocks with language tag. Keep diagrams simple with max 10-12 nodes, short labels, and NEVER use ASCII art with +, -, | characters.
+
+Always respond helpfully, even if the syllabus doesn't explicitly mention the user's question.
+
+In that case, adapt and reorganize what's in the syllabus to fit the request (e.g., turn it into a study guide, outline, or summary).
+
+Do not say \"This is not included in the syllabus.\"
+
+Instead, find a way to answer using relevant syllabus material and say something like:
+
+\"Let's approach this based on what the syllabus covers.\"
+
+When users ask for:
+
+a study guide, diagram, outline, summary, or oral exam prep,
+you must create it dynamically from the syllabus, using creative organization and helpful explanations.
+
+✅ Tone: Supportive, conversational, and educational (like a good teacher).
+✅ Goal: Make studying easier and more effective, while staying 100% faithful to the syllabus.
+
+IMPORTANT: When responding in Spanish, always translate 'syllabus' to 'temario' (never leave 'syllabus' untranslated in Spanish responses).
+
+Model disclosure: You are running on {$this->getProvider()} model {$this->getModel()}.";
+    }
+
+    /**
+     * Build the "not in syllabus" instruction message (deduplicated)
+     */
+    private function buildNotInSyllabusMessage(): string
+    {
+        return "\n\nCRITICAL INSTRUCTION - READ THIS CAREFULLY:
+
+The user's question is NOT covered in the uploaded syllabus/course materials. The relevance score is too low to answer this question.
+
+YOU MUST:
+1. Start your response by explicitly stating: 'The question you're asking isn't in the syllabus' (or a similar clear statement)
+2. DO NOT attempt to answer the question at all
+3. DO NOT try to find related information or make connections to syllabus content
+4. DO NOT say things like 'Let's approach this based on what the syllabus covers'
+
+YOU MAY OPTIONALLY:
+- Suggest how the user might rephrase their question to focus on syllabus topics that ARE available
+- Offer to help with study guides, summaries, or explanations of syllabus content that IS in the uploaded materials
+- Remind the user that you can only answer questions based on the uploaded syllabus content
+
+EXAMPLE RESPONSES:
+✅ CORRECT: 'The question you're asking isn't in the syllabus. I can only help with topics covered in the SAT preparation materials that were uploaded. Would you like help with a different topic from the syllabus?'
+
+❌ WRONG: 'Let's address the topic of how to make bread based on the syllabus content...' (DON'T DO THIS!)
+
+REMEMBER: If the question isn't in the syllabus, state it clearly and do NOT answer it.";
+    }
+
+    /**
+     * Truncate context to fit within character limits
+     */
+    private function truncateContext(array $contextChunks, int $maxChars = self::MAX_CONTEXT_CHARS): string
+    {
+        if (empty($contextChunks)) {
+            return '';
+        }
+
+        $truncated = [];
+        $currentLength = 0;
+
+        foreach ($contextChunks as $chunk) {
+            $chunkLength = strlen($chunk);
+            
+            if ($currentLength + $chunkLength > $maxChars) {
+                // Add partial chunk if there's room
+                $remainingSpace = $maxChars - $currentLength;
+                if ($remainingSpace > 100) { // Only add if meaningful space remains
+                    $truncated[] = substr($chunk, 0, $remainingSpace) . '...';
+                }
+                break;
+            }
+            
+            $truncated[] = $chunk;
+            $currentLength += $chunkLength;
+        }
+
+        Log::info('Context truncated', [
+            'original_chunks' => count($contextChunks),
+            'truncated_chunks' => count($truncated),
+            'original_length' => array_sum(array_map('strlen', $contextChunks)),
+            'truncated_length' => $currentLength
+        ]);
+
+        return implode(' ', $truncated);
     }
 }
