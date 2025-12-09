@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
-import AppLayout from '@/layouts/AppLayout.vue';
+import AppHeaderLayout from '@/layouts/AppHeaderLayout.vue'; // Layout with header only, no sidebar
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -68,8 +68,8 @@ const goHome = () => {
 </script>
 
 <template>
-  <AppLayout>
-    <div class="container mx-auto px-4 py-8 max-w-4xl bg-gray-50 dark:bg-gray-900 min-h-screen">
+  <AppHeaderLayout>
+    <div class="container mx-auto px-4 py-8 pt-20 max-w-4xl bg-gray-50 dark:bg-gray-900 min-h-screen">
       <!-- Header -->
       <div class="text-center mb-8">
         <h1 class="text-3xl font-bold mb-2">Quiz Results</h1>
@@ -188,5 +188,5 @@ const goHome = () => {
         </Card>
       </div>
     </div>
-  </AppLayout>
+  </AppHeaderLayout>
 </template>

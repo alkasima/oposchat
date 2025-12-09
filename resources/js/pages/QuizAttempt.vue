@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
-import AppLayout from '@/layouts/AppLayout.vue';
+import AppHeaderLayout from '@/layouts/AppHeaderLayout.vue'; // Layout with header only, no sidebar
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Clock, ChevronLeft, ChevronRight, Flag } from 'lucide-vue-next';
@@ -147,8 +147,8 @@ const completeQuiz = async () => {
 </script>
 
 <template>
-  <AppLayout>
-    <div class="container mx-auto px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+  <AppHeaderLayout>
+    <div class="container mx-auto px-4 py-6 pt-20 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <!-- Header -->
       <div class="mb-6">
         <h1 class="text-2xl font-bold mb-2">{{ attempt.quiz.title }}</h1>
@@ -286,5 +286,5 @@ const completeQuiz = async () => {
         </div>
       </div>
     </div>
-  </AppLayout>
+  </AppHeaderLayout>
 </template>

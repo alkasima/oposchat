@@ -112,7 +112,7 @@ onMounted(() => {
 
 <template>
   <AppHeaderLayout>
-    <div class="container mx-auto px-4 py-8 min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="container mx-auto px-4 py-8 pt-20 min-h-screen bg-gray-50 dark:bg-gray-900">
       <div class="mb-8">
         <h1 class="text-3xl font-bold mb-2">Quizzes</h1>
         <p class="text-muted-foreground">Test your knowledge and track your progress</p>
