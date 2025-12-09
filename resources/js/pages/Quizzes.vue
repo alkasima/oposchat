@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
-import AppLayout from '@/layouts/AppLayout.vue';
+import AppHeaderLayout from '@/layouts/AppHeaderLayout.vue'; // Layout with header only, no sidebar
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -111,7 +111,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <AppLayout>
+  <AppHeaderLayout>
     <div class="container mx-auto px-4 py-8 min-h-screen bg-gray-50 dark:bg-gray-900">
       <div class="mb-8">
         <h1 class="text-3xl font-bold mb-2">Quizzes</h1>
@@ -226,5 +226,5 @@ onMounted(() => {
         <p class="text-muted-foreground">There are no quizzes available for this course yet.</p>
       </div>
     </div>
-  </AppLayout>
+  </AppHeaderLayout>
 </template>

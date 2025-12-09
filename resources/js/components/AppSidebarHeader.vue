@@ -2,7 +2,7 @@
 import Breadcrumbs from '@/components/Breadcrumbs.vue';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { Sun, Moon, ArrowLeft } from 'lucide-vue-next';
+import { Sun, Moon, ArrowLeft, Settings } from 'lucide-vue-next';
 import { Link } from '@inertiajs/vue3';
 import { useAppearance } from '@/composables/useAppearance';
 import { computed } from 'vue';
@@ -48,16 +48,32 @@ const cycleTheme = () => {
             </template>
         </div>
         
-        <!-- Theme Toggle Button -->
-        <Button 
-            @click="cycleTheme" 
-            variant="ghost" 
-            size="sm" 
-            class="p-2.5 rounded-xl text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
-            :title="`Theme: ${appearance}`"
-        >
-            <Sun v-if="isDark" class="w-4 h-4" />
-            <Moon v-else class="w-4 h-4" />
-        </Button>
+        <!-- Right Section Actions -->
+        <div class="flex items-center space-x-2">
+            <!-- Settings Button -->
+            <Button 
+                as-child
+                variant="ghost" 
+                size="sm" 
+                class="p-2.5 rounded-xl text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
+                title="Settings"
+            >
+                <Link :href="route('profile.edit')">
+                    <Settings class="w-4 h-4" />
+                </Link>
+            </Button>
+            
+            <!-- Theme Toggle Button -->
+            <Button 
+                @click="cycleTheme" 
+                variant="ghost" 
+                size="sm" 
+                class="p-2.5 rounded-xl text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
+                :title="`Theme: ${appearance}`"
+            >
+                <Sun v-if="isDark" class="w-4 h-4" />
+                <Moon v-else class="w-4 h-4" />
+            </Button>
+        </div>
     </header>
 </template>
