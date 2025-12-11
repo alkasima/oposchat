@@ -7,6 +7,9 @@ use App\Models\Quiz;
 use App\Models\QuizQuestion;
 use App\Models\QuizAttempt;
 use App\Models\QuizAttemptAnswer;
+use App\Services\AIQuizGeneratorService;
+use App\Services\PersonalizationEngineService;
+use App\Services\QuizStatisticsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +17,20 @@ use Illuminate\Support\Facades\Log;
 
 class QuizController extends Controller
 {
+    protected AIQuizGeneratorService $aiQuizGenerator;
+    protected PersonalizationEngineService $personalizationEngine;
+    protected QuizStatisticsService $statisticsService;
+    
+    public function __construct(
+        AIQuizGeneratorService $aiQuizGenerator,
+        PersonalizationEngineService $personalizationEngine,
+        QuizStatisticsService $statisticsService
+    ) {
+        $this->aiQuizGenerator = $aiQuizGenerator;
+        $this->personalizationEngine = $personalizationEngine;
+        $this->statisticsService = $statisticsService;
+    }
+
     /**
      * Get list of available quizzes for a course
      */
@@ -131,25 +148,38 @@ class QuizController extends Controller
         $user = Auth::user();
         $settings = $request->settings ?? [];
 
-        // Get questions based on settings or use quiz defaults
-        $query = QuizQuestion::where('course_id', $quiz->course_id)
-            ->active()
-            ->repository();
+        // For AI-generated quizzes, get the questions directly associated with this quiz
+        // For repository quizzes, filter from all course questions based on settings
+        if ($quiz->type === 'ai_generated') {
+            // AI quiz: get questions that were created for this quiz
+            $questions = QuizQuestion::where('type', 'ai_generated')
+                ->where('generated_by', $quiz->created_by)
+                ->where('course_id', $quiz->course_id)
+                ->with('options')
+                ->latest('generated_at')
+                ->limit($quiz->total_questions)
+                ->get();
+        } else {
+            // Repository quiz: build query based on settings
+            $query = QuizQuestion::where('course_id', $quiz->course_id)
+                ->active()
+                ->repository();
 
-        if (isset($settings['topic'])) {
-            $query->where('topic', $settings['topic']);
+            if (isset($settings['topic'])) {
+                $query->where('topic', $settings['topic']);
+            }
+
+            if (isset($settings['difficulty'])) {
+                $query->where('difficulty', $settings['difficulty']);
+            }
+
+            $questionCount = $settings['question_count'] ?? $quiz->total_questions ?? 20;
+            
+            $questions = $query->with('options')
+                ->inRandomOrder()
+                ->limit($questionCount)
+                ->get();
         }
-
-        if (isset($settings['difficulty'])) {
-            $query->where('difficulty', $settings['difficulty']);
-        }
-
-        $questionCount = $settings['question_count'] ?? $quiz->total_questions ?? 20;
-        
-        $questions = $query->with('options')
-            ->inRandomOrder()
-            ->limit($questionCount)
-            ->get();
 
         if ($questions->isEmpty()) {
             return response()->json([
@@ -388,4 +418,291 @@ class QuizController extends Controller
             'data' => $attempts,
         ]);
     }
+    
+    /**
+     * Generate AI quiz questions and start attempt
+     */
+    public function generateAIQuiz(Request $request)
+    {
+        $validated = $request->validate([
+            'course_id' => 'required|exists:courses,id',
+            'question_count' => 'integer|min:5|max:20',
+            'difficulty' => 'in:easy,medium,hard',
+            'topics' => 'array',
+            'focus_on_weak_areas' => 'boolean'
+        ]);
+
+        try {
+            $userId = auth()->id();
+            
+            // Prepare options for AI generation
+            $options = [
+                'question_count' => $validated['question_count'] ?? 10,
+                'difficulty' => $validated['difficulty'] ?? 'medium',
+                'topics' => $validated['topics'] ?? [],
+            ];
+            
+            // Add weak areas if focus is enabled
+            if ($validated['focus_on_weak_areas'] ?? false) {
+                $recommendations = $this->personalizationEngine->getRecommendations($userId, $validated['course_id']);
+                $options['focus_areas'] = $recommendations['weak_topics'] ?? [];
+            }
+            
+            // Generate questions
+            $questions = $this->aiQuizGenerator->generateQuizQuestions(
+                $validated['course_id'],
+                $userId,
+                $options
+            );
+
+            if (empty($questions)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No questions were generated. Please try again.'
+                ], 500);
+            }
+
+            // Create a temporary AI quiz
+            $course = Course::findOrFail($validated['course_id']);
+            $quiz = Quiz::create([
+                'course_id' => $validated['course_id'],
+                'created_by' => $userId,
+                'title' => 'AI Generated Quiz - ' . $course->name,
+                'description' => 'AI-generated quiz with ' . count($questions) . ' questions',
+                'type' => 'ai_generated',
+                'duration_minutes' => count($questions) * 2,
+                'total_questions' => count($questions),
+                'shuffle_questions' => true,
+                'shuffle_options' => true,
+                'show_correct_answers' => true,
+                'feedback_timing' => 'after_submission',
+                'is_active' => true,
+            ]);
+
+            // Start quiz attempt
+            $attempt = QuizAttempt::create([
+                'user_id' => $userId,
+                'quiz_id' => $quiz->id,
+                'course_id' => $validated['course_id'],
+                'started_at' => now(),
+                'status' => 'in_progress',
+            ]);
+
+            // Associate questions with the attempt
+            foreach ($questions as $index => $question) {
+                // Load question options to get correct answer
+                $question->load('options');
+                $correctOption = $question->options->firstWhere('is_correct', true);
+                
+                QuizAttemptAnswer::create([
+                    'quiz_attempt_id' => $attempt->id,
+                    'quiz_question_id' => $question->id,
+                    'question_order' => $index + 1,
+                    'correct_option' => $correctOption ? $correctOption->option_letter : 'A',
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => count($questions) . ' questions generated successfully!',
+                'data' => [
+                    'quiz_id' => $quiz->id,
+                    'attempt_id' => $attempt->id,
+                    'question_count' => count($questions),
+                    'redirect_url' => route('quiz.attempt', $attempt->id)
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('AI Quiz Generation failed', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Get personalized recommendations for a user
+     */
+    public function getRecommendations(Request $request)
+    {
+        $request->validate([
+            'course_id' => 'required|exists:courses,id',
+        ]);
+        
+        $user = Auth::user();
+        
+        try {
+            $recommendations = $this->personalizationEngine->getRecommendations($user->id, $request->course_id);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $recommendations,
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to get recommendations', [
+                'user_id' => $user->id,
+                'course_id' => $request->course_id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate recommendations.',
+            ], 500);
+        }
+    }
+    
+    /**
+     * Get adaptive quiz configuration based on user performance
+     */
+    public function getAdaptiveQuizConfig(Request $request)
+    {
+        $request->validate([
+            'course_id' => 'required|exists:courses,id',
+            'preferences' => 'nullable|array',
+            'preferences.question_count' => 'nullable|integer|min:5|max:20',
+            'preferences.difficulty' => 'nullable|in:easy,medium,hard',
+            'preferences.topics' => 'nullable|array',
+        ]);
+        
+        $user = Auth::user();
+        $preferences = $request->preferences ?? [];
+        
+        try {
+            $config = $this->personalizationEngine->generateAdaptiveQuizConfig(
+                $user->id,
+                $request->course_id,
+                $preferences
+            );
+            
+            return response()->json([
+                'success' => true,
+                'data' => $config,
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate adaptive quiz configuration.',
+            ], 500);
+        }
+    }
+    
+    /**
+     * Generate AI explanation for a specific answer
+     */
+    public function generateExplanation(Request $request)
+    {
+        $request->validate([
+            'question_id' => 'required|exists:quiz_questions,id',
+            'selected_option' => 'required|in:A,B,C,D',
+        ]);
+        
+        try {
+            $question = QuizQuestion::with(['options', 'course'])->findOrFail($request->question_id);
+            
+            $explanation = $this->aiQuizGenerator->generateExplanation(
+                $question,
+                $request->selected_option,
+                $question->course
+            );
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'explanation' => $explanation,
+                    'question_id' => $question->id,
+                    'selected_option' => $request->selected_option,
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to generate explanation', [
+                'question_id' => $request->question_id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate explanation.',
+            ], 500);
+        }
+    }
+    
+    /**
+     * Generate a similar quiz based on a previous attempt
+     */
+    public function generateSimilarQuiz(Request $request, QuizAttempt $attempt)
+    {
+        // Verify ownership
+        if ($attempt->user_id !== Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized.',
+            ], 403);
+        }
+        
+        try {
+            $config = $this->personalizationEngine->generateSimilarQuizConfig($attempt);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $config,
+                'message' => 'Similar quiz configuration generated.',
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate similar quiz configuration.',
+            ], 500);
+        }
+    }
+    
+    /**
+     * Get statistics for a user and course
+     */
+    public function getStatistics(Request $request)
+    {
+        $request->validate([
+            'course_id' => 'required|exists:courses,id',
+        ]);
+        
+        $user = Auth::user();
+        
+        try {
+            $stats = [
+                'overall' => $this->statisticsService->getOverallStats($user->id, $request->course_id),
+                'topics' => $this->statisticsService->getTopicPerformance($user->id, $request->course_id),
+                'common_mistakes' => $this->statisticsService->findCommonMistakes($user->id, $request->course_id, 10),
+                'recommendations' => $this->statisticsService->getRecommendations($user->id, $request->course_id),
+            ];
+            
+            return response()->json([
+                'success' => true,
+                'data' => $stats,
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to get statistics', [
+                'user_id' => $user->id,
+                'course_id' => $request->course_id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve statistics.',
+            ], 500);
+        }
+    }
 }
+

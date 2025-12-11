@@ -213,6 +213,23 @@ Route::middleware(['auth', 'verified'])->prefix('api')->group(function () {
     
     Route::get('/quiz-history', [App\Http\Controllers\QuizController::class, 'getUserHistory']); // User's quiz history
     
+    // AI Quiz Generation routes
+    Route::prefix('ai-quiz')->group(function () {
+        Route::post('/generate', [App\Http\Controllers\QuizController::class, 'generateAIQuiz']); // Generate AI quiz
+        Route::post('/generate-explanation', [App\Http\Controllers\QuizController::class, 'generateExplanation']); // Generate AI explanation
+    });
+
+    
+    // Personalization routes
+    Route::prefix('personalization')->group(function () {
+        Route::get('/recommendations', [App\Http\Controllers\QuizController::class, 'getRecommendations']); // Get recommendations
+        Route::get('/adaptive-config', [App\Http\Controllers\QuizController::class, 'getAdaptiveQuizConfig']); // Get adaptive config
+        Route::get('/similar-quiz/{attempt}', [App\Http\Controllers\QuizController::class, 'generateSimilarQuiz']); // Generate similar quiz
+    });
+    
+    // Enhanced Statistics route
+    Route::get('/quiz-statistics-enhanced', [App\Http\Controllers\QuizController::class, 'getStatistics']); // Enhanced statistics
+    
     // Quiz Statistics API routes
     Route::prefix('quiz-statistics')->group(function () {
         Route::get('/', [App\Http\Controllers\QuizStatisticsController::class, 'getStatistics']); // Overall stats
