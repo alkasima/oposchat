@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import Breadcrumbs from '@/components/Breadcrumbs.vue';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Sun, Moon, ArrowLeft, Settings } from 'lucide-vue-next';
 import { Link } from '@inertiajs/vue3';
@@ -32,8 +31,6 @@ const cycleTheme = () => {
         class="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-white via-gray-50 to-white dark:from-gray-800 dark:via-gray-850 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm flex h-16 shrink-0 items-center gap-2 px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-4"
     >
         <div class="flex items-center gap-2 flex-1">
-            <SidebarTrigger class="-ml-1" />
-            
             <!-- Back to Study Link -->
             <Link 
                 :href="route('dashboard')"
