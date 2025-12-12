@@ -65,6 +65,7 @@ class AIQuizGeneratorService
         
         // Generate questions in batches
         $generatedQuestions = [];
+        $generatedQuestionTexts = []; // Track generated questions to prevent duplicates
         $batchSize = 5; // Generate 5 questions at a time
         
         for ($i = 0; $i < $questionCount; $i += $batchSize) {
@@ -78,19 +79,40 @@ class AIQuizGeneratorService
                 $difficulty,
                 $topics,
                 $focusAreas,
-                $userId
+                $userId,
+                $generatedQuestionTexts // Pass already generated questions
             );
             
             $generatedQuestions = array_merge($generatedQuestions, $batch);
+            
+            // Track question texts from this batch
+            foreach ($batch as $question) {
+                if (isset($question['question_text'])) {
+                    $generatedQuestionTexts[] = $question['question_text'];
+                }
+            }
+        }
+        
+        // Deduplicate questions before returning
+        $uniqueQuestions = $this->deduplicateQuestions($generatedQuestions);
+        
+        $duplicatesRemoved = count($generatedQuestions) - count($uniqueQuestions);
+        if ($duplicatesRemoved > 0) {
+            Log::warning('Duplicate questions detected and removed', [
+                'course_id' => $courseId,
+                'duplicates_removed' => $duplicatesRemoved,
+                'original_count' => count($generatedQuestions),
+                'final_count' => count($uniqueQuestions)
+            ]);
         }
         
         Log::info('AI questions generated successfully', [
             'course_id' => $courseId,
             'user_id' => $userId,
-            'question_count' => count($generatedQuestions)
+            'question_count' => count($uniqueQuestions)
         ]);
         
-        return $generatedQuestions;
+        return $uniqueQuestions;
     }
     
     /**
@@ -104,7 +126,8 @@ class AIQuizGeneratorService
         string $difficulty,
         array $topics,
         array $focusAreas,
-        int $userId
+        int $userId,
+        array $alreadyGeneratedQuestions = []
     ): array {
         // Build the prompt
         $prompt = $this->buildGenerationPrompt(
@@ -114,7 +137,8 @@ class AIQuizGeneratorService
             $count,
             $difficulty,
             $topics,
-            $focusAreas
+            $focusAreas,
+            $alreadyGeneratedQuestions
         );
         
         // Call AI provider
@@ -124,7 +148,7 @@ class AIQuizGeneratorService
         
         try {
             $response = $this->aiProvider->chatCompletion($messages, [
-                'temperature' => 0.8, // Higher creativity for diverse questions
+                'temperature' => 0.9, // Higher creativity for diverse, unique questions
                 'max_tokens' => 3000,
             ]);
             
@@ -153,7 +177,8 @@ class AIQuizGeneratorService
         int $count,
         string $difficulty,
         array $topics,
-        array $focusAreas
+        array $focusAreas,
+        array $alreadyGeneratedQuestions = []
     ): string {
         $prompt = "You are an expert exam question creator for competitive examinations in Spain (oposiciones).\n\n";
         $prompt .= "TASK: Generate {$count} UNIQUE, ORIGINAL multiple-choice questions (A, B, C, D format) ";
@@ -194,14 +219,25 @@ class AIQuizGeneratorService
             $prompt .= "\nIMPORTANT: Generate COMPLETELY ORIGINAL questions - do NOT copy or paraphrase the examples above.\n\n";
         }
         
+        // Add already generated questions to prevent duplicates
+        if (!empty($alreadyGeneratedQuestions)) {
+            $prompt .= "ALREADY GENERATED QUESTIONS (DO NOT REPEAT OR CREATE SIMILAR QUESTIONS):\n";
+            foreach (array_slice($alreadyGeneratedQuestions, 0, 10) as $idx => $generatedQ) {
+                $prompt .= ($idx + 1) . ". " . substr($generatedQ, 0, 100) . "...\n";
+            }
+            $prompt .= "\n⚠️ CRITICAL: Your questions must be COMPLETELY DIFFERENT from the above. Do NOT create variations or similar questions.\n\n";
+        }
+        
         $prompt .= "IMPORTANT GUIDELINES:\n";
-        $prompt .= "1. Generate COMPLETELY ORIGINAL questions based on the syllabus content\n";
-        $prompt .= "2. Each question must have exactly 4 options (A, B, C, D)\n";
-        $prompt .= "3. Only ONE option should be correct\n";
-        $prompt .= "4. Make distractors (wrong answers) plausible but clearly incorrect\n";
-        $prompt .= "5. Provide a detailed explanation for why the correct answer is right\n";
-        $prompt .= "6. Match the difficulty level: easy (basic recall), medium (understanding), hard (application/analysis)\n";
-        $prompt .= "7. Use clear, professional language appropriate for competitive exams\n\n";
+        $prompt .= "1. Generate COMPLETELY ORIGINAL and UNIQUE questions based on the syllabus content\n";
+        $prompt .= "2. Each question must be DIFFERENT from all previously generated questions\n";
+        $prompt .= "3. Each question must have exactly 4 options (A, B, C, D)\n";
+        $prompt .= "4. Only ONE option should be correct\n";
+        $prompt .= "5. Make distractors (wrong answers) plausible but clearly incorrect\n";
+        $prompt .= "6. Provide a detailed explanation for why the correct answer is right\n";
+        $prompt .= "7. Match the difficulty level: easy (basic recall), medium (understanding), hard (application/analysis)\n";
+        $prompt .= "8. Use clear, professional language appropriate for competitive exams\n";
+        $prompt .= "9. AVOID repetition - each question should cover a different concept or aspect\n\n";
         
         $prompt .= "OUTPUT FORMAT (JSON array):\n";
         $prompt .= "[\n";
@@ -252,6 +288,71 @@ class AIQuizGeneratorService
     }
     
     /**
+     * Deduplicate questions by checking for exact matches and high similarity
+     */
+    private function deduplicateQuestions(array $questions): array
+    {
+        $uniqueQuestions = [];
+        $seenTexts = [];
+        
+        foreach ($questions as $question) {
+            if (!isset($question['question_text'])) {
+                continue;
+            }
+            
+            $questionText = trim(strtolower($question['question_text']));
+            $isDuplicate = false;
+            
+            // Check for exact match
+            foreach ($seenTexts as $seenText) {
+                if ($questionText === $seenText) {
+                    Log::info('Exact duplicate question found', [
+                        'question' => substr($question['question_text'], 0, 100)
+                    ]);
+                    $isDuplicate = true;
+                    break;
+                }
+                
+                // Check for high similarity (> 85% similar)
+                $similarity = $this->calculateSimilarity($questionText, $seenText);
+                if ($similarity > 85) {
+                    Log::info('Similar question found and removed', [
+                        'question' => substr($question['question_text'], 0, 100),
+                        'similarity' => $similarity
+                    ]);
+                    $isDuplicate = true;
+                    break;
+                }
+            }
+            
+            if (!$isDuplicate) {
+                $uniqueQuestions[] = $question;
+                $seenTexts[] = $questionText;
+            }
+        }
+        
+        return $uniqueQuestions;
+    }
+    
+    /**
+     * Calculate similarity percentage between two strings using Levenshtein distance
+     */
+    private function calculateSimilarity(string $str1, string $str2): float
+    {
+        $len1 = strlen($str1);
+        $len2 = strlen($str2);
+        
+        if ($len1 === 0 || $len2 === 0) {
+            return 0;
+        }
+        
+        $maxLen = max($len1, $len2);
+        $distance = levenshtein(substr($str1, 0, 255), substr($str2, 0, 255)); // Levenshtein limited to 255 chars
+        
+        return (1 - ($distance / $maxLen)) * 100;
+    }
+    
+    /**
      * Validate and save generated questions to database
      */
     private function validateAndSaveQuestions(array $questions, int $courseId, int $userId): array
@@ -265,6 +366,19 @@ class AIQuizGeneratorService
                 // Validate question structure
                 if (!$this->validateQuestionStructure($questionData)) {
                     Log::warning('Invalid question structure, skipping', ['data' => $questionData]);
+                    continue;
+                }
+                
+                // Check for duplicate in database (additional safety check)
+                $questionText = trim($questionData['question_text']);
+                $existingQuestion = QuizQuestion::where('course_id', $courseId)
+                    ->where('question_text', $questionText)
+                    ->first();
+                    
+                if ($existingQuestion) {
+                    Log::info('Duplicate question found in database, skipping', [
+                        'question' => substr($questionText, 0, 100)
+                    ]);
                     continue;
                 }
                 
