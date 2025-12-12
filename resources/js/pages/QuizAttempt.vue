@@ -77,17 +77,27 @@ onBeforeUnmount(() => {
 
 // Select an option
 const selectOption = async (optionLetter: string) => {
+  // Capture the current question index and ID at the time of selection
+  // This prevents race conditions when navigating quickly between questions
+  const questionIndex = currentQuestionIndex.value;
+  const questionId = currentQuestion.value.id;
+  
+  // Optimistically update local state immediately for better UX
+  props.attempt.answers[questionIndex].selected_option = optionLetter;
+  
   try {
     await axios.post(`/api/quiz-attempts/${props.attempt.id}/answer`, {
-      question_id: currentQuestion.value.id,
+      question_id: questionId,
       selected_option: optionLetter,
       time_spent_seconds: timeElapsed.value
     });
     
-    // Update local state
-    currentAnswer.value.selected_option = optionLetter;
+    // Confirm the update to the specific answer (not currentAnswer which might have changed)
+    props.attempt.answers[questionIndex].selected_option = optionLetter;
   } catch (error) {
     console.error('Failed to submit answer:', error);
+    // Revert optimistic update on error (optional - you can also keep it and show a warning)
+    // props.attempt.answers[questionIndex].selected_option = null;
   }
 };
 
