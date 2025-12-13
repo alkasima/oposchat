@@ -60,8 +60,14 @@ class AIQuizGeneratorService
         // Sample questions are optional - AI can work without them
         // It will use only the RAG syllabus content if no samples exist
         
-        // Get syllabus context from RAG
-        $context = $this->getSyllabusContext($course, $topics, $focusAreas);
+        // Get comprehensive syllabus context from RAG (30+ chunks for rich content)
+        $contextPool = $this->getSyllabusContext($course, $topics, $focusAreas, $difficulty);
+        
+        Log::info('Context pool retrieved for quiz generation', [
+            'course_id' => $courseId,
+            'context_chunks' => count($contextPool),
+            'difficulty' => $difficulty
+        ]);
         
         // Generate questions in batches
         $generatedQuestions = [];
@@ -71,10 +77,13 @@ class AIQuizGeneratorService
         for ($i = 0; $i < $questionCount; $i += $batchSize) {
             $remainingQuestions = min($batchSize, $questionCount - $i);
             
+            // Select different context slice for each batch to ensure variety
+            $batchContext = $this->selectContextForBatch($contextPool, $i / $batchSize, $questionCount);
+            
             $batch = $this->generateQuestionBatch(
                 $course,
                 $sampleQuestions,
-                $context,
+                $batchContext,
                 $remainingQuestions,
                 $difficulty,
                 $topics,
@@ -194,10 +203,11 @@ class AIQuizGeneratorService
             $prompt .= "FOCUS AREAS (student needs practice): " . implode(', ', $focusAreas) . "\n\n";
         }
         
-        // Add syllabus context
+        // Add MUCH MORE syllabus context (10-15 chunks instead of 3)
         if (!empty($context)) {
-            $prompt .= "SYLLABUS CONTENT (use this as your knowledge base):\n";
-            $prompt .= implode("\n\n", array_slice($context, 0, 3)) . "\n\n";
+            $prompt .= "SYLLABUS CONTENT (use this as your PRIMARY knowledge base):\n";
+            $prompt .= "The following are SPECIFIC excerpts from the course syllabus. Your questions MUST reference the actual details, terminology, laws, dates, procedures, and concepts presented here.\n\n";
+            $prompt .= implode("\n\n---\n\n", array_slice($context, 0, 15)) . "\n\n";
         }
         
         // Add sample questions as templates ONLY if available
@@ -229,15 +239,21 @@ class AIQuizGeneratorService
         }
         
         $prompt .= "IMPORTANT GUIDELINES:\n";
-        $prompt .= "1. Generate COMPLETELY ORIGINAL and UNIQUE questions based on the syllabus content\n";
-        $prompt .= "2. Each question must be DIFFERENT from all previously generated questions\n";
-        $prompt .= "3. Each question must have exactly 4 options (A, B, C, D)\n";
-        $prompt .= "4. Only ONE option should be correct\n";
-        $prompt .= "5. Make distractors (wrong answers) plausible but clearly incorrect\n";
-        $prompt .= "6. Provide a detailed explanation for why the correct answer is right\n";
-        $prompt .= "7. Match the difficulty level: easy (basic recall), medium (understanding), hard (application/analysis)\n";
-        $prompt .= "8. Use clear, professional language appropriate for competitive exams\n";
-        $prompt .= "9. AVOID repetition - each question should cover a different concept or aspect\n\n";
+        $prompt .= "1. Generate COMPLETELY ORIGINAL and UNIQUE questions based on the SPECIFIC syllabus content provided\n";
+        $prompt .= "2. Each question MUST reference actual details from the syllabus (laws, dates, procedures, terminology, concepts)\n";
+        $prompt .= "3. AVOID generic questions - use the specific information provided in the syllabus content\n";
+        $prompt .= "4. Each question must be DIFFERENT from all previously generated questions\n";
+        $prompt .= "5. Each question must have exactly 4 options (A, B, C, D)\n";
+        $prompt .= "6. Only ONE option should be correct\n";
+        $prompt .= "7. Make distractors (wrong answers) plausible but clearly incorrect based on syllabus content\n";
+        $prompt .= "8. Provide a detailed explanation referencing the specific syllabus content\n";
+        $prompt .= "9. Match the difficulty level:\n";
+        $prompt .= "   - Easy: Basic recall of facts, definitions, and simple concepts from syllabus\n";
+        $prompt .= "   - Medium: Understanding and application of syllabus concepts\n";
+        $prompt .= "   - Hard: Complex scenarios, analysis, and synthesis of multiple syllabus topics\n";
+        $prompt .= "10. Use clear, professional language appropriate for competitive exams\n";
+        $prompt .= "11. AVOID repetition - each question should explore different aspects of the syllabus\n";
+        $prompt .= "12. Questions should feel specific to THIS course, not generic exam questions\n\n";
         
         $prompt .= "OUTPUT FORMAT (JSON array):\n";
         $prompt .= "[\n";
@@ -479,32 +495,116 @@ class AIQuizGeneratorService
     }
     
     /**
-     * Get syllabus context from RAG for question generation
+     * Get comprehensive syllabus context from RAG for question generation
+     * Uses multiple varied queries to ensure broad coverage of course material
      */
-    private function getSyllabusContext(Course $course, array $topics, array $focusAreas): array
+    private function getSyllabusContext(Course $course, array $topics, array $focusAreas, string $difficulty): array
     {
         try {
-            // Build search query from topics and focus areas
-            $searchTerms = array_merge($topics, $focusAreas);
-            $query = !empty($searchTerms) 
-                ? implode(' ', $searchTerms) 
-                : ($course->name ?? 'exam questions');
+            // Build multiple varied search queries for diverse context
+            $searchQueries = $this->buildVariedSearchQueries($course, $topics, $focusAreas, $difficulty);
             
             // Get namespaces for the course
             $namespaces = [$course->slug];
             
-            // Use existing RAG system to get context
-            $contextData = $this->aiProvider->getRelevantContext($query, $namespaces);
+            // DRAMATICALLY increase search limit to get rich, specific content
+            $searchLimit = 30; // Increased from default 5
+            $contextsPerQuery = (int)ceil($searchLimit / count($searchQueries));
             
-            return $contextData['context'] ?? [];
+            $allContext = [];
+            
+            foreach ($searchQueries as $query) {
+                // Use existing RAG system with custom limit
+                $contextData = $this->aiProvider->getRelevantContext($query, $namespaces, $contextsPerQuery);
+                
+                if (!empty($contextData['context'])) {
+                    foreach ($contextData['context'] as $chunk) {
+                        $allContext[] = $chunk;
+                    }
+                }
+            }
+            
+            // Remove potential duplicates
+            $allContext = array_unique($allContext);
+            
+            // Shuffle to ensure variety across batches
+            shuffle($allContext);
+            
+            Log::info('Comprehensive syllabus context retrieved', [
+                'course_id' => $course->id,
+                'total_chunks' => count($allContext),
+                'queries_used' => count($searchQueries),
+                'difficulty' => $difficulty
+            ]);
+            
+            return array_values($allContext);
             
         } catch (Exception $e) {
-            Log::warning('Failed to get syllabus context', [
+            Log::error('Failed to get syllabus context', [
                 'course_id' => $course->id,
                 'error' => $e->getMessage()
             ]);
             return [];
         }
+    }
+    
+    /**
+     * Build varied search queries to retrieve diverse context from different syllabus sections
+     */
+    private function buildVariedSearchQueries(Course $course, array $topics, array $focusAreas, string $difficulty): array
+    {
+        $queries = [];
+        
+        // Query 1: Course-level general query
+        $queries[] = $course->name . ' exam preparation study material';
+        
+        // Query 2: Difficulty-based query
+        $difficultyTerms = [
+            'easy' => 'basic concepts definitions fundamentals introduction',
+            'medium' => 'procedures applications practical examples',
+            'hard' => 'complex scenarios analysis case studies advanced topics'
+        ];
+        $queries[] = $course->name . ' ' . ($difficultyTerms[$difficulty] ?? 'concepts');
+        
+        // Query 3: Topic-based queries (if provided)
+        if (!empty($topics)) {
+            foreach (array_slice($topics, 0, 2) as $topic) {
+                $queries[] = $course->name . ' ' . $topic . ' detailed content';
+            }
+        }
+        
+        // Query 4: Focus areas (weak topics)
+        if (!empty($focusAreas)) {
+            $queries[] = $course->name . ' ' . implode(' ', array_slice($focusAreas, 0, 2));
+        }
+        
+        // Query 5: Laws/regulations/procedures (common in competitive exams)
+        $queries[] = $course->name . ' laws regulations procedures requirements';
+        
+        return $queries;
+    }
+    
+    /**
+     * Select appropriate context slice for a specific batch
+     * Ensures different batches get different syllabus content
+     */
+    private function selectContextForBatch(array $contextPool, int $batchIndex, int $totalQuestions): array
+    {
+        if (empty($contextPool)) {
+            return [];
+        }
+        
+        // Each batch gets 15 chunks from the pool
+        $chunksPerBatch = 15;
+        $startIndex = ($batchIndex * $chunksPerBatch) % count($contextPool);
+        
+        $batchContext = [];
+        for ($i = 0; $i < $chunksPerBatch && count($batchContext) < count($contextPool); $i++) {
+            $index = ($startIndex + $i) % count($contextPool);
+            $batchContext[] = $contextPool[$index];
+        }
+        
+        return $batchContext;
     }
     
     /**

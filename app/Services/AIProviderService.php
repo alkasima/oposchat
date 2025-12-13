@@ -496,8 +496,12 @@ class AIProviderService
 
     /**
      * Get relevant context based on course namespaces using vector search
+     * 
+     * @param string $query The search query
+     * @param array $namespaces Course namespaces to search within
+     * @param int|null $limit Optional custom limit for number of chunks to retrieve
      */
-    public function getRelevantContext(string $query, array $namespaces = []): array
+    public function getRelevantContext(string $query, array $namespaces = [], ?int $limit = null): array
     {
         if (empty($namespaces)) {
             return [];
@@ -506,7 +510,8 @@ class AIProviderService
         try {
             // Detect creative requests that need broader context
             $isCreativeRequest = $this->isCreativeStudyRequest($query);
-            $searchLimit = $isCreativeRequest ? 10 : 5; // Get more context for creative requests
+            $defaultLimit = $isCreativeRequest ? 10 : 5;
+            $searchLimit = $limit ?? $defaultLimit; // Use custom limit if provided
             
             // Generate embedding for the query
             $embedding = $this->generateEmbedding($query);
