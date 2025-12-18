@@ -15,8 +15,27 @@ NC='\033[0m' # No Color
 
 echo "Checking status of Chroma Bridge on port $PORT..."
 
-# Check if port is in use
-if lsof -Pi :$PORT -sTCP:LISTEN -t >/dev/null ; then
+# Function to check if port is in use
+check_port() {
+    # Try ss first (modern, faster, usually default on Ubuntu)
+    if command -v ss >/dev/null; then
+        if ss -lptn "sport = :$PORT" | grep -q "$PORT"; then return 0; fi
+    fi
+    
+    # Try netstat
+    if command -v netstat >/dev/null; then
+        if netstat -tulpn 2>/dev/null | grep -q ":$PORT"; then return 0; fi
+    fi
+
+    # Try lsof (needs sudo for some processes, but -i usually works for listing)
+    if command -v lsof >/dev/null; then
+        if lsof -Pi :$PORT -sTCP:LISTEN -t >/dev/null ; then return 0; fi
+    fi
+    
+    return 1
+}
+
+if check_port; then
     echo -e "${GREEN}✅ Chroma Bridge is already running on port $PORT.${NC}"
     exit 0
 fi
@@ -32,16 +51,15 @@ fi
 
 # Start payload
 cd "$BRIDGE_DIR"
-nohup "$VENV_PYTHON" "$APP_FILE" > /dev/null 2>&1 &
+nohup "$VENV_PYTHON" "$APP_FILE" > bridge.log 2>&1 &
 PID=$!
 
 sleep 3
 
-if lsof -Pi :$PORT -sTCP:LISTEN -t >/dev/null ; then
+if check_port; then
     echo -e "${GREEN}✅ Chroma Bridge started successfully (PID: $PID).${NC}"
 else
-    echo -e "${RED}❌ Failed to start Chroma Bridge. Please check logs.${NC}"
-    # Try to show error if it failed immediately
-    "$VENV_PYTHON" "$APP_FILE" &
+    echo -e "${RED}❌ Failed to start Chroma Bridge. Checking logs:${NC}"
+    tail -n 10 bridge.log
     exit 1
 fi
