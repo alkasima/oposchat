@@ -15,10 +15,14 @@ use Illuminate\Support\Str;
 class CourseDocumentController extends Controller
 {
     private DocumentProcessingService $documentProcessor;
+    private \App\Services\VectorStoreService $vectorStore;
 
-    public function __construct(DocumentProcessingService $documentProcessor)
-    {
+    public function __construct(
+        DocumentProcessingService $documentProcessor,
+        \App\Services\VectorStoreService $vectorStore
+    ) {
         $this->documentProcessor = $documentProcessor;
+        $this->vectorStore = $vectorStore;
     }
 
     /**
@@ -53,6 +57,16 @@ class CourseDocumentController extends Controller
     public function store(Request $request, Course $course)
     {
         try {
+            // Safety Check: Ensure Vector Database is available before accepting upload
+            $connection = $this->vectorStore->testConnection();
+            if (!$connection['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '⚠️ Vector Database Service is unavailable. Please check if the chroma-bridge is running.',
+                    'error_details' => $connection['message'] ?? 'Connection failure'
+                ], 503);
+            }
+
             // Bulk upload branch
             if ($request->hasFile('files')) {
                 $request->validate([
