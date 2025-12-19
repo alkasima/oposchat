@@ -27,6 +27,9 @@ class VectorStoreService
         
         Log::info('VectorStoreService initialized', [
             'storage_type' => $this->storageType,
+            'chroma_service_exists' => $this->chromaService !== null,
+            'env_use_chroma' => env('USE_CHROMA_CLOUD'),
+            'env_chroma_host' => config('services.chroma.host'),
             'chroma_available' => $this->chromaService !== null,
             'pinecone_available' => $this->pineconeService !== null,
             'local_available' => $this->localVectorStore->isAvailable()
@@ -80,26 +83,35 @@ class VectorStoreService
     private function testChromaConnection(): bool
     {
         if (!$this->chromaService) {
+            Log::warning('VectorStoreService: ChromaService is NULL');
             return false;
         }
 
         $apiKey = config('services.chroma.api_key');
         $host = config('services.chroma.host');
         
+        Log::info('VectorStoreService: Testing Chroma Connection', [
+            'host_config' => $host,
+            'api_key_configured' => !empty($apiKey),
+            'use_chroma_cloud_env' => env('USE_CHROMA_CLOUD')
+        ]);
+        
         if (empty($apiKey) || empty($host)) {
-            Log::warning('Chroma not configured, falling back');
-            return false;
+            Log::warning('Chroma not configured properly', ['host' => $host, 'has_key' => !empty($apiKey)]);
+            // return false; // Don't return false yet, bridge might not need key?
         }
 
         try {
             $result = $this->chromaService->testConnection();
+            Log::info('VectorStoreService: Chroma Service Response', ['result' => $result]);
+            
             if ($result['success']) {
                 Log::info('Chroma Cloud connection successful');
                 return true;
             }
             return false;
         } catch (Exception $e) {
-            Log::warning('Chroma connection failed', ['error' => $e->getMessage()]);
+            Log::warning('Chroma connection failed with exception', ['error' => $e->getMessage()]);
             return false;
         }
     }
