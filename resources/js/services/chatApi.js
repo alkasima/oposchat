@@ -18,9 +18,12 @@ class ChatApiService {
     /**
      * Create a new chat
      */
-    async createChat() {
+    /**
+     * Create a new chat
+     */
+    async createChat(payload = {}) {
         try {
-            const response = await axios.post('/api/chats');
+            const response = await axios.post('/api/chats', payload);
             return response.data;
         } catch (error) {
             console.error('Error creating chat:', error);

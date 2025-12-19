@@ -40,6 +40,7 @@ const selectedFile = ref<File | null>(null);
 const isProcessingFile = ref(false);
 const imagePreviewUrl = ref<string | null>(null);
 const chatContainer = ref<HTMLDivElement | null>(null);
+const messageInput = ref<HTMLTextAreaElement | null>(null);
 
 // Real chat data
 const messages = ref<Message[]>([]);
@@ -799,7 +800,13 @@ const createNewChatIfNeeded = async () => {
                 return false;
             }
 
-            const newChat = await chatApi.createChat();
+            const payload: any = {};
+            if (currentCourse.value) {
+                payload.course_id = currentCourse.value.id;
+                payload.title = `${currentCourse.value.name} Chat`;
+            }
+
+            const newChat = await chatApi.createChat(payload);
             currentChat.value = { 
                 id: newChat.id.toString(), 
                 title: newChat.title,
@@ -974,6 +981,13 @@ const handleCourseSelected = async (course: any) => {
     showCourseRequired.value = !currentChat.value?.course_id;
     // Persist selection
     saveSelectedCourse();
+    
+    // Auto-focus input after selection to allow immediate typing/sending
+    if (messageInput.value) {
+        nextTick(() => {
+            messageInput.value?.focus();
+        });
+    }
 };
 
 // Theme toggle
@@ -1521,6 +1535,7 @@ if (savedSidebarState === 'false') {
                         <!-- Message Input -->
                         <div class="flex-1 relative">
                             <textarea
+                                ref="messageInput"
                                 v-model="currentMessage"
                                 @keydown="handleKeyDown"
                                 placeholder="Escribe un mensaje..."

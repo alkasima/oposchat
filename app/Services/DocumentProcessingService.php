@@ -340,10 +340,15 @@ class DocumentProcessingService
      */
     private function generateVectorId(string $courseNamespace, int $chunkIndex, ?int $documentId = null): string
     {
+        // If we have a document ID, generate a deterministic ID to allow idempotent updates
+        if ($documentId) {
+            return "{$courseNamespace}_doc{$documentId}_chunk{$chunkIndex}";
+        }
+
+        // Fallback for content without IDs (legacy/generic usage)
         $timestamp = now()->format('YmdHis');
         $random = Str::random(8);
-        $docId = $documentId ? "doc{$documentId}_" : '';
-        return "{$courseNamespace}_{$docId}{$timestamp}_{$chunkIndex}_{$random}";
+        return "{$courseNamespace}_{$timestamp}_{$chunkIndex}_{$random}";
     }
 
     /**
