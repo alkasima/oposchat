@@ -15,8 +15,9 @@ class AppServiceProvider extends ServiceProvider
         // Register RAG services
         // Register RAG services
         $this->app->singleton(\App\Services\ChromaService::class);
-        $this->app->singleton(\App\Services\PineconeService::class); // Register Pinecone too just in case
+        // $this->app->singleton(\App\Services\PineconeService::class); // Causing crash if config missing
         $this->app->singleton(\App\Services\VectorStoreService::class);
+        $this->app->singleton(\App\Services\DocumentProcessingService::class);
         $this->app->singleton(\App\Services\DocumentProcessingService::class);
     }
 
