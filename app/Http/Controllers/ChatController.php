@@ -206,8 +206,14 @@ class ChatController extends Controller
             abort(403);
         }
 
+        // Optimize: Limit to last 100 messages to improve load performance
+        // Most users don't need the full history of thousands of messages
         $messages = $chat->messages()
+            ->latest() // Order by created_at desc
+            ->limit(100)
             ->get()
+            ->reverse() // Reverse to get chronological order (oldest first)
+            ->values() // Reset keys
             ->map(function ($message) {
                 return [
                     'id' => $message->id,
