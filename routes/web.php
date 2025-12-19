@@ -300,6 +300,73 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/usage', [App\Http\Controllers\ChatController::class, 'getUsage'])->name('usage');
 });
 
+// Temporary Debug Route for AI
+Route::get('/debug/ai', function () {
+    return <<<'HTML'
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>AI Debug</title>
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-100 p-8">
+        <div class="max-w-2xl mx-auto bg-white p-6 rounded shadow">
+            <h1 class="text-2xl font-bold mb-4">AI Connectivity Test</h1>
+            
+            @if(session('response'))
+                <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4">
+                    <p class="font-bold">Response:</p>
+                    <p>{{ session('response') }}</p>
+                    <div class="text-xs mt-2 text-gray-500">
+                        Provider: {{ session('provider') }} | Model: {{ session('model') }}
+                    </div>
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4">
+                    <p class="font-bold">Error:</p>
+                    <p>{{ session('error') }}</p>
+                </div>
+            @endif
+
+            <form method="POST" action="/debug/ai">
+                <input type="hidden" name="_token" value="{{ csrf_token() }}">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Message</label>
+                    <input type="text" name="message" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" value="Which model are you running on?">
+                </div>
+                <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Send Test Request
+                </button>
+            </form>
+        </div>
+    </body>
+    </html>
+HTML;
+});
+
+Route::post('/debug/ai', function (\Illuminate\Http\Request $request) {
+    try {
+        $message = $request->input('message');
+        
+        // Manual instantiation to test
+        $ai = new \App\Services\EnhancedAIProviderService();
+        
+        // Simple completion
+        $response = $ai->chatCompletion([
+            ['role' => 'user', 'content' => $message]
+        ]);
+        
+        return back()->with('response', $response['content'])
+                     ->with('model', $ai->getModel())
+                     ->with('provider', $ai->getProvider());
+                     
+    } catch (\Exception $e) {
+        return back()->with('error', $e->getMessage() . "\n" . $e->getTraceAsString());
+    }
+});
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
 
