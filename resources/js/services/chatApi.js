@@ -16,6 +16,19 @@ class ChatApiService {
     }
 
     /**
+     * Get available courses
+     */
+    async getCourses() {
+        try {
+            const response = await axios.get('/api/courses');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching courses:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Create a new chat
      */
     /**

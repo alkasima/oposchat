@@ -109,6 +109,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
+import chatApi from '@/services/chatApi';
 
 interface Course {
   id: number;
@@ -147,17 +148,15 @@ const toggleDropdown = () => {
 const fetchCourses = async () => {
   loading.value = true;
   try {
-    const response = await fetch('/api/courses', { headers: { 'Accept': 'application/json' } });
-    if (response.ok) {
-      courses.value = await response.json();
+    const data = await chatApi.getCourses();
+    courses.value = data;
       
-      // Set initial course if provided
-      if (props.initialCourseId) {
-        const course = courses.value.find(c => c.id === props.initialCourseId);
-        if (course) {
-          selectedCourse.value = course;
-          emit('course-selected', course);
-        }
+    // Set initial course if provided
+    if (props.initialCourseId) {
+      const course = courses.value.find(c => c.id === props.initialCourseId);
+      if (course) {
+        selectedCourse.value = course;
+        emit('course-selected', course);
       }
     }
   } catch (error) {
@@ -175,16 +174,8 @@ const selectCourse = async (course: Course) => {
   // Update chat with selected course
   if (props.chatId) {
     try {
-      await fetch(`/api/chats/${props.chatId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-        },
-        body: JSON.stringify({
-          course_id: course.id,
-        }),
+      await chatApi.updateChat(props.chatId.toString(), {
+        course_id: course.id,
       });
     } catch (error) {
       console.error('Failed to update chat course:', error);
@@ -200,16 +191,8 @@ const clearSelection = async () => {
   // Update chat to remove course selection
   if (props.chatId) {
     try {
-      await fetch(`/api/chats/${props.chatId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-        },
-        body: JSON.stringify({
-          course_id: null,
-        }),
+      await chatApi.updateChat(props.chatId.toString(), {
+        course_id: null,
       });
     } catch (error) {
       console.error('Failed to clear chat course:', error);
