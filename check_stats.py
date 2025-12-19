@@ -2,20 +2,22 @@ import urllib.request
 import json
 
 try:
-    # 1. List collections
-    print("--- Collections ---")
+    # 1. List collections and get stats for EACH
+    print("--- Collections Stats ---")
     with urllib.request.urlopen('http://localhost:8001/collections') as response:
         data = json.loads(response.read().decode())
-        print(json.dumps(data, indent=2))
-
-    # 2. Get Count for Main Collection
-    print("\n--- Main Collection Stats (oposchat_vectors) ---")
-    with urllib.request.urlopen('http://localhost:8001/collections/oposchat_vectors/stats') as response:
-        stats = json.loads(response.read().decode())
-        print(f"Collection Name: {stats.get('name')}")
-        print(f"Total Vectors (Chunks): {stats.get('count')}")
-        print(f"Metadata: {stats.get('metadata')}")
+        collections = data.get('collections', [])
+        
+        for col in collections:
+            name = col['name']
+            try:
+                # Url encode the name just in case
+                safe_name = urllib.parse.quote(name)
+                with urllib.request.urlopen(f'http://localhost:8001/collections/{safe_name}/stats') as stat_response:
+                    stats = json.loads(stat_response.read().decode())
+                    print(f"Name: {stats.get('name'):<30} | Count: {stats.get('count')}")
+            except Exception as e:
+                print(f"Name: {name:<30} | Error getting stats: {e}")
 
 except Exception as e:
-    print(f"Error: {e}")
-    print("Note: If 'oposchat_vectors' is not found, check the collection name in the list above.")
+    print(f"Fatal Error: {e}")
