@@ -422,7 +422,7 @@ Model disclosure: You are running on {$this->getProvider()} model {$this->getMod
     /**
      * Enhanced context retrieval with better relevance scoring
      */
-    public function getRelevantContext(string $query, array $namespaces = []): array
+    public function getRelevantContext(string $query, array $namespaces = [], ?int $limit = null): array
     {
         // Always return a structured array, even when empty
         $emptyResult = [

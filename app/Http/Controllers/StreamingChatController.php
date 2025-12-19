@@ -101,10 +101,12 @@ class StreamingChatController extends Controller
                 'usage' => $updatedUsage
             ]);
 
-            // Get chat messages for context
+            // Get chat messages for context (Limit to last 30 to prevent OOM/Timeouts)
             $messages = $chat->messages()
-                ->orderBy('created_at')
+                ->latest() // Use latest to efficiently get last N
+                ->limit(30)
                 ->get()
+                ->reverse() // Reverse to chronological order for LLM context
                 ->map(function ($message) {
                     return [
                         'role' => $message->role,

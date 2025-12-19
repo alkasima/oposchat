@@ -52,13 +52,13 @@ export function useSubscription() {
     const hasFeatureAccess = (feature) => {
         const featureUsage = usage.value[feature]
         if (!featureUsage) return true
-        
+
         // If feature is unlimited, always allow
         if (featureUsage.unlimited) return true
-        
+
         // If feature is not allowed, deny
         if (featureUsage.not_allowed) return false
-        
+
         return featureUsage.remaining > 0
     }
 
@@ -66,7 +66,7 @@ export function useSubscription() {
     const isApproachingLimit = (feature, threshold = 80) => {
         const featureUsage = usage.value[feature]
         if (!featureUsage || featureUsage.unlimited) return false
-        
+
         return featureUsage.percentage >= threshold
     }
 
@@ -74,7 +74,7 @@ export function useSubscription() {
     const getUsagePercentage = (feature) => {
         const featureUsage = usage.value[feature]
         if (!featureUsage || featureUsage.unlimited) return 0
-        
+
         return featureUsage.percentage || 0
     }
 
@@ -82,7 +82,7 @@ export function useSubscription() {
     const getRemainingUsage = (feature) => {
         const featureUsage = usage.value[feature]
         if (!featureUsage || featureUsage.unlimited) return Infinity
-        
+
         return featureUsage.remaining || 0
     }
 
@@ -101,8 +101,8 @@ export function useSubscription() {
     const fetchUsageData = async () => {
         try {
             loading.value = true;
-            
-            const response = await fetch('/usage', {
+
+            const response = await fetch('/api/usage', {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -117,7 +117,7 @@ export function useSubscription() {
             }
 
             const data = await response.json();
-            
+
             if (data.success && data.usage) {
                 // Update the global subscription data with fresh usage
                 globalSubscriptionData.value = {
@@ -126,7 +126,7 @@ export function useSubscription() {
                 };
                 return data.usage;
             }
-            
+
             return null;
         } catch (error) {
             console.error('Error fetching usage data:', error);
@@ -160,14 +160,14 @@ export function useSubscription() {
                 },
                 credentials: 'same-origin'
             });
-            
+
             if (syncResponse.ok) {
                 const syncData = await syncResponse.json();
                 if (syncData.success) {
                     console.log('Subscriptions synced successfully:', syncData.data);
                 }
             }
-            
+
             // Then try to refresh subscription status from Stripe
             const response = await fetch('/api/subscriptions/refresh', {
                 method: 'POST',
@@ -178,7 +178,7 @@ export function useSubscription() {
                 },
                 credentials: 'same-origin'
             });
-            
+
             if (response.ok) {
                 const data = await response.json();
                 if (data.success) {
@@ -238,12 +238,12 @@ export function useSubscription() {
                     } catch (e) {
                         console.error('Error refreshing user plan:', e);
                     }
-                    
+
                     // After successful refresh, stop here without page reload
                     return;
                 }
             }
-            
+
             // If we reach here without success, just keep current in-memory state
         } catch (error) {
             console.error('Error refreshing subscription data:', error);

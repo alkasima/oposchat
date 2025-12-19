@@ -244,6 +244,9 @@ Route::middleware(['auth', 'verified'])->prefix('api')->group(function () {
     
     // Audio transcription route
     Route::post('/transcribe-audio', [App\Http\Controllers\AudioTranscriptionController::class, 'transcribe']);
+
+    // Usage endpoint
+    Route::get('/usage', [App\Http\Controllers\ChatController::class, 'getUsage'])->name('usage.public');
 });
 
 // Admin routes

@@ -298,6 +298,11 @@ class User extends Authenticatable
             }
         }
 
+        // Check if there's a cached subscription_type directly on the user (fallback/sync)
+        if ($this->subscription_type && ($this->subscription_type !== 'free')) {
+             return $this->subscription_type;
+        }
+
         return 'free';
     }
 

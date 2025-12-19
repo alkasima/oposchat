@@ -810,7 +810,7 @@ const createNewChatIfNeeded = async () => {
             currentChat.value = { 
                 id: newChat.id.toString(), 
                 title: newChat.title,
-                course_id: newChat.course_id 
+                course_id: newChat.chat?.course_id || newChat.course_id || (currentCourse.value?.id) 
             };
             messages.value = [];
             
@@ -945,40 +945,19 @@ const handleCourseSelected = async (course: any) => {
         // Update existing chat with course
         currentChat.value.course_id = course?.id || null;
     } else if (course) {
-        // Create new chat with selected course
-        try {
-            const response = await fetch('/api/chats', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-                body: JSON.stringify({
-                    exam_type: course.slug || course.namespace || course.name,
-                    title: `${course.name} Chat`,
-                    course_id: course.id
-                })
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                currentChat.value = {
-                    id: data.chat.id.toString(),
-                    title: data.chat.title,
-                    course_id: data.chat.course_id
-                };
-                messages.value = [];
-            } else {
-                console.error('Failed to create exam chat');
-            }
-        } catch (error) {
-            console.error('Error creating exam chat:', error);
-        }
+        // Optimistic update: Just set the course locally. 
+        // The chat will be lazily created when the user sends the first message.
+        // verified via createNewChatIfNeeded() logic.
     }
     
     currentCourse.value = course ? { id: course.id, name: course.name } : null;
-    showCourseRequired.value = !currentChat.value?.course_id;
+    
+    // If we have a chat, check its course_id. If no chat, check our local selection.
+    if (currentChat.value) {
+        showCourseRequired.value = !currentChat.value.course_id;
+    } else {
+        showCourseRequired.value = !currentCourse.value;
+    }
     // Persist selection
     saveSelectedCourse();
     
