@@ -268,18 +268,35 @@ const deleteChat = async (chatId: string, event: Event) => {
     if (!confirm('Are you sure you want to delete this chat?')) {
         return;
     }
+
+    // Snapshot for potential rollback
+    const originalChats = [...chats.value];
+    const originalActiveChat = activeChat.value;
+    
+    // 1. Optimistic Update: Remove immediately from UI
+    // specific check: Create a new array reference to ensure reactivity triggers
+    chats.value = chats.value.filter(chat => String(chat.id) !== String(chatId));
+
+    // Clear selection if needed
+    if (activeChat.value === String(chatId)) {
+        activeChat.value = null;
+        emit('chatSelected', null);
+    }
     
     try {
+        // 2. Perform API request
         await chatApi.deleteChat(chatId);
-        chats.value = chats.value.filter(chat => chat.id.toString() !== chatId);
-        
-        // If deleted chat was active, clear selection
-        if (activeChat.value === chatId) {
-            activeChat.value = null;
-            emit('chatSelected', null);
-        }
     } catch (error) {
         console.error('Failed to delete chat:', error);
+        
+        // 3. Rollback on failure
+        chats.value = originalChats;
+        activeChat.value = originalActiveChat;
+        if (originalActiveChat === String(chatId)) {
+            emit('chatSelected', originalActiveChat);
+        }
+        
+        alert('Failed to delete chat. Please try again.');
     }
 };
 
