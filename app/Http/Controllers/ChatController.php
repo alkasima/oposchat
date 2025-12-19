@@ -116,12 +116,10 @@ class ChatController extends Controller
     public function index(): JsonResponse
     {
         $chats = Auth::user()->chats()
-            ->with(['latestMessage' => function ($query) {
-                $query->latest()->limit(1);
-            }])
+            ->with(['latestMessage'])
             ->get()
             ->map(function ($chat) {
-                $latestMessage = $chat->latestMessage->first();
+                $latestMessage = $chat->latestMessage; // Now accessed directly as a model, not a collection
 
                 // Ensure UTF-8 safe title/snippet to avoid JSON encoding errors
                 $rawTitle = $chat->title ?: 'New Chat';
@@ -206,11 +204,11 @@ class ChatController extends Controller
             abort(403);
         }
 
-        // Optimize: Limit to last 100 messages to improve load performance
-        // Most users don't need the full history of thousands of messages
+        // Optimize: Limit to last 30 messages to improve load performance critically
+        // 30 messages is enough for immediate context, user can scroll for more eventually
         $messages = $chat->messages()
             ->latest() // Order by created_at desc
-            ->limit(100)
+            ->limit(30)
             ->get()
             ->reverse() // Reverse to get chronological order (oldest first)
             ->values() // Reset keys
