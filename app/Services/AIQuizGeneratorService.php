@@ -253,7 +253,12 @@ class AIQuizGeneratorService
         $prompt .= "   - Hard: Complex scenarios, analysis, and synthesis of multiple syllabus topics\n";
         $prompt .= "10. Use clear, professional language appropriate for competitive exams\n";
         $prompt .= "11. AVOID repetition - each question should explore different aspects of the syllabus\n";
-        $prompt .= "12. Questions should feel specific to THIS course, not generic exam questions\n\n";
+        $prompt .= "12. Questions should feel specific to THIS course, not generic exam questions\n";
+        $prompt .= "13. NEGATIVE CONSTRAINTS (CRITICAL):\n";
+        $prompt .= "    - DO NOT use phrases like 'According to the text', 'Based on the syllabus', 'In topic X', or 'As seen in section 3'. Questions must simulate a real exam.\n";
+        $prompt .= "    - DO NOT reveal the answer within the question text itself (e.g., 'What type of wholemeal bread... A) Wholemeal bread').\n";
+        $prompt .= "    - DO NOT create questions where the answer is obvious from the options (distractors must be plausible).\n";
+        $prompt .= "    - DO NOT refer to specific document pages or chapter numbers. Treat the content as general knowledge the student is expected to have memorized.\n\n";
         
         $prompt .= "OUTPUT FORMAT (JSON array):\n";
         $prompt .= "[\n";
@@ -580,7 +585,31 @@ class AIQuizGeneratorService
         
         // Query 5: Laws/regulations/procedures (common in competitive exams)
         $queries[] = $course->name . ' laws regulations procedures requirements';
+
+        // NEW: Add randomization to force variety in retrieval
+        // This ensures we don't always get the exact same "top 30" chunks for every quiz
+        $randomTerms = [
+            'key points', 'summary', 'details', 'features', 'characteristics',
+            'functions', 'structures', 'types', 'classifications', 'methods',
+            'processes', 'rules', 'exceptions', 'examples', 'history',
+            'development', 'theory', 'practice', 'guidelines', 'standards'
+        ];
         
+        // Pick 2 random terms
+        $randomKeys = array_rand($randomTerms, 2);
+        // Ensure randomKeys is array
+        if (!is_array($randomKeys)) {
+            $randomKeys = [$randomKeys];
+        }
+        
+        foreach ($randomKeys as $key) {
+            $queries[] = $course->name . ' ' . $randomTerms[$key];
+        }
+        
+        // Add a query with a random letter to catch alphabetical topics
+        $alphabet = range('a', 'z');
+        $queries[] = $course->name . ' concepts starting with ' . $alphabet[array_rand($alphabet)];
+
         return $queries;
     }
     

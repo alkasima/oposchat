@@ -44,6 +44,27 @@ class EnhancedAIProviderService extends AIProviderService
             // Detect language of the current question
             $questionLanguage = $this->detectLanguage($lastUserMessage['content'] ?? '');
 
+            // STRICT SAFETY CHECK: If the question is not relevant to the syllabus, 
+            // return a canned response immediately. Do not even call the LLM.
+            // This prevents "hallucinations" or answering with external knowledge.
+            if (!$isRelevant) {
+                Log::info('EnhancedAIProviderService: STRICT MODE - Blocking irrelevant request', [
+                   'query' => $lastUserText,
+                   'language' => $questionLanguage
+                ]);
+
+                $refusalMessage = ($questionLanguage === 'spanish')
+                    ? "Lo siento, pero esta pregunta no parece estar relacionada con el temario subido. Solo puedo responder preguntas basándome explícitamente en el contenido de los documentos del curso. Por favor, reformula tu pregunta utilizando términos que aparezcan en el temario."
+                    : "I apologize, but this question does not appear to be related to the uploaded syllabus. I can only answer questions based explicitly on the course documents. Please rephrase your question using terms covered in the syllabus.";
+
+                return [
+                    'content' => $refusalMessage,
+                    'role' => 'assistant',
+                    'usage' => ['prompt_tokens' => 0, 'completion_tokens' => 0, 'total_tokens' => 0],
+                    'finish_reason' => 'stop'
+                ];
+            }
+
             // ALWAYS create our own system message - ignore any system_message from options
             $systemMessageContent = $this->createPedagogicalSystemMessage($contextData, $isRelevant, $lastUserText, $questionLanguage);
             
@@ -103,6 +124,31 @@ class EnhancedAIProviderService extends AIProviderService
             
             // Detect language of the current question
             $questionLanguage = $this->detectLanguage($lastUserMessage['content'] ?? '');
+
+            // STRICT SAFETY CHECK: If request is irrelevant, stream a refusal message immediately.
+            if (!$isRelevant) {
+                Log::info('EnhancedAIProviderService: STRICT MODE - Blocking irrelevant streaming request', [
+                   'query' => $lastUserText,
+                   'language' => $questionLanguage
+                ]);
+
+                $refusalMessage = ($questionLanguage === 'spanish')
+                    ? "Lo siento, pero esta pregunta no parece estar relacionada con el temario subido. Solo puedo responder preguntas basándome explícitamente en el contenido de los documentos del curso."
+                    : "I apologize, but this question does not appear to be related to the uploaded syllabus. I can only answer questions based explicitly on the course documents.";
+
+                // Stream the refusal word by word to simulate AI feeling
+                $words = explode(' ', $refusalMessage);
+                foreach ($words as $word) {
+                    $callback($word . ' ');
+                    usleep(50000); // Small delay for natural feel
+                }
+                
+                return [
+                    'content' => $refusalMessage,
+                    'role' => 'assistant',
+                    'usage' => ['total_tokens' => 0]
+                ];
+            }
 
             // ALWAYS create our own system message - ignore any system_message from options
             $systemMessageContent = $this->createPedagogicalSystemMessage($contextData, $isRelevant, $lastUserText, $questionLanguage);

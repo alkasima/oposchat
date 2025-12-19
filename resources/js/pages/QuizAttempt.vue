@@ -124,13 +124,20 @@ const nextQuestion = () => {
 
 // Toggle bookmark
 const toggleBookmark = async () => {
+  const targetAnswer = currentAnswer.value; // Capture reference to prevent race condition on navigation
+  const previousState = targetAnswer.is_bookmarked;
+  
+  // Optimistic update
+  targetAnswer.is_bookmarked = !previousState;
+  
   try {
     await axios.post(`/api/quiz-attempts/${props.attempt.id}/bookmark`, {
-      question_id: currentQuestion.value.id
+      question_id: targetAnswer.question.id
     });
-    
-    currentAnswer.value.is_bookmarked = !currentAnswer.value.is_bookmarked;
+    // Success - state already updated
   } catch (error) {
+    // Revert on error
+    targetAnswer.is_bookmarked = previousState;
     console.error('Failed to toggle bookmark:', error);
   }
 };
