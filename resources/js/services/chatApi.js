@@ -5,9 +5,9 @@ class ChatApiService {
     /**
      * Get all chats for the current user
      */
-    async getChats() {
+    async getChats(page = 1) {
         try {
-            const response = await axios.get('/api/chats');
+            const response = await axios.get(`/api/chats?page=${page}`);
             return response.data;
         } catch (error) {
             console.error('Error fetching chats:', error);

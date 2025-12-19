@@ -113,13 +113,14 @@ class ChatController extends Controller
     /**
      * Get user's chats for sidebar
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $chats = Auth::user()->chats()
             ->with(['latestMessage'])
-            ->get()
-            ->map(function ($chat) {
-                $latestMessage = $chat->latestMessage; // Now accessed directly as a model, not a collection
+            ->orderBy('updated_at', 'desc') // Ensure sorted by most recent activity
+            ->paginate(10)
+            ->through(function ($chat) {
+                $latestMessage = $chat->latestMessage;
 
                 // Ensure UTF-8 safe title/snippet to avoid JSON encoding errors
                 $rawTitle = $chat->title ?: 'New Chat';

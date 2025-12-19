@@ -168,21 +168,67 @@ const logout = () => {
     });
 };
 
-// Load chats from API
-const loadChats = async () => {
+// Pagination state
+const pageNum = ref(1);
+const hasMore = ref(true);
+const isLoadingMore = ref(false);
+
+// Load chats from API (handles both initial load and pagination)
+const loadChats = async (reset = false) => {
+    if (reset) {
+        pageNum.value = 1;
+        hasMore.value = true;
+        chats.value = [];
+    }
+
+    if (!hasMore.value && !reset) return;
+
     try {
-        isLoading.value = true;
-        const chatData = await chatApi.getChats();
-        chats.value = chatData.map(chat => ({
+        if (pageNum.value === 1) {
+            isLoading.value = true;
+        } else {
+            isLoadingMore.value = true;
+        }
+
+        const response = await chatApi.getChats(pageNum.value);
+        
+        // Handle paginated response structure
+        const newChats = response.data.map(chat => ({
             ...chat,
             isActive: chat.id.toString() === props.currentChatId
         }));
-        // Update activeChat to match currentChatId
-        activeChat.value = props.currentChatId;
+
+        if (reset) {
+            chats.value = newChats;
+        } else {
+            chats.value = [...chats.value, ...newChats];
+        }
+
+        // Check if there are more pages
+        hasMore.value = !!response.next_page_url;
+        if (hasMore.value) {
+            pageNum.value++;
+        }
+        
+        // Update activeChat to match currentChatId if just loaded
+        if (reset && props.currentChatId) {
+            activeChat.value = props.currentChatId;
+        }
     } catch (error) {
         console.error('Failed to load chats:', error);
     } finally {
         isLoading.value = false;
+        isLoadingMore.value = false;
+    }
+};
+
+// Handle scroll for infinite loading
+const handleScroll = (event: Event) => {
+    const target = event.target as HTMLElement;
+    const bottom = Math.abs(target.scrollHeight - target.clientHeight - target.scrollTop) < 50;
+    
+    if (bottom && hasMore.value && !isLoadingMore.value && !isLoading.value) {
+        loadChats(false);
     }
 };
 
@@ -281,10 +327,20 @@ const handleWaitClick = () => {
 // Watch for currentChatId changes to update active state
 watch(() => props.currentChatId, (newChatId) => {
     activeChat.value = newChatId;
-    // Update all chats' active state
-    chats.value.forEach(chat => {
-        chat.isActive = chat.id.toString() === newChatId;
-    });
+    
+    // Check if the new chat exists in our list
+    const exists = chats.value.some(chat => chat.id.toString() === newChatId);
+    
+    // If we have an ID but it's not in our list, it might be a newly created chat
+    // Reload the list to fetch it (it should be at the top)
+    if (newChatId && !exists && !isLoading.value) {
+        loadChats(true);
+    } else {
+        // Just update active state locally
+        chats.value.forEach(chat => {
+            chat.isActive = chat.id.toString() === newChatId;
+        });
+    }
 }, { immediate: true });
 
 // Theme management
@@ -304,7 +360,7 @@ const handleClickOutside = (event: MouseEvent) => {
 
 // Load chats when component mounts
 onMounted(async () => {
-    await loadChats();
+    await loadChats(true);
     await fetchSubscriptionStatus();
     document.addEventListener('click', handleClickOutside);
 });
@@ -384,8 +440,8 @@ onBeforeUnmount(() => {
 
 
         <!-- Chat History -->
-        <div class="flex-1 overflow-y-auto p-2 scrollbar-thin">
-            <!-- Loading State -->
+        <div class="flex-1 overflow-y-auto p-2 scrollbar-thin" @scroll="handleScroll">
+            <!-- Loading State (Initial) -->
             <div v-if="isLoading" class="text-center py-8">
                 <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500 mx-auto"></div>
                 <p class="text-sm mt-2" :class="isDark ? 'text-gray-400' : 'text-gray-600'">Loading chats...</p>
@@ -454,6 +510,11 @@ onBeforeUnmount(() => {
                             </Button>
                         </div>
                     </div>
+                </div>
+
+                <!-- Load More Spinner -->
+                <div v-if="isLoadingMore" class="text-center py-2">
+                    <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-500 mx-auto"></div>
                 </div>
             </div>
 
