@@ -116,7 +116,6 @@ class AIProviderService
         $payload = [
             'model' => $this->config['model'],
             'messages' => $messages,
-            'temperature' => $options['temperature'] ?? 0.7,
             'max_completion_tokens' => $options['max_tokens'] ?? 1000,
             'stream' => true,
         ];
@@ -284,7 +283,6 @@ class AIProviderService
         $payload = [
             'model' => $this->config['model'],
             'messages' => $messages,
-            'temperature' => $options['temperature'] ?? 0.7,
             'max_completion_tokens' => $options['max_tokens'] ?? 1000,
             'stream' => false,
         ];
