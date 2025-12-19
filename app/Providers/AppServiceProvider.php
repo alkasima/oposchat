@@ -13,6 +13,9 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Register RAG services
+        // Register RAG services
+        $this->app->singleton(\App\Services\ChromaService::class);
+        $this->app->singleton(\App\Services\PineconeService::class); // Register Pinecone too just in case
         $this->app->singleton(\App\Services\VectorStoreService::class);
         $this->app->singleton(\App\Services\DocumentProcessingService::class);
     }
