@@ -317,6 +317,9 @@ const handleChatSelected = async (chatId: string | null) => {
         return;
     }
 
+    // Stop any previous streaming to prevent state corruption
+    streamingChatService.stopAllStreaming();
+
     try {
         isLoading.value = true;
         const chatData = await chatApi.getChat(chatId);
@@ -325,7 +328,20 @@ const handleChatSelected = async (chatId: string | null) => {
             title: chatData.chat.title,
             course_id: chatData.chat.course_id
         };
-        messages.value = chatData.messages;
+        
+        // Fix: Ensure messages are sorted chronologically (Oldest -> Newest)
+        // Backend might return them in reverse or mixed order
+        messages.value = chatData.messages.sort((a, b) => {
+            // Try numeric sort first (assuming auto-increment IDs)
+            const idA = parseInt(a.id);
+            const idB = parseInt(b.id);
+            if (!isNaN(idA) && !isNaN(idB)) {
+                return idA - idB;
+            }
+            // Fallback for non-numeric IDs (though less reliable for chronology)
+            return a.id.localeCompare(b.id);
+        });
+
         // Try to hydrate course selection from storage
         loadSelectedCourse(currentChat.value.id.toString());
         showCourseRequired.value = !currentChat.value.course_id;
@@ -601,15 +617,17 @@ const sendMessage = async () => {
             // onError callback
             (error) => {
                 console.error('Streaming error:', error);
+                isTyping.value = false;
                 
-                // Check if this is a usage limit error
+                // Find and update/remove the failing message
+                const messageIndex = messages.value.findIndex(m => m.id === assistantMessage.id);
+                if (messageIndex !== -1) {
+                    messages.value[messageIndex].isStreaming = false;
+                    messages.value[messageIndex].content = 'Sorry, there was an error processing your request. Please try again.';
+                }
+                
+                // Show subscription prompt if it's a usage limit error
                 if (error && typeof error === 'object' && error.type === 'USAGE_LIMIT_EXCEEDED') {
-                    // Show subscription prompt for usage limit
-                    const chatUsage = error.usage?.chat_messages;
-                    const planName = currentPlanName.value;
-                    
-                    let title = 'Usage Limit Reached';
-                    let message = error.message || 'You\'ve reached your usage limit. Please upgrade your plan for more access.';
                     
                     subscriptionPromptData.value = {
                         title,
