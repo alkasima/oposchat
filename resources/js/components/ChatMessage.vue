@@ -655,15 +655,36 @@ const renderMermaidDiagrams = async () => {
         console.log(`✅ Rendered ${mermaidDivs.length} Mermaid diagram(s)`);
     } catch (error) {
         console.error('❌ Error rendering Mermaid diagrams:', error);
-        // Show error message to user
+        
+        // Show detailed error message to user with the problematic code
         mermaidDivs.forEach(mermaidDiv => {
             const container = mermaidDiv.closest('.mermaid-container') as HTMLElement;
             if (container) {
                 container.style.minHeight = '';
                 mermaidDiv.style.minHeight = '';
                 const loadingDiv = container.querySelector('.mermaid-loading') as HTMLElement;
+                
+                // Get the diagram code that failed
+                const diagramCode = mermaidDiv.textContent || '';
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                
                 if (loadingDiv) {
-                    loadingDiv.innerHTML = '<span class="text-sm text-red-500 dark:text-red-400">Error rendering diagram</span>';
+                    loadingDiv.innerHTML = `
+                        <div class="text-sm space-y-2">
+                            <div class="text-red-500 dark:text-red-400 font-semibold">
+                                ⚠️ Diagram Syntax Error
+                            </div>
+                            <div class="text-gray-600 dark:text-gray-400">
+                                The AI generated an invalid diagram. Error: ${errorMessage}
+                            </div>
+                            <details class="mt-2">
+                                <summary class="cursor-pointer text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                                    View diagram code
+                                </summary>
+                                <pre class="mt-2 p-2 bg-gray-100 dark:bg-gray-900 rounded text-xs overflow-x-auto">${diagramCode}</pre>
+                            </details>
+                        </div>
+                    `;
                     loadingDiv.style.display = 'block';
                 }
             }
