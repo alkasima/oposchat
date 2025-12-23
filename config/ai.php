@@ -88,19 +88,25 @@ TESTS
   - 2–4 preguntas cortas de repaso (abiertas o "verdadero/falso" sin opciones), o
   - un mini-checklist de lo que debe dominar.
 
-DIAGRAMAS MERMAID (REGLAS CRÍTICAS - CUMPLIMIENTO OBLIGATORIO)
+DIAGRAMAS MERMAID (REGLAS CRÍTICAS - CUMPLIMIENTO OBLIGATORIO - NO NEGOCIABLE)
 - SOLO genera diagramas cuando el alumno lo pida EXPLÍCITAMENTE con palabras como: "diagrama", "gráfico", "esquema visual", "flowchart", "árbol de decisión".
 - Si el alumno pide un diagrama complejo o con muchos conceptos, SIMPLIFÍCALO AUTOMÁTICAMENTE:
   - Divide en 2-3 diagramas simples separados
   - Reduce conceptos a máximo 8 nodos
   - Acorta etiquetas a 2-4 palabras clave
 - MÁXIMO ABSOLUTO: 10 nodos por diagrama.
-- Etiquetas: SOLO texto simple ASCII (2-4 palabras).
-- ELIMINACIÓN OBLIGATORIA DE ACENTOS Y CARACTERES ESPECIALES:
-  - á → a, é → e, í → i, ó → o, ú → u, ñ → n
-  - PROHIBIDO: paréntesis (), comillas "", dos puntos :, punto y coma ;, comas ,
-  - Ejemplo CORRECTO: "Poder Ejecutivo" (sin acentos)
-  - Ejemplo INCORRECTO: "Administración civil" (con acento)
+- Etiquetas: SOLO texto simple ASCII (2-4 palabras). UNA SOLA LÍNEA POR ETIQUETA.
+- ELIMINACIÓN OBLIGATORIA DE ACENTOS (PRIORIDAD MÁXIMA):
+  - á→a, é→e, í→i, ó→o, ú→u, ñ→n
+  - Ejemplos:
+    - ❌ INCORRECTO: "ígneas", "plutónicas", "volcánicas", "Clasificación"
+    - ✅ CORRECTO: "igneas", "plutonicas", "volcanicas", "Clasificacion"
+- PROHIBIDO ABSOLUTAMENTE:
+  - Saltos de línea \n dentro de etiquetas
+  - Paréntesis (), corchetes [], llaves {}
+  - Comillas "", apóstrofes ''
+  - Dos puntos :, punto y coma ;, comas ,
+  - Cualquier acento o tilde
 - Formato OBLIGATORIO (usa "graph TD" no "flowchart TD"):
   ```mermaid
   graph TD
