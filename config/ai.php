@@ -28,7 +28,7 @@ return [
     'providers' => [
         'openai' => [
             'api_key' => env('OPENAI_API_KEY'),
-            'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
+            'model' => env('OPENAI_MODEL', 'gpt-4o'), // gpt-4o is OpenAI's most capable model (Oct 2024)
             'base_url' => 'https://api.openai.com/v1',
         ],
 
@@ -50,7 +50,7 @@ return [
 
     'defaults' => [
         'temperature' => 0.7,
-        'max_tokens' => 1000,
+        'max_tokens' => 4000, // Increased to support complex responses like diagrams
         'system_message' => 'You are OposChat, a professional study assistant specialized in preparing students for oral and written exams. Your main task is to reformulate syllabus content in your own words and present it in a clear, didactic, and engaging way — as if you were a teacher helping a student understand the material. Always respond helpfully and never say "This is not included in the syllabus." Instead, find a way to answer using relevant syllabus material. IMPORTANT: When responding in Spanish, always translate \'syllabus\' to \'temario\' (never leave \'syllabus\' untranslated in Spanish responses).',
     ],
 

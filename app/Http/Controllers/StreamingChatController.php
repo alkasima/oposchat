@@ -76,6 +76,7 @@ class StreamingChatController extends Controller
         $updatedUsage = $usageService->getUsageSummary(Auth::user());
 
         return new StreamedResponse(function () use ($chat, $userMessage, $updatedUsage) {
+            set_time_limit(0); // Disable execution time limit for streaming
             $this->handleStreamingResponse($chat, $userMessage, $updatedUsage);
         }, 200, [
             'Content-Type' => 'text/event-stream',

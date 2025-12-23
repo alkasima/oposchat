@@ -10,8 +10,8 @@ class AIProviderService
 {
     // Configuration constants for performance optimization
     private const MAX_CONTEXT_CHARS = 8000; // Approximate max characters for context
-    private const MAX_STREAMING_TIMEOUT = 90; // Reduced from 600s to 90s
-    private const MAX_STREAMING_TOKENS = 2000; // Max tokens to stream before aborting
+    private const MAX_STREAMING_TIMEOUT = 300; // Increased to 300s (5min) for complex tasks
+    private const MAX_STREAMING_TOKENS = 4000; // Increased max tokens
     
     private string $provider;
     private array $config;
@@ -116,7 +116,7 @@ class AIProviderService
         $payload = [
             'model' => $this->config['model'],
             'messages' => $messages,
-            'max_completion_tokens' => $options['max_tokens'] ?? 1000,
+            'max_completion_tokens' => $options['max_tokens'] ?? 4000, // Updated to match config default
             'stream' => true,
         ];
 
@@ -132,7 +132,7 @@ class AIProviderService
                 'Accept' => 'text/event-stream',
             ])->timeout(self::MAX_STREAMING_TIMEOUT)->withOptions([
                 'stream' => true,
-                'read_timeout' => 60,
+                'read_timeout' => 300, // Matching MAX_STREAMING_TIMEOUT
             ])->post('https://api.openai.com/v1/chat/completions', $payload);
 
             if (!$response->successful()) {
@@ -283,7 +283,7 @@ class AIProviderService
         $payload = [
             'model' => $this->config['model'],
             'messages' => $messages,
-            'max_completion_tokens' => $options['max_tokens'] ?? 1000,
+            'max_completion_tokens' => $options['max_tokens'] ?? 4000, // Updated to match config default
             'stream' => false,
         ];
 
@@ -382,7 +382,7 @@ class AIProviderService
             'contents' => $contents,
             'generationConfig' => [
                 'temperature' => $options['temperature'] ?? 0.7,
-                'maxOutputTokens' => $options['max_tokens'] ?? 1000,
+                'maxOutputTokens' => $options['max_tokens'] ?? 4000, // Updated to match config default
             ]
         ];
 
