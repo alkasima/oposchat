@@ -567,6 +567,41 @@ const renderMermaidDiagrams = async () => {
     
     if (mermaidDivs.length === 0) return;
     
+    // DEBUG: Print all mermaid diagram codes for debugging
+    console.log('🔍 DEBUG: Found', mermaidDivs.length, 'Mermaid diagram(s) to render');
+    mermaidDivs.forEach((div, index) => {
+        const code = div.textContent || '';
+        console.log(`📊 Diagram ${index + 1} code:`);
+        console.log('─'.repeat(60));
+        console.log(code);
+        console.log('─'.repeat(60));
+        
+        // Check for common syntax issues
+        const issues = [];
+        if (code.includes('á') || code.includes('é') || code.includes('í') || code.includes('ó') || code.includes('ú') || code.includes('ñ')) {
+            issues.push('⚠️ Contains Spanish accents (á,é,í,ó,ú,ñ)');
+        }
+        if (code.includes('(') || code.includes(')')) {
+            issues.push('⚠️ Contains parentheses ()');
+        }
+        if (code.includes(':') && !code.includes('://')) {
+            issues.push('⚠️ Contains colons :');
+        }
+        if (code.includes(',')) {
+            issues.push('⚠️ Contains commas ,');
+        }
+        if (code.split('\n').length > 15) {
+            issues.push('⚠️ More than 15 lines (likely too complex)');
+        }
+        
+        if (issues.length > 0) {
+            console.log('🚨 POTENTIAL ISSUES DETECTED:');
+            issues.forEach(issue => console.log('  ' + issue));
+        } else {
+            console.log('✅ No obvious syntax issues detected');
+        }
+    });
+    
     // Emit event to notify ChatLayout that Mermaid is rendering
     window.dispatchEvent(new CustomEvent('mermaid-rendering-start'));
     
