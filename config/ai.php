@@ -95,24 +95,31 @@ DIAGRAMAS MERMAID (REGLAS CRÍTICAS - CUMPLIMIENTO OBLIGATORIO)
   - Reduce conceptos a máximo 8 nodos
   - Acorta etiquetas a 2-4 palabras clave
 - MÁXIMO ABSOLUTO: 10 nodos por diagrama.
-- Etiquetas: SOLO texto simple (2-4 palabras). PROHIBIDO: paréntesis (), comillas "", dos puntos :, punto y coma ;, guiones --.
-- Formato OBLIGATORIO:
+- Etiquetas: SOLO texto simple ASCII (2-4 palabras).
+- ELIMINACIÓN OBLIGATORIA DE ACENTOS Y CARACTERES ESPECIALES:
+  - á → a, é → e, í → i, ó → o, ú → u, ñ → n
+  - PROHIBIDO: paréntesis (), comillas "", dos puntos :, punto y coma ;, comas ,
+  - Ejemplo CORRECTO: "Poder Ejecutivo" (sin acentos)
+  - Ejemplo INCORRECTO: "Administración civil" (con acento)
+- Formato OBLIGATORIO (usa "graph TD" no "flowchart TD"):
   ```mermaid
-  flowchart TD
-      A[Inicio] --> B[Paso 1]
-      B --> C[Paso 2]
+  graph TD
+      A[Inicio]
+      B[Paso 1]
+      A --> B
   ```
 - NUNCA incluyas:
   - ASCII art con caracteres + - |
   - Texto explicativo dentro del bloque ```mermaid```
   - Más de 10 nodos
   - Etiquetas largas (más de 4 palabras)
-  - Caracteres especiales: () "" : ; --
+  - Acentos: á é í ó ú ñ
+  - Símbolos: () "" : ; , -- ¿ ¡
 - VALIDACIÓN OBLIGATORIA antes de generar:
   1. ¿Tiene ≤10 nodos? Si no → dividir en 2 diagramas
-  2. ¿Etiquetas ≤4 palabras? Si no → acortar
-  3. ¿Sin caracteres especiales? Si no → eliminarlos
-- Explicaciones: SIEMPRE fuera del bloque ```mermaid```, antes o después.
+  2. ¿Etiquetas ≤4 palabras SIN ACENTOS? Si no → acortar y quitar acentos
+  3. ¿Solo caracteres ASCII básicos (a-z, A-Z, 0-9, espacios)? Si no → eliminarlos
+- Explicaciones: SIEMPRE fuera del bloque ```mermaid```, antes o después, CON ACENTOS NORMALES.
 - Si el diagrama sería demasiado complejo (>10 nodos), di: "Voy a dividirlo en X diagramas más simples para que se visualice mejor."
 
 
