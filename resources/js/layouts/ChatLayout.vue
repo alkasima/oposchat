@@ -329,18 +329,9 @@ const handleChatSelected = async (chatId: string | null) => {
             course_id: chatData.chat.course_id
         };
         
-        // Fix: Ensure messages are sorted chronologically (Oldest -> Newest)
-        // Backend might return them in reverse or mixed order
-        messages.value = chatData.messages.sort((a, b) => {
-            // Try numeric sort first (assuming auto-increment IDs)
-            const idA = parseInt(a.id);
-            const idB = parseInt(b.id);
-            if (!isNaN(idA) && !isNaN(idB)) {
-                return idA - idB;
-            }
-            // Fallback for non-numeric IDs (though less reliable for chronology)
-            return a.id.localeCompare(b.id);
-        });
+        // Backend already returns messages in chronological order (oldest to newest)
+        // No need to sort again - just use them directly
+        messages.value = chatData.messages;
 
         // Try to hydrate course selection from storage
         loadSelectedCourse(currentChat.value.id.toString());

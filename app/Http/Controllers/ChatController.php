@@ -205,11 +205,11 @@ class ChatController extends Controller
             abort(403);
         }
 
-        // Optimize: Limit to last 30 messages to improve load performance critically
-        // 30 messages is enough for immediate context, user can scroll for more eventually
+        // Optimize: Limit to last 10 messages to improve load performance
+        // 10 messages is enough for immediate context
         $messages = $chat->messages()
             ->latest() // Order by created_at desc
-            ->limit(30)
+            ->limit(10) // Only load last 10 messages
             ->get()
             ->reverse() // Reverse to get chronological order (oldest first)
             ->values() // Reset keys
