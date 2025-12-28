@@ -473,15 +473,34 @@ const sendMessage = async () => {
     // If no current chat, try to create one first
     if (!currentChat.value) {
         const chatCreated = await createNewChatIfNeeded();
-        if (!chatCreated) return; // Chat creation failed or was blocked
+        if (!chatCreated) {
+            // Don't clear the message - let user try again
+            return;
+        }
     }
 
     // Require an exam selection before chatting
-    if (!currentChat.value.course_id) {
+    if (!currentChat.value.course_id && !currentCourse.value) {
         showCourseRequired.value = true;
         // Nudge user to the selector
         focusCourseSelector();
+        // Show a toast notification
+        alert('⚠️ Please select an exam/course before sending your message.');
         return;
+    }
+    
+    // Auto-update chat with course if not set but course is selected
+    if (!currentChat.value.course_id && currentCourse.value) {
+        try {
+            await chatApi.updateChat(currentChat.value.id, {
+                course_id: currentCourse.value.id
+            });
+            currentChat.value.course_id = currentCourse.value.id;
+        } catch (error) {
+            console.error('Failed to update chat course:', error);
+            alert('⚠️ Please select an exam/course before sending your message.');
+            return;
+        }
     }
 
     // Check if user has exceeded usage limits
@@ -841,7 +860,9 @@ const createNewChatIfNeeded = async () => {
             return true;
         } catch (error) {
             console.error('Error creating new chat:', error);
-            throw error; // Re-throw to handle in the calling function
+            // Show user-friendly error instead of silent failure
+            alert('Failed to create new chat. Please try again.');
+            return false; // Return false instead of throwing
         }
     }
     return true;

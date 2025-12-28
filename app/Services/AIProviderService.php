@@ -698,7 +698,7 @@ class AIProviderService
             }
 
             if ($shouldForceMermaid) {
-                $systemMessageContent .= "\n\nWHEN REQUESTING DIAGRAM-LIKE OUTPUT: If the user asks for any of these: outline, sketch, concept map, flowchart, chart, graph/graphic, or the Spanish terms (esquema, croquis, mapa conceptual, mapa mental, diagrama, gráfica), you MUST produce the output as a Mermaid diagram enclosed in a fenced code block with the language 'mermaid' (```mermaid ... ```). After the code block, include a brief explanation in plain paragraphs describing why each connection exists and how parts relate.";
+                $systemMessageContent .= "\n\nWHEN REQUESTING DIAGRAM-LIKE OUTPUT: If the user asks for any of these: outline, sketch, concept map, flowchart, chart, graph/graphic, or the Spanish terms (esquema, croquis, mapa conceptual, mapa mental, diagrama, gráfica), you MUST produce the output as a Mermaid diagram enclosed in a fenced code block with the language 'mermaid' (```mermaid ... ```). CRITICAL SYNTAX RULES: Use 'graph TD' format, remove ALL accents from labels (á→a, é→e, í→i, ó→o, ú→u, ñ→n), remove parentheses/colons/commas from labels, add spaces after closing brackets before next node (] A not ]A), add spaces before and after arrows (A --> B not A-->B), maximum 10 nodes, maximum 4 words per label, no newlines in labels. After the code block, include a brief explanation in plain paragraphs describing why each connection exists and how parts relate.";
             }
 
             // Add context to system message if available and relevant (with truncation)

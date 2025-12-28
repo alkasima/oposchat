@@ -434,11 +434,44 @@ const sanitizeMermaidCode = (code: string): string => {
     // This handles cases where malformed arrows appear between nodes
     sanitized = sanitized.replace(/([A-Za-z0-9_]+)\s*-->(?:->)+(?:\s*->)*\s*([A-Za-z0-9_\[\(\)\{\|])/g, '$1 --> $2');
     
+    // Fix concatenated node definitions - critical fix for patterns like ]R -- >
+    // When closing bracket/paren/brace is immediately followed by node identifier, add space
+    // This handles: ]R, )R, }R patterns
+    sanitized = sanitized.replace(/([\]\)\}])([A-Za-z0-9_])/g, '$1 $2');
+    
+    // Fix critical pattern: ] Ref --> or ] Ref --> R
+    // This pattern is invalid in Mermaid - you can't have a node identifier right after closing bracket
+    // The pattern ] Ref --> R should become: ] --> Ref --> R (connecting through Ref)
+    // OR if Ref is meant to be a new node definition, it should be on a new line
+    // We'll convert it to: ] --> Ref --> R (assuming Ref is an intermediate node)
+    sanitized = sanitized.replace(/([\]\)\}])\s+([A-Za-z0-9_]+)\s*-->\s*([A-Za-z0-9_\[\(\)\{])/g, '$1 --> $2 --> $3');
+    
+    // Also handle cases where there's a node identifier after closing bracket without arrow
+    // e.g., ] Ref (standalone) - this is invalid, convert to ] --> Ref
+    sanitized = sanitized.replace(/([\]\)\}])\s+([A-Za-z0-9_]+)(\s|$)(?!\s*-->)/g, '$1 --> $2$3');
+    
+    // Fix malformed arrows with spaces: -- > should become -->
+    sanitized = sanitized.replace(/--\s+>/g, '-->');
+    
+    // Fix patterns where we have node identifier followed by malformed arrow
+    // e.g., R -- > should become R -->
+    sanitized = sanitized.replace(/([A-Za-z0-9_]+)\s*--\s*>/g, '$1 -->');
+    
     // Normalize spacing around arrows (but preserve labels on edges)
     // Only normalize if there's no label (no | characters nearby)
     sanitized = sanitized.replace(/([A-Za-z0-9_\]\)\}])\s*-->\s*([A-Za-z0-9_\[\(\)\{])/g, '$1 --> $2');
     sanitized = sanitized.replace(/([A-Za-z0-9_\]\)\}])\s*---\s*([A-Za-z0-9_\[\(\)\{])/g, '$1 --- $2');
     sanitized = sanitized.replace(/([A-Za-z0-9_\]\)\}])\s*==>\s*([A-Za-z0-9_\[\(\)\{])/g, '$1 ==> $2');
+    
+    // Clean up any double spaces that might have been created (but preserve newlines)
+    sanitized = sanitized.replace(/[ \t]{2,}/g, ' ');
+    
+    // Normalize line endings - ensure each line is properly formatted
+    const lines = sanitized.split('\n');
+    sanitized = lines.map(line => {
+        // Trim trailing whitespace but keep leading for indentation if needed
+        return line.trimEnd();
+    }).join('\n');
     
     return sanitized;
 };
