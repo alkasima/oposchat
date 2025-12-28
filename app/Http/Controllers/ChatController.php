@@ -115,45 +115,52 @@ class ChatController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $chats = Auth::user()->chats()
-            ->with(['latestMessage'])
-            ->orderBy('updated_at', 'desc')
-            ->paginate(10)
-            ->through(function ($chat) {
-                $latestMessage = $chat->latestMessage;
+        $userId = Auth::id();
+        $page = $request->get('page', 1);
+        $cacheKey = "user:{$userId}:chats:page:{$page}";
+        
+        // Cache chat list for 2 minutes to improve sidebar performance
+        $chats = Cache::remember($cacheKey, 120, function() {
+            return Auth::user()->chats()
+                ->with(['latestMessage'])
+                ->orderBy('updated_at', 'desc')
+                ->paginate(10)
+                ->through(function ($chat) {
+                    $latestMessage = $chat->latestMessage;
 
-                // Ensure UTF-8 safe title/snippet to avoid JSON encoding errors
-                $rawTitle = $chat->title ?: 'New Chat';
-                $safeTitle = is_string($rawTitle)
-                    ? @iconv('UTF-8', 'UTF-8//IGNORE', $rawTitle)
-                    : 'New Chat';
+                    // Ensure UTF-8 safe title/snippet to avoid JSON encoding errors
+                    $rawTitle = $chat->title ?: 'New Chat';
+                    $safeTitle = is_string($rawTitle)
+                        ? @iconv('UTF-8', 'UTF-8//IGNORE', $rawTitle)
+                        : 'New Chat';
 
-                $snippet = null;
-                if ($latestMessage && isset($latestMessage->content)) {
-                    $content = (string) $latestMessage->content;
-                    $content = @iconv('UTF-8', 'UTF-8//IGNORE', $content);
-                    $snippet = mb_substr($content, 0, 50, 'UTF-8');
-                    if (mb_strlen($content, 'UTF-8') > 50) {
-                        $snippet .= '...';
+                    $snippet = null;
+                    if ($latestMessage && isset($latestMessage->content)) {
+                        $content = (string) $latestMessage->content;
+                        $content = @iconv('UTF-8', 'UTF-8//IGNORE', $content);
+                        $snippet = mb_substr($content, 0, 50, 'UTF-8');
+                        if (mb_strlen($content, 'UTF-8') > 50) {
+                            $snippet .= '...';
+                        }
                     }
-                }
 
-                // Prefer explicit last_message_at; fallback to latest message time
-                $timestamp = null;
-                if ($chat->last_message_at) {
-                    $timestamp = $chat->last_message_at->diffForHumans();
-                } elseif ($latestMessage && $latestMessage->created_at) {
-                    $timestamp = $latestMessage->created_at->diffForHumans();
-                }
+                    // Prefer explicit last_message_at; fallback to latest message time
+                    $timestamp = null;
+                    if ($chat->last_message_at) {
+                        $timestamp = $chat->last_message_at->diffForHumans();
+                    } elseif ($latestMessage && $latestMessage->created_at) {
+                        $timestamp = $latestMessage->created_at->diffForHumans();
+                    }
 
-                return [
-                    'id' => $chat->id,
-                    'title' => $safeTitle,
-                    'course_id' => $chat->course_id,
-                    'lastMessage' => $snippet,
-                    'timestamp' => $timestamp,
-                ];
-            });
+                    return [
+                        'id' => $chat->id,
+                        'title' => $safeTitle,
+                        'course_id' => $chat->course_id,
+                        'lastMessage' => $snippet,
+                        'timestamp' => $timestamp,
+                    ];
+                });
+        });
 
         return response()->json($chats);
     }
@@ -178,21 +185,17 @@ class ChatController extends Controller
             'course_id' => $validated['course_id'] ?? null,
             'last_message_at' => now(),
         ]);
+        
+        // Invalidate chat list cache so sidebar shows new chat
+        Cache::forget("user:" . Auth::id() . ":chats:page:1");
 
         // Usage tracking is handled by middleware
 
         return response()->json([
-            'chat' => [
-                'id' => $chat->id,
-                'title' => $chat->title,
-                'exam_type' => $chat->exam_type,
-                'course_id' => $chat->course_id,
-            ],
             'id' => $chat->id,
             'title' => $chat->title,
-            'lastMessage' => null,
-            'timestamp' => 'now',
-        ]);
+            'chat' => $chat, // Include full chat object for compatibility
+        ], 201);
     }
 
     /**
@@ -205,22 +208,25 @@ class ChatController extends Controller
             abort(403);
         }
 
-        // Optimize: Limit to last 10 messages to improve load performance
-        // 10 messages is enough for immediate context
-        $messages = $chat->messages()
-            ->latest() // Order by created_at desc
-            ->limit(10) // Only load last 10 messages
-            ->get()
-            ->reverse() // Reverse to get chronological order (oldest first)
-            ->values() // Reset keys
-            ->map(function ($message) {
-                return [
-                    'id' => $message->id,
-                    'content' => $message->content,
-                    'role' => $message->role,
-                    'timestamp' => $message->getFormattedTimeAttribute(),
-                ];
-            });
+        // Cache messages for 5 minutes to dramatically improve performance
+        $cacheKey = "chat:{$chat->id}:messages";
+        
+        $messages = Cache::remember($cacheKey, 300, function() use ($chat) {
+            return $chat->messages()
+                ->latest() // Order by created_at desc
+                ->limit(10) // Only load last 10 messages
+                ->get()
+                ->reverse() // Reverse to get chronological order (oldest first)
+                ->values() // Reset keys
+                ->map(function ($message) {
+                    return [
+                        'id' => $message->id,
+                        'content' => $message->content,
+                        'role' => $message->role,
+                        'timestamp' => $message->getFormattedTimeAttribute(),
+                    ];
+                });
+        });
 
         return response()->json([
             'chat' => [
@@ -273,6 +279,9 @@ class ChatController extends Controller
                 'role' => 'user',
                 'content' => $request->message,
             ]);
+            
+            // Invalidate message cache since new message was added
+            Cache::forget("chat:{$chat->id}:messages");
 
             // Track usage for non-premium users
             $this->usageService->incrementUsage(Auth::user(), 'chat_messages');
@@ -316,6 +325,9 @@ class ChatController extends Controller
                     'usage' => $aiResponse['usage'],
                 ],
             ]);
+            
+            // Invalidate message cache since AI response was added
+            Cache::forget("chat:{$chat->id}:messages");
 
             // Update chat's last message time
             $chat->updateLastMessageTime();
@@ -612,9 +624,12 @@ class ChatController extends Controller
      */
     public function getCourses(): JsonResponse
     {
-        $courses = Course::active()
-            ->ordered()
-            ->get(['id', 'name', 'slug', 'description', 'namespace', 'icon', 'color']);
+        // Cache courses for 1 hour - they rarely change
+        $courses = Cache::remember('courses:active', 3600, function() {
+            return Course::active()
+                ->ordered()
+                ->get(['id', 'name', 'slug', 'description', 'namespace', 'icon', 'color']);
+        });
 
         return response()->json($courses);
     }
