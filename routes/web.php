@@ -267,6 +267,14 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::put('/courses/{course}', [App\Http\Controllers\AdminController::class, 'coursesUpdate'])->name('admin.courses.update');
     Route::delete('/courses/{course}', [App\Http\Controllers\AdminController::class, 'coursesDestroy'])->name('admin.courses.destroy');
     
+    // Quiz Management
+    Route::get('/courses/{course}/quizzes/create', function (Course $course) {
+        return Inertia::render('Admin/Courses/CreateQuiz', [
+            'course' => $course
+        ]);
+    })->name('admin.courses.quizzes.create');
+    Route::post('/courses/{course}/quizzes', [App\Http\Controllers\Admin\CourseQuizController::class, 'store'])->name('admin.courses.quizzes.store');
+    
     // Course content management routes
     Route::get('/course-content', [App\Http\Controllers\Admin\CourseContentController::class, 'index'])->name('admin.course-content.index');
     Route::post('/course-content/upload', [App\Http\Controllers\Admin\CourseContentController::class, 'uploadContent'])->name('admin.course-content.upload');

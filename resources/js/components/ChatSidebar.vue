@@ -377,8 +377,11 @@ const handleClickOutside = (event: MouseEvent) => {
 
 // Load chats when component mounts
 onMounted(async () => {
-    await loadChats(true);
-    await fetchSubscriptionStatus();
+    // ⚡ PERFORMANCE FIX: Load chats and subscription in parallel
+    await Promise.all([
+        loadChats(true),
+        fetchSubscriptionStatus()
+    ]);
     document.addEventListener('click', handleClickOutside);
 });
 

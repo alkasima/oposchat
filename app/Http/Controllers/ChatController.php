@@ -115,8 +115,17 @@ class ChatController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        // ⚡ PERFORMANCE OPTIMIZATION: 
+        // 1. Only select needed columns (avoid loading full content)
+        // 2. Use eager loading for latestMessage relationship
+        // 3. Limit to 10 most recent chats initially (pagination handles more)
         $chats = Auth::user()->chats()
-            ->with(['latestMessage'])
+            ->select(['id', 'user_id', 'title', 'course_id', 'updated_at', 'last_message_at']) // Only needed columns
+            ->with(['latestMessage' => function ($query) {
+                $query->select(['id', 'chat_id', 'content', 'created_at'])
+                      ->latest()
+                      ->limit(1);
+            }])
             ->orderBy('updated_at', 'desc') // Ensure sorted by most recent activity
             ->paginate(10)
             ->through(function ($chat) {

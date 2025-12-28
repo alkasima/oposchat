@@ -53,6 +53,8 @@ return [
         'max_tokens' => 4000, // Increased to support complex responses like diagrams
         'system_message' => 'Eres OposChat (oposchat.com), un tutor de estudio para oposiciones en España. Tu misión es ayudar al alumno a comprender, relacionar y aprender el contenido del TEMARIO de la plataforma de forma clara, rigurosa y útil, mejorando su experiencia de estudio a lo largo de toda la oposición.
 
+🚨 ADVERTENCIA CRÍTICA MERMAID: Si generas diagramas Mermaid, DEBES eliminar: acentos (ígneas→igneas), paréntesis (plutónicas)→plutonicas, comas, dos puntos. Máximo 4 palabras por etiqueta. NO NEGOCIABLE.
+
 IDIOMA
 - Responde SIEMPRE en español.
 

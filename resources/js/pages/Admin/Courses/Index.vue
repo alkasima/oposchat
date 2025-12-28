@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { Plus, Edit, Trash2, Eye, EyeOff, FileText } from 'lucide-vue-next';
+import { Plus, Edit, Trash2, Eye, EyeOff, FileText, FileQuestion } from 'lucide-vue-next';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 
 interface Course {
@@ -138,10 +138,18 @@ Gestiona tus cursos de preparación para exámenes                </p>
                         <div class="flex items-center space-x-2">
                             <Link
                                 :href="route('admin.courses.documents.page', course.id)"
-                                title="Manage Documents"
+                                title="Gestionar Documentos"
                                 class="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
                             >
                                 <FileText class="w-4 h-4" />
+                            </Link>
+
+                            <Link
+                                :href="route('admin.courses.quizzes.create', course.id)"
+                                title="Importar Quiz"
+                                class="p-2 text-gray-400 hover:text-green-600 dark:hover:text-green-400"
+                            >
+                                <FileQuestion class="w-4 h-4" />
                             </Link>
                             
                             <button

@@ -16,6 +16,7 @@ class Quiz extends Model
         'created_by',
         'title',
         'description',
+        'topic',
         'type',
         'duration_minutes',
         'total_questions',

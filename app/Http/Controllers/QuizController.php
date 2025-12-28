@@ -165,7 +165,14 @@ class QuizController extends Controller
                 ->active()
                 ->repository();
 
-            if (isset($settings['topic'])) {
+            if ($quiz->topic) {
+                $query->where('topic', $quiz->topic);
+            }
+            // Allow overriding via settings if needed, but quiz->topic takes precedence if we want strictly the quiz content.
+            // However, usually 'settings' are for dynamic quizzes.
+            // If quiz has a topic, it's likely a Pre-made Quiz.
+            
+            if (isset($settings['topic']) && !$quiz->topic) {
                 $query->where('topic', $settings['topic']);
             }
 

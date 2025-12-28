@@ -400,6 +400,49 @@ const sanitizeMermaidText = (code: string): string => {
     return kept.join('\n').trim();
 };
 
+// Sanitize Mermaid code: convert invalid characters to valid Mermaid syntax
+const sanitizeMermaidCode = (code: string): string => {
+    if (!code) return '';
+    
+    // Convert invalid arrow characters to valid Mermaid arrows
+    let sanitized = code
+        .replace(/→/g, '-->')  // Right arrow → to -->
+        .replace(/←/g, '<--')  // Left arrow ← to <--
+        .replace(/↔/g, '<-->') // Bidirectional arrow ↔ to <-->
+        .replace(/⇒/g, '==>')  // Double right arrow ⇒ to ==>
+        .replace(/⇐/g, '<==')  // Double left arrow ⇐ to <==
+        .replace(/⇔/g, '<==>') // Double bidirectional arrow ⇔ to <==>
+        // Fix common arrow pattern issues: " -- No -→ " should be " -- No --> "
+        .replace(/--\s*([^-]+?)\s*-→/g, '-- $1 -->')
+        .replace(/--\s*([^-]+?)\s*-/g, '-- $1 -->'); // Fix incomplete arrows
+    
+    // Fix malformed arrow sequences - this is the key fix for -->->->-> patterns
+    // Match: --> followed by one or more occurrences of -> or -->
+    // Replace with just a single -->
+    sanitized = sanitized.replace(/-->(?:->|-->)+/g, '-->');
+    
+    // Fix patterns where we have multiple consecutive dashes followed by arrows
+    // e.g., ---> or -----> should become -->
+    sanitized = sanitized.replace(/-{3,}>/g, '-->');
+    
+    // Fix edge cases where arrows are concatenated incorrectly
+    // Pattern: -->-> or -->--> or any combination
+    sanitized = sanitized.replace(/(-->)(->)+/g, '$1');
+    sanitized = sanitized.replace(/(-->)(-->)+/g, '$1');
+    
+    // Fix patterns like A -->->->-> B to A --> B (with node labels)
+    // This handles cases where malformed arrows appear between nodes
+    sanitized = sanitized.replace(/([A-Za-z0-9_]+)\s*-->(?:->)+(?:\s*->)*\s*([A-Za-z0-9_\[\(\)\{\|])/g, '$1 --> $2');
+    
+    // Normalize spacing around arrows (but preserve labels on edges)
+    // Only normalize if there's no label (no | characters nearby)
+    sanitized = sanitized.replace(/([A-Za-z0-9_\]\)\}])\s*-->\s*([A-Za-z0-9_\[\(\)\{])/g, '$1 --> $2');
+    sanitized = sanitized.replace(/([A-Za-z0-9_\]\)\}])\s*---\s*([A-Za-z0-9_\[\(\)\{])/g, '$1 --- $2');
+    sanitized = sanitized.replace(/([A-Za-z0-9_\]\)\}])\s*==>\s*([A-Za-z0-9_\[\(\)\{])/g, '$1 ==> $2');
+    
+    return sanitized;
+};
+
 // Parse a raw Mermaid block into { mermaid, explanation }
 const parseMermaidBlock = (code: string): { mermaid: string; explanation: string } => {
     if (!code) return { mermaid: '', explanation: '' };
@@ -412,23 +455,165 @@ const parseMermaidBlock = (code: string): { mermaid: string; explanation: string
         .replace(/&#039;/g, "'")
         .replace(/<[^>]*>/g, '')
         .replace(/\r\n?/g, '\n');
+    
+    // Sanitize the code first to fix invalid characters
+    text = sanitizeMermaidCode(text);
+    
     const lines = text.split('\n');
-    const isHeader = (l: string) => /^(\s*)?(graph|flowchart)\b/i.test(l.trim());
+    
+    // Check for all Mermaid diagram types
+    const isHeader = (l: string) => {
+        const trimmed = l.trim();
+        return /^(\s*)?(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)\b/i.test(trimmed);
+    };
+    
+    // More permissive check for Mermaid syntax lines
     const isMermaidLine = (l: string) => {
         const t = l.trim();
-        if (t === '') return true;
+        if (t === '') return true; // Allow blank lines
+        
+        // Mermaid directives and keywords
         if (/^(subgraph|end|classDef|linkStyle|click|style|direction|%%)/i.test(t)) return true;
-        if (t.includes('--') || t.includes('==')) return true;
+        
+        // Edge definitions (arrows) - check for various arrow patterns
+        if (t.includes('-->') || t.includes('---') || t.includes('==>') || t.includes('===') || 
+            t.includes('-.->') || t.includes('-.') || t.includes('==') || t.includes('--') ||
+            t.includes('<--') || t.includes('<==') || t.includes('<-->') || t.includes('<==>')) return true;
+        
+        // Node definitions: A[Label], A((Label)), A{Label}, A[Label]|Label|, etc.
+        // More permissive: allow any characters inside brackets/parentheses/braces
+        if (/^[A-Za-z0-9_]+[\[\(\)\{\|][\s\S]*[\]\)\}\|]/.test(t)) return true;
+        
+        // Node definitions with quotes: A["Label"], A(("Label"))
+        if (/^[A-Za-z0-9_]+[\[\(].*["'].*["'].*[\]\)]/.test(t)) return true;
+        
+        // Simple node references: A, B, etc. (might be part of a diagram)
+        if (/^[A-Za-z0-9_]+$/.test(t) && t.length <= 50) return true;
+        
+        // Labels on edges: A -->|label| B
+        if (/\|.*\|/.test(t) && (t.includes('-->') || t.includes('---') || t.includes('--'))) return true;
+        
+        // Edge with label: A -- label --> B or A -- label --- B
+        if (/--\s+[^-]+?\s*(?:-->|---|==>|===)/.test(t)) return true;
+        
         return false;
     };
+    
     // Find header
     let start = -1;
     for (let i = 0; i < lines.length; i++) {
-        if (isHeader(lines[i])) { start = i; break; }
+        if (isHeader(lines[i])) { 
+            start = i; 
+            break; 
+        }
     }
-    if (start === -1) return { mermaid: '', explanation: text.trim() };
+    
+    if (start === -1) {
+        // If no header found, check if the whole text looks like a Mermaid diagram
+        // (might be a diagram without explicit header, or header was stripped)
+        const firstLine = lines[0]?.trim() || '';
+        if (firstLine.includes('-->') || firstLine.includes('---') || 
+            /^[A-Za-z0-9_]+[\[\(\)\{\|]/.test(firstLine)) {
+            // Looks like Mermaid syntax, treat entire block as diagram
+            return { mermaid: text.trim(), explanation: '' };
+        }
+        return { mermaid: '', explanation: text.trim() };
+    }
+    
     let end = start + 1;
-    while (end < lines.length && isMermaidLine(lines[end])) end++;
+    // Keep reading lines until we hit non-Mermaid content
+    // Use a more intelligent approach: track bracket/brace/paren balance across all lines
+    let bracketBalance = 0;
+    let parenBalance = 0;
+    let braceBalance = 0;
+    let inNodeDefinition = false;
+    
+    while (end < lines.length) {
+        const line = lines[end];
+        const trimmed = line.trim();
+        
+        // Always allow blank lines
+        if (trimmed === '') {
+            end++;
+            continue;
+        }
+        
+        // Update balance counters for the entire diagram so far
+        const allLinesSoFar = lines.slice(start, end + 1).join('\n');
+        bracketBalance = (allLinesSoFar.match(/\[/g) || []).length - (allLinesSoFar.match(/\]/g) || []).length;
+        parenBalance = (allLinesSoFar.match(/\(/g) || []).length - (allLinesSoFar.match(/\)/g) || []).length;
+        braceBalance = (allLinesSoFar.match(/\{/g) || []).length - (allLinesSoFar.match(/\}/g) || []).length;
+        inNodeDefinition = bracketBalance > 0 || parenBalance > 0 || braceBalance > 0;
+        
+        // If we're in the middle of a node definition (unclosed brackets/braces/parens), continue
+        if (inNodeDefinition) {
+            end++;
+            continue;
+        }
+        
+        // Check if it's a valid Mermaid line
+        if (isMermaidLine(line)) {
+            end++;
+            continue;
+        }
+        
+        // Check if this line could be continuation of previous line
+        if (end > start) {
+            const prevLine = lines[end - 1].trim();
+            
+            // If previous line ends with -- or -->, this might be a continuation
+            if (/--(?:>)?\s*$/.test(prevLine)) {
+                end++;
+                continue;
+            }
+            
+            // If previous line looks like it's starting a node or edge, continue
+            if (/^[A-Za-z0-9_]+[\[\(\)\{\|]/.test(prevLine) && !prevLine.match(/[\]\)\}\|]\s*$/) && !prevLine.includes('-->')) {
+                // Previous line started a node but might not have closed it yet
+                end++;
+                continue;
+            }
+            
+            // If line contains characters that could be part of a label (numbers, Spanish chars, etc.)
+            // and previous line was part of diagram, continue
+            if (/^[\d\s\/¿¡áéíóúñÁÉÍÓÚÑ.,;:!?\-]+$/.test(trimmed) && end > start + 1) {
+                // This looks like it could be part of a label (e.g., "2/3 en ambas Cámaras?")
+                end++;
+                continue;
+            }
+        }
+        
+        // If we get here, this line doesn't look like part of the diagram
+        // But check if it's just a short continuation (like a number or short text)
+        // that might be part of a label
+        if (trimmed.length < 20 && /^[\d\s\/¿¡áéíóúñÁÉÍÓÚÑ.,;:!?\-]+$/.test(trimmed)) {
+            // Short line with only label-like characters, might be continuation
+            end++;
+            continue;
+        }
+        
+        // Check if next few lines might complete the diagram
+        // (sometimes diagrams have explanation text after, but we want to capture the full diagram)
+        let lookAhead = end + 1;
+        let foundMoreDiagram = false;
+        while (lookAhead < Math.min(end + 5, lines.length)) {
+            if (isMermaidLine(lines[lookAhead])) {
+                foundMoreDiagram = true;
+                break;
+            }
+            lookAhead++;
+        }
+        
+        if (foundMoreDiagram) {
+            // There's more diagram content ahead, continue reading
+            end++;
+            continue;
+        }
+        
+        // Otherwise, stop here
+        break;
+    }
+    
     const mermaid = lines.slice(start, end).join('\n').trim();
     const explanation = lines.slice(end).join('\n').trim();
     return { mermaid, explanation };
@@ -441,76 +626,10 @@ const processMermaidDiagrams = (html: string): string => {
     
     let uniqueIdCounter = 0;
     
-    // First, check if already in code blocks
-    const codeBlockRegex = /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g;
-    if (html.match(codeBlockRegex)) {
-        // Already in code blocks, just format it properly
-        return html.replace(codeBlockRegex, (match, diagramCode) => {
-            const uniqueId = `mermaid-${props.message.id}-${Date.now()}-${uniqueIdCounter++}`;
-            const { mermaid: trimmedCode, explanation } = parseMermaidBlock(diagramCode.trim());
-            
-            // If streaming, don't try to render incomplete diagrams
-            if (isStreaming.value) {
-                return `<div class="mermaid-container">
-                    <div class="mermaid-loading flex items-center justify-center my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600">
-                        <div class="flex items-center space-x-3">
-                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">Generating diagram...</span>
-                        </div>
-                    </div>
-                </div>`;
-            }
-            
-            // Prepare explanation paragraphs (plain text, no extra styling)
-            const escapedExplanation = (explanation || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
-            const explanationHtml = escapedExplanation
-                .trim()
-                .split(/\n{2,}/)
-                .map(p => `<p>${p.replace(/\n+/g, ' ')}</p>`) 
-                .join('');
-
-            return `<div class=\"mermaid-container relative\"> 
-                <button class="mermaid-fullscreen-btn absolute top-2 right-2 z-10 p-2 bg-white dark:bg-gray-800 rounded-md shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 opacity-70 hover:opacity-100 transition-opacity" data-mermaid-id="${uniqueId}" title="Enlarge diagram">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
-                    </svg>
-                </button>
-                <div class="mermaid-loading flex items-center justify-center my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600">
-                    <div class="flex items-center space-x-3">
-                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div>
-                        <span class="text-sm text-gray-600 dark:text-gray-400">Rendering diagram...</span>
-                    </div>
-                </div>
-                <div class=\"mermaid my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-x-auto\" id=\"${uniqueId}\" style=\"display: none;\">${trimmedCode}</div>
-                ${explanationHtml ? `${explanationHtml}` : ''}
-            </div>`;
-        });
-    }
-    
-    // Look for standalone Mermaid syntax (flowchart/graph followed by node definitions)
-    // Use a more comprehensive regex that captures the full diagram (greedy match)
-    // The key is matching everything up to paragraph breaks, double newlines, or end of content
-    const standaloneMermaidRegex = /(<p>|<br>|<br\s*\/>|\n)?(flowchart\s+(?:TD|LR|TB|BT)\s*;?|graph\s+(?:TD|LR|TB|BT)\s*;?)([\s\S]+)(?=(?:\n\n)|(?:<p[^>]*>)|(?:<\/p>)|<\/div>|$)/g;
-    
-    return html.replace(standaloneMermaidRegex, (fullMatch, before, graphDecl, diagramContent, offset) => {
-        // Check if this match is already inside a mermaid-container (to avoid double-processing)
-        const beforeMatch = html.substring(0, offset);
-        const lastContainer = beforeMatch.lastIndexOf('mermaid-container');
-        const lastClosingDiv = beforeMatch.lastIndexOf('</div>', lastContainer);
-        const isAlreadyProcessed = lastContainer !== -1 && (lastClosingDiv === -1 || lastClosingDiv < lastContainer);
-        
-        if (isAlreadyProcessed) {
-            return fullMatch; // Return original, don't process again
-        }
-        
-        const uniqueId = `mermaid-${props.message.id}-${Date.now()}-${uniqueIdCounter++}`;
-        // Combine the graph declaration with content and parse
-        const parsed = parseMermaidBlock((graphDecl + diagramContent).trim());
-        const cleanCode = parsed.mermaid;
-        const explanation = parsed.explanation;
+    // Helper function to create mermaid container HTML
+    const createMermaidContainer = (uniqueId: string, mermaidCode: string, explanation: string = '') => {
+        // Final sanitization pass to ensure code is clean
+        let finalCode = sanitizeMermaidCode(mermaidCode);
         
         // If streaming, don't try to render incomplete diagrams
         if (isStreaming.value) {
@@ -535,7 +654,7 @@ const processMermaidDiagrams = (html: string): string => {
             .map(p => `<p>${p.replace(/\n+/g, ' ')}</p>`) 
             .join('');
 
-        return `<div class=\"mermaid-container relative\"> 
+        return `<div class="mermaid-container relative"> 
             <button class="mermaid-fullscreen-btn absolute top-2 right-2 z-10 p-2 bg-white dark:bg-gray-800 rounded-md shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 opacity-70 hover:opacity-100 transition-opacity" data-mermaid-id="${uniqueId}" title="Enlarge diagram">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
@@ -547,9 +666,113 @@ const processMermaidDiagrams = (html: string): string => {
                     <span class="text-sm text-gray-600 dark:text-gray-400">Rendering diagram...</span>
                 </div>
             </div>
-            <div class=\"mermaid my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-x-auto\" id=\"${uniqueId}\" style=\"display: none;\">${cleanCode}</div>
+            <div class="mermaid my-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-x-auto" id="${uniqueId}" style="display: none;">${finalCode}</div>
             ${explanationHtml ? `${explanationHtml}` : ''}
         </div>`;
+    };
+    
+    // First, check if already in code blocks (with language-mermaid class)
+    const codeBlockRegex = /<pre><code(?:\s+class=["']language-mermaid["'])?>([\s\S]*?)<\/code><\/pre>/g;
+    let processedHtml = html.replace(codeBlockRegex, (match, diagramCode) => {
+        // Check if this code block contains Mermaid syntax
+        const trimmedCode = diagramCode.trim();
+        if (!/^(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/i.test(trimmedCode)) {
+            return match; // Not a Mermaid diagram, return original
+        }
+        
+        const uniqueId = `mermaid-${props.message.id}-${Date.now()}-${uniqueIdCounter++}`;
+        const { mermaid: trimmedMermaidCode, explanation } = parseMermaidBlock(trimmedCode);
+        
+        return createMermaidContainer(uniqueId, trimmedMermaidCode, explanation);
+    });
+    
+    // Also check for code blocks without class but containing Mermaid syntax
+    const plainCodeBlockRegex = /<pre><code>([\s\S]*?)<\/code><\/pre>/g;
+    processedHtml = processedHtml.replace(plainCodeBlockRegex, (match, diagramCode) => {
+        // Skip if already processed (inside mermaid-container)
+        if (match.includes('mermaid-container')) {
+            return match;
+        }
+        
+        const trimmedCode = diagramCode.trim();
+        // Check if this looks like a Mermaid diagram
+        if (!/^(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/i.test(trimmedCode)) {
+            return match; // Not a Mermaid diagram, return original
+        }
+        
+        const uniqueId = `mermaid-${props.message.id}-${Date.now()}-${uniqueIdCounter++}`;
+        const { mermaid: trimmedMermaidCode, explanation } = parseMermaidBlock(trimmedCode);
+        
+        return createMermaidContainer(uniqueId, trimmedMermaidCode, explanation);
+    });
+    
+    // Also check for diagrams inside paragraph tags (common when markdown wraps content)
+    const paragraphMermaidRegex = /<p>([\s\S]*?(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)[\s\S]*?)<\/p>/g;
+    processedHtml = processedHtml.replace(paragraphMermaidRegex, (match, content) => {
+        // Skip if already processed
+        if (match.includes('mermaid-container')) {
+            return match;
+        }
+        
+        // Decode HTML entities in the content
+        const decodedContent = content
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"')
+            .replace(/&#039;/g, "'");
+        
+        // Check if this looks like a Mermaid diagram
+        const trimmed = decodedContent.trim();
+        if (!/^(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/i.test(trimmed) &&
+            !/(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/i.test(trimmed)) {
+            return match; // Not a Mermaid diagram, return original
+        }
+        
+        const uniqueId = `mermaid-${props.message.id}-${Date.now()}-${uniqueIdCounter++}`;
+        const { mermaid: trimmedMermaidCode, explanation } = parseMermaidBlock(trimmed);
+        
+        // Only replace if we found valid Mermaid code
+        if (!trimmedMermaidCode || trimmedMermaidCode.trim().length === 0) {
+            return match;
+        }
+        
+        return createMermaidContainer(uniqueId, trimmedMermaidCode, explanation);
+    });
+    
+    // Look for standalone Mermaid syntax (flowchart/graph followed by node definitions)
+    // Updated regex to be more flexible - doesn't require direction indicator
+    // Matches: flowchart, graph, flowchart TD, graph LR, etc.
+    const standaloneMermaidRegex = /(<p>|<br>|<br\s*\/>|\n)?\s*(flowchart(?:\s+(?:TD|LR|TB|BT|RL))?\s*;?|graph(?:\s+(?:TD|LR|TB|BT|RL))?\s*;?|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)([\s\S]*?)(?=(?:\n\n)|(?:<p[^>]*>)|(?:<\/p>)|<\/div>|<\/code>|<\/pre>|$)/g;
+    
+    return processedHtml.replace(standaloneMermaidRegex, (fullMatch, before, graphDecl, diagramContent, offset) => {
+        // Check if this match is already inside a mermaid-container (to avoid double-processing)
+        const beforeMatch = processedHtml.substring(0, offset);
+        const lastContainer = beforeMatch.lastIndexOf('mermaid-container');
+        const lastClosingDiv = beforeMatch.lastIndexOf('</div>', lastContainer);
+        const isAlreadyProcessed = lastContainer !== -1 && (lastClosingDiv === -1 || lastClosingDiv < lastContainer);
+        
+        if (isAlreadyProcessed) {
+            return fullMatch; // Return original, don't process again
+        }
+        
+        // Also check if we're inside a code block that was already processed
+        if (beforeMatch.includes('mermaid-container') && !beforeMatch.substring(beforeMatch.lastIndexOf('mermaid-container')).includes('</div>')) {
+            return fullMatch;
+        }
+        
+        const uniqueId = `mermaid-${props.message.id}-${Date.now()}-${uniqueIdCounter++}`;
+        // Combine the graph declaration with content and parse
+        const parsed = parseMermaidBlock((graphDecl + diagramContent).trim());
+        const cleanCode = parsed.mermaid;
+        const explanation = parsed.explanation;
+        
+        // Only process if we actually found valid Mermaid code
+        if (!cleanCode || cleanCode.trim().length === 0) {
+            return fullMatch;
+        }
+        
+        return createMermaidContainer(uniqueId, cleanCode, explanation);
     });
 };
 
@@ -620,8 +843,17 @@ const renderMermaidDiagrams = async () => {
     }
     
     // Hide all loading indicators and show mermaid divs
-    // First, set a minimum height to prevent layout shift
+    // First, sanitize and update the code in each mermaid div
     mermaidDivs.forEach(mermaidDiv => {
+        const originalCode = mermaidDiv.textContent || '';
+        // Sanitize the code to fix any invalid characters
+        const sanitizedCode = sanitizeMermaidCode(originalCode);
+        // Update the div content with sanitized code
+        if (sanitizedCode !== originalCode) {
+            mermaidDiv.textContent = sanitizedCode;
+            console.log('🔧 Sanitized Mermaid code (removed invalid characters)');
+        }
+        
         const container = mermaidDiv.closest('.mermaid-container') as HTMLElement;
         if (container) {
             const loadingDiv = container.querySelector('.mermaid-loading') as HTMLElement;

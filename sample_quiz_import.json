@@ -1,0 +1,73 @@
+{
+    "questions": [
+        {
+            "text": "¿En qué año se aprobó la Constitución Española actual?",
+            "difficulty": "easy",
+            "explanation": "La Constitución Española fue aprobada por las Cortes el 31 de octubre de 1978 y ratificada en referéndum el 6 de diciembre de 1978.",
+            "options": [
+                {
+                    "text": "1975",
+                    "is_correct": false
+                },
+                {
+                    "text": "1978",
+                    "is_correct": true
+                },
+                {
+                    "text": "1981",
+                    "is_correct": false
+                },
+                {
+                    "text": "1931",
+                    "is_correct": false
+                }
+            ]
+        },
+        {
+            "text": "¿Cuál es la forma política del Estado español según el artículo 1.3 de la Constitución?",
+            "difficulty": "medium",
+            "explanation": "El artículo 1.3 de la Constitución establece literalmente que 'La forma política del Estado español es la Monarquía parlamentaria'.",
+            "options": [
+                {
+                    "text": "República Federal",
+                    "is_correct": false
+                },
+                {
+                    "text": "Monarquía parlamentaria",
+                    "is_correct": true
+                },
+                {
+                    "text": "Monarquía absoluta",
+                    "is_correct": false
+                },
+                {
+                    "text": "Estado autonómico",
+                    "is_correct": false
+                }
+            ]
+        },
+        {
+            "text": "¿A quién corresponde la iniciativa de reforma constitucional según el artículo 166?",
+            "difficulty": "hard",
+            "explanation": "El artículo 166 remite a los apartados 1 y 2 del artículo 87, otorgando la iniciativa al Gobierno, al Congreso, al Senado y a las Asambleas de las Comunidades Autónomas.",
+            "options": [
+                {
+                    "text": "Exclusivamente al Gobierno y al Congreso de los Diputados",
+                    "is_correct": false
+                },
+                {
+                    "text": "Al Gobierno, al Congreso, al Senado y a las Asambleas de las CC.AA.",
+                    "is_correct": true
+                },
+                {
+                    "text": "Al Rey, al Gobierno y a las Cortes Generales",
+                    "is_correct": false
+                },
+                {
+                    "text": "Únicamente al pueblo español mediante iniciativa legislativa popular",
+                    "is_correct": false
+                }
+            ]
+        }
+    ]
+}
