@@ -343,7 +343,7 @@ const handleChatSelected = async (chatId: string | null) => {
         await nextTick();
         setTimeout(async () => {
             await scrollToBottom(true); // Force scroll when loading a chat
-        }, 200);
+        }, 50);  // Reduced from 200ms to 50ms for snappier feel
     } catch (error) {
         console.error('Failed to load chat:', error);
     } finally {
