@@ -455,6 +455,9 @@ const handleNewChatCreated = (newChat: any) => {
 
     // Save the new chat ID to localStorage
     saveCurrentChat(newChat.id.toString());
+    
+    // Emit to sidebar to add this chat to the list (instead of reloading all)
+    // This is handled by the sidebar's handleNewChatCreated which we'll update
 };
 
 // Send message to current chat using streaming
@@ -471,7 +474,7 @@ const sendMessage = async () => {
     }
 
     // Require an exam selection before chatting
-    if (!currentChat.value.course_id && !currentCourse.value) {
+    if (!currentChat.value.course_id) {
         showCourseRequired.value = true;
         // Nudge user to the selector
         focusCourseSelector();
@@ -480,20 +483,6 @@ const sendMessage = async () => {
         return;
     }
     
-    // Auto-update chat with course if not set but course is selected
-    if (!currentChat.value.course_id && currentCourse.value) {
-        try {
-            await chatApi.updateChat(currentChat.value.id, {
-                course_id: currentCourse.value.id
-            });
-            currentChat.value.course_id = currentCourse.value.id;
-        } catch (error) {
-            console.error('Failed to update chat course:', error);
-            alert('⚠️ Please select an exam/course before sending your message.');
-            return;
-        }
-    }
-
     // Check if user has exceeded usage limits
     if (!hasFeatureAccess('chat_messages')) {
         const chatUsage = usage.value.chat_messages;
@@ -845,8 +834,8 @@ const createNewChatIfNeeded = async () => {
             // Save the new chat ID to localStorage
             saveCurrentChat(newChat.id.toString());
             
-            // Refresh usage data
-            await fetchUsageData();
+            // Refresh usage data in background (non-blocking)
+            fetchUsageData().catch(err => console.error('Failed to refresh usage:', err));
             
             return true;
         } catch (error) {

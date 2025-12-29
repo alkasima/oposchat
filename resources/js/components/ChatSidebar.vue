@@ -345,19 +345,11 @@ const handleWaitClick = () => {
 watch(() => props.currentChatId, (newChatId) => {
     activeChat.value = newChatId;
     
-    // Check if the new chat exists in our list
-    const exists = chats.value.some(chat => chat.id.toString() === newChatId);
-    
-    // If we have an ID but it's not in our list, it might be a newly created chat
-    // Reload the list to fetch it (it should be at the top)
-    if (newChatId && !exists && !isLoading.value) {
-        loadChats(true);
-    } else {
-        // Just update active state locally
-        chats.value.forEach(chat => {
-            chat.isActive = chat.id.toString() === newChatId;
-        });
-    }
+    // Just update active state - don't reload
+    // The cache will handle showing fresh data, and new chats are added via create flow
+    chats.value.forEach(chat => {
+        chat.isActive = chat.id.toString() === newChatId;
+    });
 }, { immediate: true });
 
 // Theme management
