@@ -171,15 +171,13 @@ const selectCourse = async (course: Course) => {
   isOpen.value = false;
   emit('course-selected', course);
   
-  // Update chat with selected course
+  // Update chat with selected course (non-blocking - runs in background)
   if (props.chatId) {
-    try {
-      await chatApi.updateChat(props.chatId.toString(), {
-        course_id: course.id,
-      });
-    } catch (error) {
+    chatApi.updateChat(props.chatId.toString(), {
+      course_id: course.id,
+    }).catch(error => {
       console.error('Failed to update chat course:', error);
-    }
+    });
   }
 };
 
@@ -188,15 +186,13 @@ const clearSelection = async () => {
   isOpen.value = false;
   emit('course-selected', null);
   
-  // Update chat to remove course selection
+  // Update chat to remove course selection (non-blocking)
   if (props.chatId) {
-    try {
-      await chatApi.updateChat(props.chatId.toString(), {
-        course_id: null,
-      });
-    } catch (error) {
+    chatApi.updateChat(props.chatId.toString(), {
+      course_id: null,
+    }).catch(error => {
       console.error('Failed to clear chat course:', error);
-    }
+    });
   }
 };
 
