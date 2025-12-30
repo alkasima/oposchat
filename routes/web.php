@@ -416,6 +416,16 @@ Route::get('/send-test-email', function () {
         ]);
     }
 
+    Route::get('/debug/db-test', function () {
+        $start = microtime(true);
+
+        DB::connection()->getPdo();
+
+        return [
+            'db_connect_ms' => round((microtime(true) - $start) * 1000, 2)
+        ];
+    });
+
     return response()->json([
         'message' => 'Failed to send email',
         'error' => $response->body(),

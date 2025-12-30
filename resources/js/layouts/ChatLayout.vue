@@ -551,6 +551,10 @@ const sendMessage = async () => {
         timestamp: 'now',
     };
     messages.value.push(userMessage);
+    
+    // ⚡ INSTANT FEEDBACK: Scroll immediately after adding message
+    await nextTick();
+    await scrollToBottom(false);
 
     // Update chat title if this is the first message
     if (messages.value.length === 1) {
@@ -569,6 +573,10 @@ const sendMessage = async () => {
         sessionId: '',
     };
     messages.value.push(assistantMessage);
+    
+    // ⚡ INSTANT FEEDBACK: Scroll to show typing indicator immediately
+    await nextTick();
+    await scrollToBottom(false);
 
     try {
             // Start streaming
@@ -964,9 +972,15 @@ const handleCourseSelected = async (course: any) => {
         // Update existing chat with course
         currentChat.value.course_id = course?.id || null;
     } else if (course) {
-        // Optimistic update: Just set the course locally. 
-        // The chat will be lazily created when the user sends the first message.
-        // verified via createNewChatIfNeeded() logic.
+        // ⚡ INSTANT: Start fresh chat when course selected for first time
+        // Don't wait for API - create optimistically
+        currentChat.value = {
+            id: `temp-${Date.now()}`,
+            title: `${course.name} Chat`,
+            course_id: course.id
+        };
+        messages.value = [];
+        showCourseRequired.value = false;
     }
     
     currentCourse.value = course ? { id: course.id, name: course.name } : null;
