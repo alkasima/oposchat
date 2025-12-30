@@ -416,6 +416,7 @@ Route::get('/send-test-email', function () {
         ]);
     }
 
+    
     Route::get('/debug/db-test', function () {
         $start = microtime(true);
 
