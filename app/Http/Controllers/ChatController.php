@@ -122,41 +122,28 @@ class ChatController extends Controller
         // Cache chat list for 2 minutes to improve sidebar performance
         $chats = Cache::remember($cacheKey, 120, function() {
             return Auth::user()->chats()
-                ->with(['latestMessage'])
+                // ⚡ OPTIMIZED: Don't eager load latestMessage (causes N+1 queries)
+                // Instead use last_message_at which is already on chats table
                 ->orderBy('updated_at', 'desc')
                 ->paginate(10)
                 ->through(function ($chat) {
-                    $latestMessage = $chat->latestMessage;
-
-                    // Ensure UTF-8 safe title/snippet to avoid JSON encoding errors
+                    // Ensure UTF-8 safe title
                     $rawTitle = $chat->title ?: 'New Chat';
                     $safeTitle = is_string($rawTitle)
                         ? @iconv('UTF-8', 'UTF-8//IGNORE', $rawTitle)
                         : 'New Chat';
 
-                    $snippet = null;
-                    if ($latestMessage && isset($latestMessage->content)) {
-                        $content = (string) $latestMessage->content;
-                        $content = @iconv('UTF-8', 'UTF-8//IGNORE', $content);
-                        $snippet = mb_substr($content, 0, 50, 'UTF-8');
-                        if (mb_strlen($content, 'UTF-8') > 50) {
-                            $snippet .= '...';
-                        }
-                    }
-
-                    // Prefer explicit last_message_at; fallback to latest message time
+                    // Use last_message_at for timestamp (already on chat record)
                     $timestamp = null;
                     if ($chat->last_message_at) {
                         $timestamp = $chat->last_message_at->diffForHumans();
-                    } elseif ($latestMessage && $latestMessage->created_at) {
-                        $timestamp = $latestMessage->created_at->diffForHumans();
                     }
 
                     return [
                         'id' => $chat->id,
                         'title' => $safeTitle,
                         'course_id' => $chat->course_id,
-                        'lastMessage' => $snippet,
+                        'lastMessage' => null,  // Remove snippet for speed
                         'timestamp' => $timestamp,
                     ];
                 });
@@ -311,7 +298,7 @@ class ChatController extends Controller
         // Get AI response with course context
         $aiResponse = $this->aiProvider->chatCompletionWithContext($messages, $namespaces, [
             'temperature' => 0.7,
-            'max_tokens' => 1000,
+            'max_tokens' => 4000, // Increased from 1000 to match config default for detailed responses
             'system_message' => $systemMessage,
         ]);
 

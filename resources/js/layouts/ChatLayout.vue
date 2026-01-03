@@ -968,29 +968,52 @@ const renameCurrentChat = async () => {
 
 // Handle course selection
 const handleCourseSelected = async (course: any) => {
-    if (currentChat.value) {
-        // Update existing chat with course
-        currentChat.value.course_id = course?.id || null;
-    } else if (course) {
-        // ⚡ INSTANT: Start fresh chat when course selected for first time
-        // Don't wait for API - create optimistically
-        currentChat.value = {
-            id: `temp-${Date.now()}`,
-            title: `${course.name} Chat`,
-            course_id: course.id
-        };
+    // ⚡ ALWAYS START NEW CHAT when course is selected
+    // This keeps conversations organized by course
+    if (course) {
+        try {
+            // Create a real chat in the database immediately
+            const newChat = await chatApi.createChat({
+                course_id: course.id,
+                title: `${course.name} Chat`
+            });
+            
+            currentChat.value = {
+                id: newChat.id.toString(),
+                title: newChat.title,
+                course_id: newChat.chat?.course_id || newChat.course_id || course.id
+            };
+            messages.value = [];
+            showCourseRequired.value = false;
+            
+            // Save the new chat ID to localStorage
+            saveCurrentChat(newChat.id.toString());
+            
+            // Refresh usage data in background (non-blocking)
+            fetchUsageData().catch(err => console.error('Failed to refresh usage:', err));
+        } catch (error) {
+            console.error('Error creating new chat for course:', error);
+            // Show user-friendly error
+            alert('Failed to create new chat. Please try again.');
+            // Reset to no chat state
+            currentChat.value = null;
+            messages.value = [];
+        }
+    } else {
+        // Course cleared - go back to welcome screen
+        currentChat.value = null;
         messages.value = [];
-        showCourseRequired.value = false;
     }
     
     currentCourse.value = course ? { id: course.id, name: course.name } : null;
     
-    // If we have a chat, check its course_id. If no chat, check our local selection.
+    // Update UI state
     if (currentChat.value) {
         showCourseRequired.value = !currentChat.value.course_id;
     } else {
         showCourseRequired.value = !currentCourse.value;
     }
+    
     // Persist selection
     saveSelectedCourse();
     
