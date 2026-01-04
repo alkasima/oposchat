@@ -514,6 +514,8 @@ const sendMessage = async () => {
         return;
     }
 
+    // CRITICAL FIX: Save message content BEFORE any validation that might fail
+    // This ensures we can restore the message if validation fails
     let messageContent = currentMessage.value;
     let fullMessageForAI = messageContent;
     
@@ -522,7 +524,7 @@ const sendMessage = async () => {
         isProcessingFile.value = true;
         try {
             const fileContent = await extractFileContent(selectedFile.value);
-            // Clean message for user display
+            //Clean message for user display
             messageContent = `[Document: ${selectedFile.value.name}] ${messageContent}`;
             // Full message with document content for AI processing
             fullMessageForAI = `Document: ${selectedFile.value.name}\n\n${currentMessage.value}\n\nDocument Content:\n${fileContent}`;
@@ -535,6 +537,8 @@ const sendMessage = async () => {
         }
     }
     
+    // ✅ ONLY clear message input AFTER all validations pass
+    // This prevents message from disappearing if validation fails
     currentMessage.value = '';
     selectedFile.value = null;
     imagePreviewUrl.value = null;
@@ -983,13 +987,21 @@ const handleCourseSelected = async (course: any) => {
                 title: `${course.name} Chat`
             });
             
+            // CRITICAL FIX: Ensure course_id is ALWAYS set from the course parameter
+            // Don't rely on backend response which might not include it properly
             currentChat.value = {
                 id: newChat.id.toString(),
                 title: newChat.title,
-                course_id: newChat.chat?.course_id || newChat.course_id || course.id
+                course_id: course.id  // ✅ Always use course.id directly from parameter
             };
             messages.value = [];
             showCourseRequired.value = false;
+            
+            console.log('✅ Chat created with course:', {
+                chatId: currentChat.value.id,
+                courseId: currentChat.value.course_id,
+                courseName: course.name
+            });
             
             // Save the new chat ID to localStorage
             saveCurrentChat(newChat.id.toString());
