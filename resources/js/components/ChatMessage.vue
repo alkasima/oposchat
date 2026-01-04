@@ -447,6 +447,26 @@ const sanitizeMermaidCode = (code: string): string => {
         .replace(/--\s*([^-]+?)\s*-→/g, '-- $1 -->')
         .replace(/--\s*([^-]+?)\s*-/g, '-- $1 -->'); // Fix incomplete arrows
     
+    // FIX: Malformed arrow patterns from AI (critical for Spanish diagrams)
+    // Pattern: -->- should become -- (for labeled edges)
+    sanitized = sanitized.replace(/-->-/g, '--');
+    // Pattern: ---> should become -->
+    sanitized = sanitized.replace(/--->/g, '-->');
+    
+    // FIX: Duplicate node references like "C --> C -->" should become "C -->"
+    sanitized = sanitized.replace(/([A-Z][A-Z0-9]*?)\s+-->\s+\1\s+-->/g, '$1 -->');
+    
+    // FIX: Spanish punctuation symbols (¿, ¡) in labels - remove them
+    sanitized = sanitized
+        .replace(/\[([^\]]*)\]/g, (match, content) => {
+            const cleaned = content.replace(/[¿¡]/g, '').trim();
+            return `[${cleaned}]`;
+        })
+        .replace(/\{([^\}]*)\}/g, (match, content) => {
+            const cleaned = content.replace(/[¿¡]/g, '').trim();
+            return `{${cleaned}}`;
+        });
+    
     // Fix malformed arrow sequences - this is the key fix for -->->->-> patterns
     // Match: --> followed by one or more occurrences of -> or -->
     // Replace with just a single -->
