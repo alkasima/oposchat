@@ -968,6 +968,11 @@ const renameCurrentChat = async () => {
 
 // Handle course selection
 const handleCourseSelected = async (course: any) => {
+    // ⚡ INSTANT FEEDBACK: Set loading state immediately to prevent multiple clicks
+    if (course) {
+        isLoading.value = true; // Show loading indicator immediately
+    }
+    
     // ⚡ ALWAYS START NEW CHAT when course is selected
     // This keeps conversations organized by course
     if (course) {
@@ -998,11 +1003,15 @@ const handleCourseSelected = async (course: any) => {
             // Reset to no chat state
             currentChat.value = null;
             messages.value = [];
+        } finally {
+            // Clear loading state after operation completes
+            isLoading.value = false;
         }
     } else {
         // Course cleared - go back to welcome screen
         currentChat.value = null;
         messages.value = [];
+        isLoading.value = false;
     }
     
     currentCourse.value = course ? { id: course.id, name: course.name } : null;

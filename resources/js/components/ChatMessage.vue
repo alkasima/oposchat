@@ -404,8 +404,39 @@ const sanitizeMermaidText = (code: string): string => {
 const sanitizeMermaidCode = (code: string): string => {
     if (!code) return '';
     
-    // Convert invalid arrow characters to valid Mermaid arrows
+    // CRITICAL FIX: Remove ALL accents first (fallback when AI doesn't follow instructions)
+    // This is the #1 cause of Mermaid rendering errors with Spanish content
     let sanitized = code
+        // Spanish/Portuguese accents - lowercase
+        .replace(/á/g, 'a').replace(/é/g, 'e').replace(/í/g, 'i').replace(/ó/g, 'o').replace(/ú/g, 'u')
+        .replace(/ñ/g, 'n').replace(/ü/g, 'u').replace(/ç/g, 'c')
+        // Spanish/Portuguese accents - uppercase  
+        .replace(/Á/g, 'A').replace(/É/g, 'E').replace(/Í/g, 'I').replace(/Ó/g, 'O').replace(/Ú/g, 'U')
+        .replace(/Ñ/g, 'N').replace(/Ü/g, 'U').replace(/Ç/g, 'C')
+        // French accents
+        .replace(/à/g, 'a').replace(/â/g, 'a').replace(/è/g, 'e').replace(/ê/g, 'e').replace(/ë/g, 'e')
+        .replace(/î/g, 'i').replace(/ï/g, 'i').replace(/ô/g, 'o').replace(/ù/g, 'u').replace(/û/g, 'u').replace(/ÿ/g, 'y')
+        .replace(/À/g, 'A').replace(/Â/g, 'A').replace(/È/g, 'E').replace(/Ê/g, 'E').replace(/Ë/g, 'E')
+        .replace(/Î/g, 'I').replace(/Ï/g, 'I').replace(/Ô/g, 'O').replace(/Ù/g, 'U').replace(/Û/g, 'U').replace(/Ÿ/g, 'Y');
+    
+    // Remove problematic punctuation from node labels (parentheses, colons, commas)
+    // Only inside brackets/braces/parentheses to preserve edge syntax
+    sanitized = sanitized
+        .replace(/\[([^\]]*)\]/g, (match, content) => {
+            const cleaned = content.replace(/[():,;]/g, ' ').replace(/\s+/g, ' ').trim();
+            return `[${cleaned}]`;
+        })
+        .replace(/\{([^\}]*)\}/g, (match, content) => {
+            const cleaned = content.replace(/[():,;]/g, ' ').replace(/\s+/g, ' ').trim();
+            return `{${cleaned}}`;
+        })
+        .replace(/\(\(([^\)]*)\)\)/g, (match, content) => {
+            const cleaned = content.replace(/[():,;]/g, ' ').replace(/\s+/g, ' ').trim();
+            return `((${cleaned}))`;
+        });
+    
+    // Convert invalid arrow characters to valid Mermaid arrows
+    sanitized = sanitized
         .replace(/→/g, '-->')  // Right arrow → to -->
         .replace(/←/g, '<--')  // Left arrow ← to <--
         .replace(/↔/g, '<-->') // Bidirectional arrow ↔ to <-->
