@@ -102,6 +102,8 @@ class StreamingChatController extends Controller
             ]);
 
             // Get chat messages for context (Limit to last 30 to prevent OOM/Timeouts)
+            // Note: The user message is already saved to the database in createStreamingSession,
+            // so we fetch all messages including the new one
             $messages = $chat->messages()
                 ->latest() // Use latest to efficiently get last N
                 ->limit(30)
@@ -114,12 +116,6 @@ class StreamingChatController extends Controller
                     ];
                 })
                 ->toArray();
-
-            // Add the new user message
-            $messages[] = [
-                'role' => 'user',
-                'content' => $userMessage,
-            ];
 
             // Get course namespaces for context
             $namespaces = $chat->getEmbeddingNamespaces();
